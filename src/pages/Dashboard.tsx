@@ -27,15 +27,6 @@ export default function Dashboard() {
 
   const totalCCDebt = state.ccDebts.reduce((sum, d) => sum + d.amount, 0);
 
-  // Limits tracking
-  const nakitSpent = state.dailyExpenses
-    .filter(e => e.type === 'NAKIT' && e.amount < 0)
-    .reduce((sum, e) => sum + Math.abs(e.amount), 0);
-    
-  const ykSpent = state.dailyExpenses
-    .filter(e => e.type === 'YK' && e.amount < 0)
-    .reduce((sum, e) => sum + Math.abs(e.amount), 0);
-
   // Spending percentage
   const spendingPercentage = totalAvailableResources > 0 ? (totalSpent / totalAvailableResources) * 100 : 0;
   
@@ -79,25 +70,6 @@ export default function Dashboard() {
         </div>
         <ProgressBar value={totalSpent} max={totalAvailableResources || 1} />
       </Card>
-
-      {/* Limits */}
-      <div className="grid gap-4 md:grid-cols-2">
-         <Card title={`Nakit Durumu (Limit: ${state.limits.nakit} ₺)`} className="space-y-3">
-            <div className="flex justify-between items-baseline mb-1">
-               <span className="text-2xl font-bold">{nakitSpent.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</span>
-               <span className="text-xs text-muted-foreground">/ {state.limits.nakit.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</span>
-            </div>
-            <ProgressBar value={nakitSpent} max={state.limits.nakit} color={nakitSpent > state.limits.nakit ? "bg-red-500" : "bg-green-500"} />
-         </Card>
-
-         <Card title={`Yemek Kartı Durumu (Limit: ${state.limits.yk} ₺)`} className="space-y-3">
-            <div className="flex justify-between items-baseline mb-1">
-               <span className="text-2xl font-bold">{ykSpent.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</span>
-               <span className="text-xs text-muted-foreground">/ {state.limits.yk.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</span>
-            </div>
-            <ProgressBar value={ykSpent} max={state.limits.yk} color={ykSpent > state.limits.yk ? "bg-red-500" : "bg-blue-500"} />
-         </Card>
-      </div>
     </div>
   );
 }

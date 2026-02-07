@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import type { BudgetState, FixedExpense, DailyExpense, CCDebt, Limits } from '../types';
+import type { BudgetState, FixedExpense, DailyExpense, CCDebt } from '../types';
 
 const STORAGE_KEY = 'budget_app_data';
 
@@ -7,7 +7,6 @@ const initialState: BudgetState = {
   version: 1,
   income: 0,
   rollover: 0,
-  limits: { nakit: 250, yk: 320 },
   fixedExpenses: [],
   dailyExpenses: [],
   ccDebts: [],
@@ -24,8 +23,8 @@ interface BudgetContextType {
   deleteCCDebt: (id: string) => void;
   updateIncome: (amount: number) => void;
   updateRollover: (amount: number) => void;
-  updateLimits: (limits: Limits) => void;
   resetMonth: () => void;
+  loadState: (newState: BudgetState) => void;
 }
 
 const BudgetContext = createContext<BudgetContextType | undefined>(undefined);
@@ -139,15 +138,15 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setState(prev => ({ ...prev, rollover }));
   };
 
-  const updateLimits = (limits: Limits) => {
-    setState(prev => ({ ...prev, limits }));
-  };
-
   const resetMonth = () => {
      setState(prev => ({
         ...prev,
         fixedExpenses: prev.fixedExpenses.map(ex => ({ ...ex, isPaid: false }))
      }));
+  };
+
+  const loadState = (newState: BudgetState) => {
+    setState(newState);
   };
 
   return (
@@ -163,8 +162,8 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         deleteCCDebt,
         updateIncome,
         updateRollover,
-        updateLimits,
-        resetMonth
+        resetMonth,
+        loadState
       }}
     >
       {children}

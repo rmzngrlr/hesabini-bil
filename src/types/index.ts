@@ -21,16 +21,10 @@ export interface CCDebt {
   amount: number;
 }
 
-export interface Limits {
-  nakit: number;
-  yk: number;
-}
-
 export interface BudgetState {
   version?: number;
   income: number;
   rollover: number;
-  limits: Limits;
   fixedExpenses: FixedExpense[];
   dailyExpenses: DailyExpense[];
   ccDebts: CCDebt[];
