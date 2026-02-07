@@ -19,10 +19,23 @@ export interface CCDebt {
   id: string;
   description: string;
   amount: number;
+  installmentId?: string; // Link to parent installment if applicable
+  currentInstallment?: number; // e.g. 1 (of 6)
+  totalInstallments?: number; // e.g. 6
 }
 
-export interface BudgetState {
-  version?: number;
+export interface Installment {
+  id: string;
+  description: string;
+  totalAmount: number;
+  installmentCount: number;
+  remainingInstallments: number;
+  monthlyAmount: number;
+  startDate: string; // ISO string
+}
+
+export interface MonthlyHistory {
+  month: string; // YYYY-MM
   income: number;
   rollover: number;
   ykIncome: number;
@@ -30,4 +43,18 @@ export interface BudgetState {
   fixedExpenses: FixedExpense[];
   dailyExpenses: DailyExpense[];
   ccDebts: CCDebt[];
+}
+
+export interface BudgetState {
+  version?: number;
+  currentMonth: string; // YYYY-MM
+  income: number;
+  rollover: number;
+  ykIncome: number;
+  ykRollover: number;
+  fixedExpenses: FixedExpense[];
+  dailyExpenses: DailyExpense[];
+  ccDebts: CCDebt[];
+  installments: Installment[];
+  history: MonthlyHistory[];
 }

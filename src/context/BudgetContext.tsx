@@ -1,10 +1,13 @@
 import React, { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import type { BudgetState, FixedExpense, DailyExpense, CCDebt } from '../types';
+import type { BudgetState, FixedExpense, DailyExpense, CCDebt, Installment, MonthlyHistory } from '../types';
 
 const STORAGE_KEY = 'budget_app_data';
 
+const getCurrentMonth = () => new Date().toISOString().slice(0, 7); // YYYY-MM
+
 const initialState: BudgetState = {
-  version: 1,
+  version: 2,
+  currentMonth: getCurrentMonth(),
   income: 0,
   rollover: 0,
   ykIncome: 0,
@@ -12,6 +15,8 @@ const initialState: BudgetState = {
   fixedExpenses: [],
   dailyExpenses: [],
   ccDebts: [],
+  installments: [],
+  history: [],
 };
 
 interface BudgetContextType {
@@ -23,6 +28,7 @@ interface BudgetContextType {
   deleteDailyExpense: (id: string) => void;
   addCCDebt: (debt: Omit<CCDebt, 'id'>) => void;
   deleteCCDebt: (id: string) => void;
+  addInstallment: (installment: Omit<Installment, 'id' | 'remainingInstallments'>) => void;
   updateIncome: (amount: number) => void;
   updateRollover: (amount: number) => void;
   updateYkIncome: (amount: number) => void;
@@ -48,20 +54,27 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const parsed = JSON.parse(stored);
 
         // Migration logic:
-        // If version is missing, it means old data where all dailyExpenses were expenses (positive numbers).
-        // We need to convert them to negative numbers.
         if (!parsed.version) {
+          // Version 0 -> 1
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const migratedDailyExpenses = (parsed.dailyExpenses || []).map((ex: any) => ({
              ...ex,
              amount: ex.amount > 0 ? -ex.amount : ex.amount
           }));
 
+          parsed.dailyExpenses = migratedDailyExpenses;
+          parsed.version = 1;
+        }
+
+        if (parsed.version === 1) {
+          // Version 1 -> 2 (Add installments, history, currentMonth)
           return {
             ...initialState,
             ...parsed,
-            dailyExpenses: migratedDailyExpenses,
-            version: 1
+            currentMonth: initialState.currentMonth,
+            installments: [],
+            history: [],
+            version: 2
           };
         }
 
@@ -134,6 +147,30 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }));
   };
 
+  const addInstallment = (installment: Omit<Installment, 'id' | 'remainingInstallments'>) => {
+    const newInstallment: Installment = {
+      ...installment,
+      id: generateId(),
+      remainingInstallments: installment.installmentCount,
+    };
+
+    // Also add the first month's debt immediately to current month
+    const newDebt: CCDebt = {
+      id: generateId(),
+      description: `${newInstallment.description} (1/${newInstallment.installmentCount})`,
+      amount: newInstallment.monthlyAmount,
+      installmentId: newInstallment.id,
+      currentInstallment: 1,
+      totalInstallments: newInstallment.installmentCount
+    };
+
+    setState(prev => ({
+      ...prev,
+      installments: [...prev.installments, newInstallment],
+      ccDebts: [...prev.ccDebts, newDebt]
+    }));
+  };
+
   const updateIncome = (income: number) => {
     setState(prev => ({ ...prev, income }));
   };
@@ -151,10 +188,66 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   };
 
   const resetMonth = () => {
-     setState(prev => ({
-        ...prev,
-        fixedExpenses: prev.fixedExpenses.map(ex => ({ ...ex, isPaid: false }))
-     }));
+     setState(prev => {
+        // Archive current month
+        const historyEntry: MonthlyHistory = {
+          month: prev.currentMonth || getCurrentMonth(),
+          income: prev.income,
+          rollover: prev.rollover,
+          ykIncome: prev.ykIncome,
+          ykRollover: prev.ykRollover,
+          fixedExpenses: prev.fixedExpenses,
+          dailyExpenses: prev.dailyExpenses,
+          ccDebts: prev.ccDebts,
+        };
+
+        // Process installments for next month
+        const nextMonthDebts: CCDebt[] = [];
+        // Logic fix:
+        // We are moving TO a new month.
+
+        const nextMonthInstallments = prev.installments.map(inst => {
+           if (inst.remainingInstallments > 1) {
+             // It will have at least 1 more payment in the NEW month
+             const nextInstallmentNumber = (inst.installmentCount - inst.remainingInstallments) + 2;
+
+             nextMonthDebts.push({
+               id: generateId(),
+               description: `${inst.description} (${nextInstallmentNumber}/${inst.installmentCount})`,
+               amount: inst.monthlyAmount,
+               installmentId: inst.id,
+               currentInstallment: nextInstallmentNumber,
+               totalInstallments: inst.installmentCount
+             });
+
+             return { ...inst, remainingInstallments: inst.remainingInstallments - 1 };
+           } else {
+             // Remaining is 1 (this was the last month). Next month it is 0. No debt added.
+             // We can filter these out or keep them with 0 remaining.
+             return { ...inst, remainingInstallments: 0 };
+           }
+        }).filter(inst => inst.remainingInstallments > 0);
+
+        // Determine next month string (logic to increment YYYY-MM)
+        const [year, month] = (prev.currentMonth || getCurrentMonth()).split('-').map(Number);
+        const nextDate = new Date(year, month, 1); // month is 0-indexed in Date? No, '2023-10' -> split gives 10. Date(2023, 10, 1) is Nov (Index 10).
+        // Actually Date(year, monthIndex) where monthIndex 0=Jan.
+        // '2023-01' -> 1. Date(2023, 1) is Feb. Correct.
+        // So passing the parsed number directly increments month by 1.
+        const nextMonthStr = nextDate.toISOString().slice(0, 7);
+
+        return {
+          ...prev,
+          version: 2,
+          currentMonth: nextMonthStr,
+          history: [...prev.history, historyEntry],
+          installments: nextMonthInstallments,
+          ccDebts: nextMonthDebts, // Start with only installment debts
+          dailyExpenses: [], // Clear daily expenses
+          fixedExpenses: prev.fixedExpenses.map(ex => ({ ...ex, isPaid: false })), // Reset paid status
+          // Income/Rollover stays same? Usually users might want to update, but we keep values.
+        };
+     });
   };
 
   const loadState = (newState: BudgetState) => {
@@ -172,6 +265,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         deleteDailyExpense,
         addCCDebt,
         deleteCCDebt,
+        addInstallment,
         updateIncome,
         updateRollover,
         updateYkIncome,

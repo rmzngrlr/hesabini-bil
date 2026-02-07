@@ -1,35 +1,71 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Settings as SettingsIcon } from 'lucide-react';
+import { Settings as SettingsIcon, ChevronDown } from 'lucide-react';
 import { useBudget } from '../context/BudgetContext';
+import type { BudgetState } from '../types';
 import { Card } from '../components/ui/Card';
 import { ProgressBar } from '../components/ui/ProgressBar';
 
 export default function Dashboard() {
   const { state } = useBudget();
 
-  // Calculations
+  // Month Selection State
+  // Default to 'current' which represents live state.
+  // Other values will be 'YYYY-MM' strings from history.
+  const [selectedMonth, setSelectedMonth] = useState<string>('current');
+
+  // Determine which data to show
+  let displayState: BudgetState;
+
+  if (selectedMonth === 'current') {
+    displayState = state;
+  } else {
+    // Find history entry
+    const historyEntry = state.history.find(h => h.month === selectedMonth);
+    if (historyEntry) {
+      // Construct a partial BudgetState for display purposes
+      // Warning: history entry doesn't have 'version', 'currentMonth', 'history', 'installments' usually
+      // We need to cast or mock them.
+      displayState = {
+        ...state, // fallback for missing props
+        ...historyEntry,
+        // Override arrays from history
+        fixedExpenses: historyEntry.fixedExpenses,
+        dailyExpenses: historyEntry.dailyExpenses,
+        ccDebts: historyEntry.ccDebts,
+      };
+    } else {
+      displayState = state; // Fallback
+    }
+  }
+
+  // Available months for dropdown
+  // Unique months from history + current month
+  // state.history is array of { month: 'YYYY-MM', ... }
+  // We need to sort them.
+  const historyMonths = state.history.map(h => h.month).sort().reverse();
+  // Ensure current month is top
+  // If history is empty, just current.
+
+  const currentMonthLabel = new Date().toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
+
+  // Calculations based on displayState
 
   // YK Resources
-  const ykIncome = state.ykIncome || 0;
-  const ykRollover = state.ykRollover || 0;
+  const ykIncome = displayState.ykIncome || 0;
+  const ykRollover = displayState.ykRollover || 0;
   const totalYkResources = ykIncome + ykRollover;
 
-  const ykSpent = state.dailyExpenses
+  const ykSpent = displayState.dailyExpenses
     .filter(e => e.type === 'YK' && e.amount < 0)
     .reduce((sum, e) => sum + Math.abs(e.amount), 0);
 
   // Cash Resources
-  // Assuming Daily Income is always Cash? The form defaults to 'NAKIT' for type when adding, but checks should be precise.
-  // Actually, 'addDailyExpense' takes 'type' which can be 'NAKIT' or 'YK'.
-  // If user adds 'Gelir' (Positive amount) with type 'YK', it should technically add to YK resources?
-  // The current UI defaults to 'NAKIT' for Income if user doesn't toggle.
-  // Let's refine:
-  // Income entries in dailyExpenses:
-  const dailyCashIncome = state.dailyExpenses
+  const dailyCashIncome = displayState.dailyExpenses
     .filter(e => e.amount > 0 && e.type === 'NAKIT')
     .reduce((sum, e) => sum + e.amount, 0);
 
-  const dailyYkIncome = state.dailyExpenses
+  const dailyYkIncome = displayState.dailyExpenses
     .filter(e => e.amount > 0 && e.type === 'YK')
     .reduce((sum, e) => sum + e.amount, 0);
 
@@ -38,24 +74,21 @@ export default function Dashboard() {
   const finalRemainingYk = finalYkResources - ykSpent;
 
   // Cash Resources
-  const totalCashResources = state.income + state.rollover + dailyCashIncome;
+  const totalCashResources = displayState.income + displayState.rollover + dailyCashIncome;
 
-  const paidFixedExpenses = state.fixedExpenses
+  const paidFixedExpenses = displayState.fixedExpenses
     .filter(e => e.isPaid)
     .reduce((sum, e) => sum + e.amount, 0);
 
-  const cashSpent = state.dailyExpenses
+  const cashSpent = displayState.dailyExpenses
     .filter(e => e.amount < 0 && e.type === 'NAKIT')
     .reduce((sum, e) => sum + Math.abs(e.amount), 0);
 
-  // Total Cash Spent = Fixed Expenses + Daily Cash Expenses
   const totalCashSpent = paidFixedExpenses + cashSpent;
   const remainingCash = totalCashResources - totalCashSpent;
 
-  const totalCCDebt = state.ccDebts.reduce((sum, d) => sum + d.amount, 0);
+  const totalCCDebt = displayState.ccDebts.reduce((sum, d) => sum + d.amount, 0);
 
-  // Spending percentage (Cash only for main progress bar?)
-  // Or Combined? Let's show Cash primarily as "Bütçe" usually refers to main money.
   const spendingPercentage = totalCashResources > 0 ? (totalCashSpent / totalCashResources) * 100 : 0;
   
   return (
@@ -63,8 +96,21 @@ export default function Dashboard() {
       <header className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Özet Paneli</h1>
-          <div className="text-sm text-muted-foreground capitalize">
-            {new Date().toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' })}
+
+          <div className="relative inline-block text-left mt-1">
+             <select
+               value={selectedMonth}
+               onChange={(e) => setSelectedMonth(e.target.value)}
+               className="appearance-none bg-transparent text-sm text-muted-foreground font-medium capitalize pr-6 focus:outline-none cursor-pointer"
+             >
+               <option value="current">{currentMonthLabel} (Güncel)</option>
+               {historyMonths.map(month => (
+                 <option key={month} value={month}>
+                   {new Date(month + '-01').toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' })}
+                 </option>
+               ))}
+             </select>
+             <ChevronDown size={14} className="absolute right-0 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
           </div>
         </div>
         <Link to="/settings" className="p-2 rounded-full bg-secondary text-muted-foreground hover:text-primary transition-colors">
