@@ -29,6 +29,7 @@ interface BudgetContextType {
   addCCDebt: (debt: Omit<CCDebt, 'id'>) => void;
   deleteCCDebt: (id: string) => void;
   addInstallment: (installment: Omit<Installment, 'id' | 'remainingInstallments'>) => void;
+  deleteInstallment: (id: string) => void;
   updateIncome: (amount: number) => void;
   updateRollover: (amount: number) => void;
   updateYkIncome: (amount: number) => void;
@@ -80,13 +81,34 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
         if (parsed.version === 1) {
           // Version 1 -> 2 (Add installments, history, currentMonth)
+          parsed.currentMonth = initialState.currentMonth;
+          parsed.installments = [];
+          parsed.history = [];
+          parsed.version = 2;
+        }
+
+        if (parsed.version === 2) {
+          // Version 2 -> 3 (Convert positive debts to negative for consistency)
+          // Also check installments' monthlyAmount and convert if positive
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const migratedDebts = (parsed.ccDebts || []).map((d: any) => ({
+            ...d,
+            amount: d.amount > 0 ? -d.amount : d.amount
+          }));
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const migratedInstallments = (parsed.installments || []).map((i: any) => ({
+            ...i,
+            monthlyAmount: i.monthlyAmount > 0 ? -i.monthlyAmount : i.monthlyAmount,
+            totalAmount: i.totalAmount > 0 ? -i.totalAmount : i.totalAmount
+          }));
+
           return {
             ...initialState,
             ...parsed,
-            currentMonth: initialState.currentMonth,
-            installments: [],
-            history: [],
-            version: 2
+            ccDebts: migratedDebts,
+            installments: migratedInstallments,
+            version: 3
           };
         }
 
@@ -249,6 +271,13 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }));
   };
 
+  const deleteInstallment = (id: string) => {
+    setState(prev => ({
+      ...prev,
+      installments: prev.installments.filter(i => i.id !== id)
+    }));
+  };
+
   const updateIncome = (income: number) => {
     setState(prev => ({ ...prev, income }));
   };
@@ -316,7 +345,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
         return {
           ...prev,
-          version: 2,
+          version: 3,
           currentMonth: nextMonthStr,
           history: [...prev.history, historyEntry],
           installments: nextMonthInstallments,
@@ -344,6 +373,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         addCCDebt,
         deleteCCDebt,
         addInstallment,
+        deleteInstallment,
         updateIncome,
         updateRollover,
         updateYkIncome,

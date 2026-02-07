@@ -87,7 +87,10 @@ export default function Dashboard() {
   const totalCashSpent = paidFixedExpenses + cashSpent;
   const remainingCash = totalCashResources - totalCashSpent;
 
-  const totalCCDebt = displayState.ccDebts.reduce((sum, d) => sum + d.amount, 0);
+  // Total CC Debt: Sum of negative spending and positive payments.
+  // Result is negative if debt exists.
+  // Display as positive magnitude.
+  const totalCCDebt = Math.abs(displayState.ccDebts.reduce((sum, d) => sum + d.amount, 0));
 
   const spendingPercentage = totalCashResources > 0 ? (totalCashSpent / totalCashResources) * 100 : 0;
   
