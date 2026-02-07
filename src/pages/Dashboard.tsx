@@ -1,0 +1,113 @@
+import { Link } from 'react-router-dom';
+import { Settings as SettingsIcon } from 'lucide-react';
+import { useBudget } from '../context/BudgetContext';
+import { Card } from '../components/ui/Card';
+import { ProgressBar } from '../components/ui/ProgressBar';
+import { useGoldPrices } from '../hooks/useGoldPrices';
+
+export default function Dashboard() {
+  const { state } = useBudget();
+  const { prices } = useGoldPrices();
+
+  // Calculations
+  const totalIncome = state.income + state.rollover;
+  
+  const paidFixedExpenses = state.fixedExpenses
+    .filter(e => e.isPaid)
+    .reduce((sum, e) => sum + e.amount, 0);
+
+  const totalDailyExpenses = state.dailyExpenses.reduce((sum, e) => sum + e.amount, 0);
+
+  const totalSpent = paidFixedExpenses + totalDailyExpenses;
+  const remainingAllowance = totalIncome - totalSpent;
+
+  const totalCCDebt = state.ccDebts.reduce((sum, d) => sum + d.amount, 0);
+
+  const goldValue = 
+    (state.gold.g22 * prices.g22) + 
+    (state.gold.g24 * prices.g24) + 
+    (state.gold.resat * prices.resat);
+
+  // Limits tracking
+  const nakitSpent = state.dailyExpenses
+    .filter(e => e.type === 'NAKIT')
+    .reduce((sum, e) => sum + e.amount, 0);
+    
+  const ykSpent = state.dailyExpenses
+    .filter(e => e.type === 'YK')
+    .reduce((sum, e) => sum + e.amount, 0);
+
+  // Spending percentage
+  const spendingPercentage = totalIncome > 0 ? (totalSpent / totalIncome) * 100 : 0;
+  
+  return (
+    <div className="space-y-6 pb-20">
+      <header className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Özet Paneli</h1>
+          <div className="text-sm text-muted-foreground capitalize">
+            {new Date().toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' })}
+          </div>
+        </div>
+        <Link to="/settings" className="p-2 rounded-full bg-secondary text-muted-foreground hover:text-primary transition-colors">
+          <SettingsIcon size={20} />
+        </Link>
+      </header>
+
+      {/* Top Summary Cards */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card title="Kalan Harçlık" className="bg-gradient-to-br from-card to-secondary/10">
+           <div className="text-3xl font-bold text-foreground mt-2">
+             {remainingAllowance.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+           </div>
+           <div className="text-xs text-muted-foreground mt-1">
+             Toplam Bakiye: {totalIncome.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+           </div>
+        </Card>
+        
+        <Card title="Toplam KK Borcu" className="border-red-900/20 bg-red-950/5">
+           <div className="text-3xl font-bold text-red-500 mt-2">
+             {totalCCDebt.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+           </div>
+        </Card>
+
+        <Card title="Altın Portföy Değeri" className="border-yellow-900/20 bg-yellow-950/5">
+           <div className="text-3xl font-bold text-yellow-500 mt-2">
+             {goldValue.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+           </div>
+           <div className="text-xs text-muted-foreground mt-1">
+             Tahmini Değer
+           </div>
+        </Card>
+      </div>
+
+      {/* Main Budget Progress */}
+      <Card title="Aylık Bütçe Durumu" className="space-y-4">
+        <div className="flex justify-between items-center text-sm mb-1">
+           <span className="text-muted-foreground">Harcama: {totalSpent.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</span>
+           <span className="font-medium text-foreground">{(100 - spendingPercentage).toFixed(1)}% Kalan</span>
+        </div>
+        <ProgressBar value={totalSpent} max={totalIncome || 1} />
+      </Card>
+
+      {/* Limits */}
+      <div className="grid gap-4 md:grid-cols-2">
+         <Card title={`Nakit Durumu (Limit: ${state.limits.nakit} ₺)`} className="space-y-3">
+            <div className="flex justify-between items-baseline mb-1">
+               <span className="text-2xl font-bold">{nakitSpent.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</span>
+               <span className="text-xs text-muted-foreground">/ {state.limits.nakit.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</span>
+            </div>
+            <ProgressBar value={nakitSpent} max={state.limits.nakit} color={nakitSpent > state.limits.nakit ? "bg-red-500" : "bg-green-500"} />
+         </Card>
+
+         <Card title={`YK Durumu (Limit: ${state.limits.yk} ₺)`} className="space-y-3">
+            <div className="flex justify-between items-baseline mb-1">
+               <span className="text-2xl font-bold">{ykSpent.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</span>
+               <span className="text-xs text-muted-foreground">/ {state.limits.yk.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</span>
+            </div>
+            <ProgressBar value={ykSpent} max={state.limits.yk} color={ykSpent > state.limits.yk ? "bg-red-500" : "bg-blue-500"} />
+         </Card>
+      </div>
+    </div>
+  );
+}
