@@ -4,7 +4,6 @@ import Dashboard from './pages/Dashboard';
 import FixedExpenses from './pages/FixedExpenses';
 import DailyExpenses from './pages/DailyExpenses';
 import Debt from './pages/Debt';
-import Gold from './pages/Gold';
 import Settings from './pages/Settings';
 
 function App() {
@@ -16,7 +15,6 @@ function App() {
           <Route path="/fixed" element={<FixedExpenses />} />
           <Route path="/daily" element={<DailyExpenses />} />
           <Route path="/debt" element={<Debt />} />
-          <Route path="/gold" element={<Gold />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>
       </Layout>

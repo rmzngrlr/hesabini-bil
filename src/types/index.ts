@@ -21,31 +21,17 @@ export interface CCDebt {
   amount: number;
 }
 
-export interface GoldPortfolio {
-  g22: number; // grams
-  g24: number; // grams
-  resat: number; // count
-}
-
-export interface GoldPrices {
-  g22: number;
-  g24: number;
-  resat: number;
-  lastUpdated?: string;
-}
-
 export interface Limits {
   nakit: number;
   yk: number;
 }
 
 export interface BudgetState {
+  version?: number;
   income: number;
   rollover: number;
   limits: Limits;
   fixedExpenses: FixedExpense[];
   dailyExpenses: DailyExpense[];
   ccDebts: CCDebt[];
-  gold: GoldPortfolio;
-  goldPrices: GoldPrices;
 }

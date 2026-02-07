@@ -11,15 +11,19 @@ export default function DailyExpenses() {
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [type, setType] = useState<'NAKIT' | 'YK'>('NAKIT');
+  const [transactionType, setTransactionType] = useState<'INCOME' | 'EXPENSE'>('EXPENSE');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!description || !amount) return;
 
+    const numAmount = parseFloat(amount);
+    const finalAmount = transactionType === 'EXPENSE' ? -Math.abs(numAmount) : Math.abs(numAmount);
+
     addDailyExpense({
       date,
       description,
-      amount: parseFloat(amount),
+      amount: finalAmount,
       type
     });
     
@@ -76,6 +80,23 @@ export default function DailyExpenses() {
            <div className="flex gap-2 pt-1">
              <button
                type="button"
+               onClick={() => setTransactionType('INCOME')}
+               className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${transactionType === 'INCOME' ? 'bg-green-500/10 border-green-500 text-green-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
+             >
+               Gelir (+)
+             </button>
+             <button
+               type="button"
+               onClick={() => setTransactionType('EXPENSE')}
+               className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${transactionType === 'EXPENSE' ? 'bg-red-500/10 border-red-500 text-red-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
+             >
+               Gider (-)
+             </button>
+           </div>
+
+           <div className="flex gap-2">
+             <button
+               type="button"
                onClick={() => setType('NAKIT')}
                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${type === 'NAKIT' ? 'bg-primary/10 border-primary text-primary' : 'bg-secondary border-transparent text-muted-foreground'}`}
              >
@@ -116,7 +137,10 @@ export default function DailyExpenses() {
              </div>
              
              <div className="text-right">
-                <div className="font-bold">{expense.amount.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</div>
+                <div className={`font-bold ${expense.amount > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                  {expense.amount > 0 ? '+' : ''}
+                  {expense.amount.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+                </div>
                 <button 
                   onClick={() => deleteDailyExpense(expense.id)}
                   className="text-xs text-destructive mt-1 hover:underline flex items-center gap-1 ml-auto"

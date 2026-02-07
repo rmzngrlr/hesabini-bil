@@ -1,17 +1,16 @@
 import React, { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import type { BudgetState, FixedExpense, DailyExpense, CCDebt, GoldPortfolio, Limits, GoldPrices } from '../types';
+import type { BudgetState, FixedExpense, DailyExpense, CCDebt, Limits } from '../types';
 
 const STORAGE_KEY = 'budget_app_data';
 
 const initialState: BudgetState = {
+  version: 1,
   income: 0,
   rollover: 0,
   limits: { nakit: 250, yk: 320 },
   fixedExpenses: [],
   dailyExpenses: [],
   ccDebts: [],
-  gold: { g22: 0, g24: 0, resat: 0 },
-  goldPrices: { g22: 0, g24: 0, resat: 0, lastUpdated: '' },
 };
 
 interface BudgetContextType {
@@ -23,8 +22,6 @@ interface BudgetContextType {
   deleteDailyExpense: (id: string) => void;
   addCCDebt: (debt: Omit<CCDebt, 'id'>) => void;
   deleteCCDebt: (id: string) => void;
-  updateGold: (gold: GoldPortfolio) => void;
-  updateGoldPrices: (prices: GoldPrices) => void;
   updateIncome: (amount: number) => void;
   updateRollover: (amount: number) => void;
   updateLimits: (limits: Limits) => void;
@@ -46,8 +43,26 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        // Merge with initialState to ensure new fields (like goldPrices) are present if missing in storage
-        return { ...initialState, ...parsed, goldPrices: parsed.goldPrices || initialState.goldPrices };
+
+        // Migration logic:
+        // If version is missing, it means old data where all dailyExpenses were expenses (positive numbers).
+        // We need to convert them to negative numbers.
+        if (!parsed.version) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const migratedDailyExpenses = (parsed.dailyExpenses || []).map((ex: any) => ({
+             ...ex,
+             amount: ex.amount > 0 ? -ex.amount : ex.amount
+          }));
+
+          return {
+            ...initialState,
+            ...parsed,
+            dailyExpenses: migratedDailyExpenses,
+            version: 1
+          };
+        }
+
+        return { ...initialState, ...parsed };
       }
       return initialState;
     } catch (e) {
@@ -116,14 +131,6 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }));
   };
 
-  const updateGold = (gold: GoldPortfolio) => {
-    setState(prev => ({ ...prev, gold }));
-  };
-
-  const updateGoldPrices = (goldPrices: GoldPrices) => {
-    setState(prev => ({ ...prev, goldPrices }));
-  };
-
   const updateIncome = (income: number) => {
     setState(prev => ({ ...prev, income }));
   };
@@ -154,8 +161,6 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         deleteDailyExpense,
         addCCDebt,
         deleteCCDebt,
-        updateGold,
-        updateGoldPrices,
         updateIncome,
         updateRollover,
         updateLimits,

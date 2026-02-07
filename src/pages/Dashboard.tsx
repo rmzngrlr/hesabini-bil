@@ -3,42 +3,41 @@ import { Settings as SettingsIcon } from 'lucide-react';
 import { useBudget } from '../context/BudgetContext';
 import { Card } from '../components/ui/Card';
 import { ProgressBar } from '../components/ui/ProgressBar';
-import { useGoldPrices } from '../hooks/useGoldPrices';
 
 export default function Dashboard() {
   const { state } = useBudget();
-  const { prices } = useGoldPrices();
 
   // Calculations
-  const totalIncome = state.income + state.rollover;
+  const dailyIncome = state.dailyExpenses
+    .filter(e => e.amount > 0)
+    .reduce((sum, e) => sum + e.amount, 0);
+
+  const dailyOutcome = state.dailyExpenses
+    .filter(e => e.amount < 0)
+    .reduce((sum, e) => sum + Math.abs(e.amount), 0);
+
+  const totalAvailableResources = state.income + state.rollover + dailyIncome;
   
   const paidFixedExpenses = state.fixedExpenses
     .filter(e => e.isPaid)
     .reduce((sum, e) => sum + e.amount, 0);
 
-  const totalDailyExpenses = state.dailyExpenses.reduce((sum, e) => sum + e.amount, 0);
-
-  const totalSpent = paidFixedExpenses + totalDailyExpenses;
-  const remainingAllowance = totalIncome - totalSpent;
+  const totalSpent = paidFixedExpenses + dailyOutcome;
+  const remainingAllowance = totalAvailableResources - totalSpent;
 
   const totalCCDebt = state.ccDebts.reduce((sum, d) => sum + d.amount, 0);
 
-  const goldValue = 
-    (state.gold.g22 * prices.g22) + 
-    (state.gold.g24 * prices.g24) + 
-    (state.gold.resat * prices.resat);
-
   // Limits tracking
   const nakitSpent = state.dailyExpenses
-    .filter(e => e.type === 'NAKIT')
-    .reduce((sum, e) => sum + e.amount, 0);
+    .filter(e => e.type === 'NAKIT' && e.amount < 0)
+    .reduce((sum, e) => sum + Math.abs(e.amount), 0);
     
   const ykSpent = state.dailyExpenses
-    .filter(e => e.type === 'YK')
-    .reduce((sum, e) => sum + e.amount, 0);
+    .filter(e => e.type === 'YK' && e.amount < 0)
+    .reduce((sum, e) => sum + Math.abs(e.amount), 0);
 
   // Spending percentage
-  const spendingPercentage = totalIncome > 0 ? (totalSpent / totalIncome) * 100 : 0;
+  const spendingPercentage = totalAvailableResources > 0 ? (totalSpent / totalAvailableResources) * 100 : 0;
   
   return (
     <div className="space-y-6 pb-20">
@@ -55,28 +54,19 @@ export default function Dashboard() {
       </header>
 
       {/* Top Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         <Card title="Kalan Harçlık" className="bg-gradient-to-br from-card to-secondary/10">
            <div className="text-3xl font-bold text-foreground mt-2">
              {remainingAllowance.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
            </div>
            <div className="text-xs text-muted-foreground mt-1">
-             Toplam Bakiye: {totalIncome.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+             Toplam Kaynak: {totalAvailableResources.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
            </div>
         </Card>
         
         <Card title="Toplam KK Borcu" className="border-red-900/20 bg-red-950/5">
            <div className="text-3xl font-bold text-red-500 mt-2">
              {totalCCDebt.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
-           </div>
-        </Card>
-
-        <Card title="Altın Portföy Değeri" className="border-yellow-900/20 bg-yellow-950/5">
-           <div className="text-3xl font-bold text-yellow-500 mt-2">
-             {goldValue.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
-           </div>
-           <div className="text-xs text-muted-foreground mt-1">
-             Tahmini Değer
            </div>
         </Card>
       </div>
@@ -87,7 +77,7 @@ export default function Dashboard() {
            <span className="text-muted-foreground">Harcama: {totalSpent.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</span>
            <span className="font-medium text-foreground">{(100 - spendingPercentage).toFixed(1)}% Kalan</span>
         </div>
-        <ProgressBar value={totalSpent} max={totalIncome || 1} />
+        <ProgressBar value={totalSpent} max={totalAvailableResources || 1} />
       </Card>
 
       {/* Limits */}
