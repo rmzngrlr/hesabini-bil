@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useBudget } from '../context/BudgetContext';
 import { Card } from '../components/ui/Card';
-import { Plus, Trash2, CheckCircle, Circle } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, Circle, Pencil, X } from 'lucide-react';
 import { cn } from '../lib/utils';
+import type { FixedExpense } from '../types';
 
 export default function FixedExpenses() {
   const {
     state,
     addFixedExpense,
+    updateFixedExpense,
     toggleFixedExpense,
     deleteFixedExpense,
     updateIncome,
@@ -17,6 +19,7 @@ export default function FixedExpenses() {
   } = useBudget();
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const [income, setIncome] = useState(state.income.toString());
   const [rollover, setRollover] = useState(state.rollover.toString());
@@ -55,10 +58,36 @@ export default function FixedExpenses() {
     updateYkRollover(parseFloat(ykRollover) || 0);
   };
 
+  const handleEdit = (expense: FixedExpense) => {
+    setEditingId(expense.id);
+    setTitle(expense.title);
+    setAmount(expense.amount.toString());
+
+    // Scroll to form (which is lower down)
+    // Maybe scrolling isn't needed as form is visible above list?
+    // The form is above the list.
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setTitle('');
+    setAmount('');
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !amount) return;
-    addFixedExpense({ title, amount: parseFloat(amount) });
+
+    if (editingId) {
+      updateFixedExpense(editingId, {
+        title,
+        amount: parseFloat(amount)
+      });
+      setEditingId(null);
+    } else {
+      addFixedExpense({ title, amount: parseFloat(amount) });
+    }
+
     setTitle('');
     setAmount('');
   };
@@ -137,13 +166,13 @@ export default function FixedExpenses() {
         </div>
       </Card>
 
-      <form onSubmit={handleSubmit} className="flex gap-2">
+      <form onSubmit={handleSubmit} className="flex gap-2 items-center">
         <input
           type="text"
           placeholder="Gider Adı (örn: Kira)"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="flex-1 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          className="flex-[2] px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
         />
         <input
           type="number"
@@ -152,11 +181,22 @@ export default function FixedExpenses() {
           onChange={(e) => setAmount(e.target.value)}
           className="w-24 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
         />
+
+        {editingId && (
+           <button
+             type="button"
+             onClick={cancelEdit}
+             className="p-2 rounded-lg bg-secondary text-foreground hover:bg-secondary/80"
+           >
+             <X size={24} />
+           </button>
+        )}
+
         <button
           type="submit"
           className="p-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
         >
-          <Plus size={24} />
+          {editingId ? <Pencil size={24} /> : <Plus size={24} />}
         </button>
       </form>
 
@@ -186,12 +226,20 @@ export default function FixedExpenses() {
               </div>
             </button>
             
-            <button
-              onClick={() => deleteFixedExpense(expense.id)}
-              className="p-2 text-muted-foreground hover:text-destructive transition-colors"
-            >
-              <Trash2 size={20} />
-            </button>
+            <div className="flex items-center">
+              <button
+                onClick={(e) => { e.stopPropagation(); handleEdit(expense); }}
+                className="p-2 text-primary hover:text-primary/80 transition-colors"
+              >
+                <Pencil size={20} />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); deleteFixedExpense(expense.id); }}
+                className="p-2 text-muted-foreground hover:text-destructive transition-colors"
+              >
+                <Trash2 size={20} />
+              </button>
+            </div>
           </div>
         ))}
         {state.fixedExpenses.length === 0 && (

@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useBudget } from '../context/BudgetContext';
 import { Card } from '../components/ui/Card';
-import { Plus, Trash2, CalendarClock, CreditCard } from 'lucide-react';
+import { Plus, Trash2, CalendarClock, CreditCard, Pencil, X } from 'lucide-react';
 import { cn } from '../lib/utils';
+import type { CCDebt } from '../types';
 
 export default function Debt() {
-  const { state, addCCDebt, deleteCCDebt, addInstallment, deleteInstallment } = useBudget();
+  const { state, addCCDebt, updateCCDebt, deleteCCDebt, addInstallment, deleteInstallment } = useBudget();
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
 
@@ -13,6 +14,30 @@ export default function Debt() {
   const [isInstallment, setIsInstallment] = useState(false);
   const [installmentCount, setInstallmentCount] = useState('2');
   const [transactionType, setTransactionType] = useState<'SPEND' | 'PAY'>('SPEND');
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const handleEdit = (debt: CCDebt) => {
+    // If it's linked to an installment, warn or handle?
+    // User requested "butun harcama kalemleri".
+    // Editing a single month of an installment is possible via updateCCDebt.
+    // We won't allow converting a debt to installment or vice versa easily here, just basic fields.
+    setEditingId(debt.id);
+    setDescription(debt.description);
+    setAmount(Math.abs(debt.amount).toString());
+    setTransactionType(debt.amount >= 0 ? 'PAY' : 'SPEND');
+    setIsInstallment(false); // Can't toggle installment on existing debt edit for now
+
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setDescription('');
+    setAmount('');
+    setTransactionType('SPEND');
+    setIsInstallment(false);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,33 +45,34 @@ export default function Debt() {
 
     const numAmount = parseFloat(amount);
 
-    if (transactionType === 'PAY') {
-        // Payment adds positive amount
-        addCCDebt({ description, amount: Math.abs(numAmount) });
-    } else {
-        // Spending adds negative amount (or installment with negative parts)
-        // Installment logic handles sign internally? No, I need to pass negative.
-        // Wait, context addInstallment logic:
-        /*
-          monthlyAmount: newInstallment.monthlyAmount, // passed as is
-        */
-        // So I should pass negative here.
-
-        const debtAmount = -Math.abs(numAmount);
-
-        if (isInstallment) {
-          const count = parseInt(installmentCount);
-          if (count < 2) return;
-
-          addInstallment({
+    if (editingId) {
+        // Update existing debt
+        const finalAmount = transactionType === 'PAY' ? Math.abs(numAmount) : -Math.abs(numAmount);
+        updateCCDebt(editingId, {
             description,
-            totalAmount: debtAmount * count, // Negative total
-            installmentCount: count,
-            monthlyAmount: debtAmount, // Negative monthly
-            startDate: new Date().toISOString()
-          });
+            amount: finalAmount
+        });
+        setEditingId(null);
+    } else {
+        if (transactionType === 'PAY') {
+            addCCDebt({ description, amount: Math.abs(numAmount) });
         } else {
-          addCCDebt({ description, amount: debtAmount });
+            const debtAmount = -Math.abs(numAmount);
+
+            if (isInstallment) {
+              const count = parseInt(installmentCount);
+              if (count < 2) return;
+
+              addInstallment({
+                description,
+                totalAmount: debtAmount * count,
+                installmentCount: count,
+                monthlyAmount: debtAmount,
+                startDate: new Date().toISOString()
+              });
+            } else {
+              addCCDebt({ description, amount: debtAmount });
+            }
         }
     }
 
@@ -73,7 +99,7 @@ export default function Debt() {
         </div>
       </Card>
 
-      <Card title="İşlem Ekle">
+      <Card title={editingId ? "İşlemi Düzenle" : "İşlem Ekle"}>
         <form onSubmit={handleSubmit} className="space-y-3 mt-2">
           <div className="flex gap-2">
              <button
@@ -137,7 +163,7 @@ export default function Debt() {
           </div>
 
           <div className="flex items-center gap-2 pt-1">
-             {transactionType === 'SPEND' && (
+             {transactionType === 'SPEND' && !editingId && (
                <button
                  type="button"
                  onClick={() => setIsInstallment(!isInstallment)}
@@ -151,12 +177,22 @@ export default function Debt() {
                </button>
              )}
 
+             {editingId && (
+               <button
+                 type="button"
+                 onClick={cancelEdit}
+                 className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-secondary text-foreground font-medium hover:bg-secondary/80 transition-colors"
+               >
+                 <X size={20} /> İptal
+               </button>
+             )}
+
              <button
                type="submit"
                className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
              >
-               <Plus size={20} />
-               Ekle
+               {editingId ? <Pencil size={20} /> : <Plus size={20} />}
+               {editingId ? 'Güncelle' : 'Ekle'}
              </button>
           </div>
         </form>
@@ -230,12 +266,20 @@ export default function Debt() {
                 {debt.amount > 0 ? '+' : ''}
                 {debt.amount.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
               </div>
-              <button
-                onClick={() => deleteCCDebt(debt.id)}
-                className="text-muted-foreground hover:text-destructive transition-colors"
-              >
-                <Trash2 size={20} />
-              </button>
+              <div className="flex flex-col gap-1">
+                <button
+                  onClick={() => handleEdit(debt)}
+                  className="text-primary hover:underline transition-colors"
+                >
+                  <Pencil size={16} />
+                </button>
+                <button
+                  onClick={() => deleteCCDebt(debt.id)}
+                  className="text-muted-foreground hover:text-destructive transition-colors"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
             </div>
           </div>
         ))}

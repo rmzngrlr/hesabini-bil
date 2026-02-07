@@ -2,19 +2,43 @@ import { useState } from 'react';
 import { useBudget } from '../context/BudgetContext';
 import type { DailyExpense } from '../types';
 import { Card } from '../components/ui/Card';
-import { Trash2, Banknote, Wallet, CreditCard } from 'lucide-react';
+import { Trash2, Banknote, Wallet, CreditCard, Pencil, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { cn } from '../lib/utils';
 
 export default function DailyExpenses() {
-  const { state, addDailyExpense, deleteDailyExpense } = useBudget();
+  const { state, addDailyExpense, updateDailyExpense, deleteDailyExpense } = useBudget();
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [type, setType] = useState<'NAKIT' | 'YK'>('NAKIT');
   const [transactionType, setTransactionType] = useState<'INCOME' | 'EXPENSE'>('EXPENSE');
   const [activeTab, setActiveTab] = useState<'NAKIT' | 'YK'>('NAKIT');
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const handleEdit = (expense: DailyExpense) => {
+    setEditingId(expense.id);
+    setDate(expense.date);
+    setDescription(expense.description);
+    setAmount(Math.abs(expense.amount).toString());
+    setType(expense.type);
+    setTransactionType(expense.amount >= 0 ? 'INCOME' : 'EXPENSE');
+
+    // Switch to the tab where the item is, so user sees what they are editing contextually
+    setActiveTab(expense.type);
+
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setDescription('');
+    setAmount('');
+    // Reset date to today? Or keep? Keep last used.
+    setTransactionType('EXPENSE');
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,12 +47,22 @@ export default function DailyExpenses() {
     const numAmount = parseFloat(amount);
     const finalAmount = transactionType === 'EXPENSE' ? -Math.abs(numAmount) : Math.abs(numAmount);
 
-    addDailyExpense({
-      date,
-      description,
-      amount: finalAmount,
-      type
-    });
+    if (editingId) {
+      updateDailyExpense(editingId, {
+        date,
+        description,
+        amount: finalAmount,
+        type
+      });
+      setEditingId(null);
+    } else {
+      addDailyExpense({
+        date,
+        description,
+        amount: finalAmount,
+        type
+      });
+    }
     
     setDescription('');
     setAmount('');
@@ -58,7 +92,7 @@ export default function DailyExpenses() {
         <h1 className="text-2xl font-bold tracking-tight">Günlük Defter</h1>
       </header>
       
-      <Card title="Yeni Harcama Ekle">
+      <Card title={editingId ? "Harcamayı Düzenle" : "Yeni Harcama Ekle"}>
         <form onSubmit={handleSubmit} className="space-y-3 mt-2">
            <div className="flex gap-2">
              <div className="flex-1 space-y-1">
@@ -127,12 +161,23 @@ export default function DailyExpenses() {
              </button>
            </div>
            
-           <button 
-             type="submit" 
-             className="w-full py-3 mt-2 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors"
-           >
-             Ekle
-           </button>
+           <div className="flex gap-2 mt-2">
+             {editingId && (
+               <button
+                 type="button"
+                 onClick={cancelEdit}
+                 className="flex-1 py-3 bg-secondary text-foreground font-medium rounded-lg hover:bg-secondary/80 transition-colors flex items-center justify-center gap-2"
+               >
+                 <X size={20} /> İptal
+               </button>
+             )}
+             <button
+               type="submit"
+               className="flex-[2] py-3 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors"
+             >
+               {editingId ? 'Güncelle' : 'Ekle'}
+             </button>
+           </div>
         </form>
       </Card>
 
@@ -180,12 +225,20 @@ export default function DailyExpenses() {
                       {expense.amount > 0 ? '+' : ''}
                       {expense.amount.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
                     </div>
-                    <button
-                      onClick={() => deleteDailyExpense(expense.id)}
-                      className="text-xs text-destructive mt-1 hover:underline flex items-center gap-1 ml-auto"
-                    >
-                      <Trash2 size={12} /> Sil
-                    </button>
+                    <div className="flex justify-end gap-3 mt-1">
+                      <button
+                        onClick={() => handleEdit(expense)}
+                        className="text-xs text-primary hover:underline flex items-center gap-1"
+                      >
+                        <Pencil size={12} /> Düzenle
+                      </button>
+                      <button
+                        onClick={() => deleteDailyExpense(expense.id)}
+                        className="text-xs text-destructive hover:underline flex items-center gap-1"
+                      >
+                        <Trash2 size={12} /> Sil
+                      </button>
+                    </div>
                 </div>
               </div>
             ))}

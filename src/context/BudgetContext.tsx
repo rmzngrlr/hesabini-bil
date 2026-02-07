@@ -30,6 +30,9 @@ interface BudgetContextType {
   deleteCCDebt: (id: string) => void;
   addInstallment: (installment: Omit<Installment, 'id' | 'remainingInstallments'>) => void;
   deleteInstallment: (id: string) => void;
+  updateDailyExpense: (id: string, expense: Partial<DailyExpense>) => void;
+  updateCCDebt: (id: string, debt: Partial<CCDebt>) => void;
+  updateFixedExpense: (id: string, expense: Partial<FixedExpense>) => void;
   updateIncome: (amount: number) => void;
   updateRollover: (amount: number) => void;
   updateYkIncome: (amount: number) => void;
@@ -278,6 +281,33 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }));
   };
 
+  const updateDailyExpense = (id: string, expense: Partial<DailyExpense>) => {
+    setState(prev => ({
+      ...prev,
+      dailyExpenses: prev.dailyExpenses.map(ex =>
+        ex.id === id ? { ...ex, ...expense } : ex
+      ),
+    }));
+  };
+
+  const updateCCDebt = (id: string, debt: Partial<CCDebt>) => {
+    setState(prev => ({
+      ...prev,
+      ccDebts: prev.ccDebts.map(d =>
+        d.id === id ? { ...d, ...debt } : d
+      ),
+    }));
+  };
+
+  const updateFixedExpense = (id: string, expense: Partial<FixedExpense>) => {
+    setState(prev => ({
+      ...prev,
+      fixedExpenses: prev.fixedExpenses.map(ex =>
+        ex.id === id ? { ...ex, ...expense } : ex
+      ),
+    }));
+  };
+
   const updateIncome = (income: number) => {
     setState(prev => ({ ...prev, income }));
   };
@@ -374,6 +404,9 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         deleteCCDebt,
         addInstallment,
         deleteInstallment,
+        updateDailyExpense,
+        updateCCDebt,
+        updateFixedExpense,
         updateIncome,
         updateRollover,
         updateYkIncome,
