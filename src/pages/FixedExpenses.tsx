@@ -47,10 +47,9 @@ export default function FixedExpenses() {
         <h1 className="text-2xl font-bold tracking-tight">Sabit Giderler</h1>
       </header>
 
-      <Card title="Gelir ve Devreden">
-        <div className="flex gap-4 items-center mt-2">
-          <div className="flex-1 space-y-1">
-            <label className="text-xs text-muted-foreground">Aylık Gelir</label>
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card title="Aylık Gelir">
+          <div className="mt-2">
             <input
               type="number"
               value={income}
@@ -59,8 +58,10 @@ export default function FixedExpenses() {
               className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
-          <div className="flex-1 space-y-1">
-             <label className="text-xs text-muted-foreground">Devreden</label>
+        </Card>
+
+        <Card title="Geçen Aydan Devreden">
+          <div className="mt-2">
              <input
                type="number"
                value={rollover}
@@ -69,8 +70,8 @@ export default function FixedExpenses() {
                className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
              />
           </div>
-        </div>
-      </Card>
+        </Card>
+      </div>
 
       <Card title="Gider Özeti" className="bg-gradient-to-br from-card to-primary/5">
         <div className="flex justify-between items-end mt-2">
