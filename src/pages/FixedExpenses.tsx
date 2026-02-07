@@ -5,12 +5,23 @@ import { Plus, Trash2, CheckCircle, Circle } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export default function FixedExpenses() {
-  const { state, addFixedExpense, toggleFixedExpense, deleteFixedExpense, updateIncome, updateRollover } = useBudget();
+  const {
+    state,
+    addFixedExpense,
+    toggleFixedExpense,
+    deleteFixedExpense,
+    updateIncome,
+    updateRollover,
+    updateYkIncome,
+    updateYkRollover
+  } = useBudget();
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
 
   const [income, setIncome] = useState(state.income.toString());
   const [rollover, setRollover] = useState(state.rollover.toString());
+  const [ykIncome, setYkIncome] = useState((state.ykIncome || 0).toString());
+  const [ykRollover, setYkRollover] = useState((state.ykRollover || 0).toString());
 
   useEffect(() => {
     if (state.income.toString() !== income) {
@@ -19,8 +30,14 @@ export default function FixedExpenses() {
     if (state.rollover.toString() !== rollover) {
       setRollover(state.rollover.toString());
     }
+    if ((state.ykIncome || 0).toString() !== ykIncome) {
+      setYkIncome((state.ykIncome || 0).toString());
+    }
+    if ((state.ykRollover || 0).toString() !== ykRollover) {
+      setYkRollover((state.ykRollover || 0).toString());
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.income, state.rollover]);
+  }, [state.income, state.rollover, state.ykIncome, state.ykRollover]);
 
   const handleIncomeSave = () => {
     updateIncome(parseFloat(income) || 0);
@@ -28,6 +45,14 @@ export default function FixedExpenses() {
 
   const handleRolloverSave = () => {
     updateRollover(parseFloat(rollover) || 0);
+  };
+
+  const handleYkIncomeSave = () => {
+    updateYkIncome(parseFloat(ykIncome) || 0);
+  };
+
+  const handleYkRolloverSave = () => {
+    updateYkRollover(parseFloat(ykRollover) || 0);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -44,11 +69,11 @@ export default function FixedExpenses() {
   return (
     <div className="space-y-6 pb-20">
       <header className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold tracking-tight">Sabit Giderler</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Sabit Gelirler</h1>
       </header>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Card title="Aylık Gelir">
+        <Card title="Aylık Gelir (Nakit)">
           <div className="mt-2">
             <input
               type="number"
@@ -60,7 +85,7 @@ export default function FixedExpenses() {
           </div>
         </Card>
 
-        <Card title="Geçen Aydan Devreden">
+        <Card title="Devreden (Nakit)">
           <div className="mt-2">
              <input
                type="number"
@@ -71,7 +96,33 @@ export default function FixedExpenses() {
              />
           </div>
         </Card>
+
+        <Card title="Yemek Kartı Geliri">
+          <div className="mt-2">
+             <input
+               type="number"
+               value={ykIncome}
+               onChange={(e) => setYkIncome(e.target.value)}
+               onBlur={handleYkIncomeSave}
+               className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+             />
+          </div>
+        </Card>
+
+        <Card title="Yemek Kartı Devreden">
+          <div className="mt-2">
+             <input
+               type="number"
+               value={ykRollover}
+               onChange={(e) => setYkRollover(e.target.value)}
+               onBlur={handleYkRolloverSave}
+               className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+             />
+          </div>
+        </Card>
       </div>
+
+      <h1 className="text-2xl font-bold tracking-tight mt-8">Sabit Giderler</h1>
 
       <Card title="Gider Özeti" className="bg-gradient-to-br from-card to-primary/5">
         <div className="flex justify-between items-end mt-2">

@@ -25,6 +25,8 @@ export interface BudgetState {
   version?: number;
   income: number;
   rollover: number;
+  ykIncome: number;
+  ykRollover: number;
   fixedExpenses: FixedExpense[];
   dailyExpenses: DailyExpense[];
   ccDebts: CCDebt[];

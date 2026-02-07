@@ -7,6 +7,8 @@ const initialState: BudgetState = {
   version: 1,
   income: 0,
   rollover: 0,
+  ykIncome: 0,
+  ykRollover: 0,
   fixedExpenses: [],
   dailyExpenses: [],
   ccDebts: [],
@@ -23,6 +25,8 @@ interface BudgetContextType {
   deleteCCDebt: (id: string) => void;
   updateIncome: (amount: number) => void;
   updateRollover: (amount: number) => void;
+  updateYkIncome: (amount: number) => void;
+  updateYkRollover: (amount: number) => void;
   resetMonth: () => void;
   loadState: (newState: BudgetState) => void;
 }
@@ -138,6 +142,14 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setState(prev => ({ ...prev, rollover }));
   };
 
+  const updateYkIncome = (ykIncome: number) => {
+    setState(prev => ({ ...prev, ykIncome }));
+  };
+
+  const updateYkRollover = (ykRollover: number) => {
+    setState(prev => ({ ...prev, ykRollover }));
+  };
+
   const resetMonth = () => {
      setState(prev => ({
         ...prev,
@@ -162,6 +174,8 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         deleteCCDebt,
         updateIncome,
         updateRollover,
+        updateYkIncome,
+        updateYkRollover,
         resetMonth,
         loadState
       }}
