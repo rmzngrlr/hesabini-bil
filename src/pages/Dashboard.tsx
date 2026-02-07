@@ -73,7 +73,7 @@ export default function Dashboard() {
       </header>
 
       {/* Top Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 grid-cols-1">
         <Card title="Kalan Nakit" className="bg-gradient-to-br from-card to-secondary/10">
            <div className="text-3xl font-bold text-foreground mt-2">
              {remainingCash.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
