@@ -50,12 +50,13 @@ function generateId() {
 
 export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    if (typeof window !== 'undefined') {
+    try {
       const stored = localStorage.getItem('theme');
       if (stored === 'dark' || stored === 'light') return stored;
       return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    } catch {
+      return 'light';
     }
-    return 'light';
   });
 
   const [state, setState] = useState<BudgetState>(() => {

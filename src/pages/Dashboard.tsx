@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Settings as SettingsIcon, ChevronDown } from 'lucide-react';
+import { Settings as SettingsIcon, ChevronDown, Sun, Moon } from 'lucide-react';
 import { useBudget } from '../context/BudgetContext';
 import type { BudgetState } from '../types';
 import { Card } from '../components/ui/Card';
 import { ProgressBar } from '../components/ui/ProgressBar';
 
 export default function Dashboard() {
-  const { state } = useBudget();
+  const { state, theme, toggleTheme } = useBudget();
 
   // Month Selection State
   // Default to 'current' which represents live state.
@@ -113,9 +113,17 @@ export default function Dashboard() {
              <ChevronDown size={14} className="absolute right-0 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
           </div>
         </div>
-        <Link to="/settings" className="p-2 rounded-full bg-secondary text-muted-foreground hover:text-primary transition-colors">
-          <SettingsIcon size={20} />
-        </Link>
+        <div className="flex gap-2">
+          <button
+            onClick={toggleTheme}
+            className="p-2 rounded-full bg-secondary text-muted-foreground hover:text-primary transition-colors"
+          >
+            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
+          <Link to="/settings" className="p-2 rounded-full bg-secondary text-muted-foreground hover:text-primary transition-colors">
+            <SettingsIcon size={20} />
+          </Link>
+        </div>
       </header>
 
       {/* Top Summary Cards */}
