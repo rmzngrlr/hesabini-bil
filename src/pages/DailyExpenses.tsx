@@ -107,7 +107,7 @@ export default function DailyExpenses() {
                onClick={() => setType('YK')}
                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${type === 'YK' ? 'bg-primary/10 border-primary text-primary' : 'bg-secondary border-transparent text-muted-foreground'}`}
              >
-               <CreditCard size={16} /> YK
+               <CreditCard size={16} /> Yemek Kartı
              </button>
            </div>
            

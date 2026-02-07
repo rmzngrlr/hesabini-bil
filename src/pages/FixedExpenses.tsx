@@ -1,13 +1,34 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useBudget } from '../context/BudgetContext';
 import { Card } from '../components/ui/Card';
 import { Plus, Trash2, CheckCircle, Circle } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export default function FixedExpenses() {
-  const { state, addFixedExpense, toggleFixedExpense, deleteFixedExpense } = useBudget();
+  const { state, addFixedExpense, toggleFixedExpense, deleteFixedExpense, updateIncome, updateRollover } = useBudget();
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
+
+  const [income, setIncome] = useState(state.income.toString());
+  const [rollover, setRollover] = useState(state.rollover.toString());
+
+  useEffect(() => {
+    if (state.income.toString() !== income) {
+      setIncome(state.income.toString());
+    }
+    if (state.rollover.toString() !== rollover) {
+      setRollover(state.rollover.toString());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.income, state.rollover]);
+
+  const handleIncomeSave = () => {
+    updateIncome(parseFloat(income) || 0);
+  };
+
+  const handleRolloverSave = () => {
+    updateRollover(parseFloat(rollover) || 0);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,7 +47,32 @@ export default function FixedExpenses() {
         <h1 className="text-2xl font-bold tracking-tight">Sabit Giderler</h1>
       </header>
 
-      <Card title="Özet" className="bg-gradient-to-br from-card to-primary/5">
+      <Card title="Gelir ve Devreden">
+        <div className="flex gap-4 items-center mt-2">
+          <div className="flex-1 space-y-1">
+            <label className="text-xs text-muted-foreground">Aylık Gelir</label>
+            <input
+              type="number"
+              value={income}
+              onChange={(e) => setIncome(e.target.value)}
+              onBlur={handleIncomeSave}
+              className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+          <div className="flex-1 space-y-1">
+             <label className="text-xs text-muted-foreground">Devreden</label>
+             <input
+               type="number"
+               value={rollover}
+               onChange={(e) => setRollover(e.target.value)}
+               onBlur={handleRolloverSave}
+               className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+             />
+          </div>
+        </div>
+      </Card>
+
+      <Card title="Gider Özeti" className="bg-gradient-to-br from-card to-primary/5">
         <div className="flex justify-between items-end mt-2">
           <div>
             <div className="text-sm text-muted-foreground">Toplam</div>

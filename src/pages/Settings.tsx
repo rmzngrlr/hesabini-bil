@@ -4,23 +4,22 @@ import { Card } from '../components/ui/Card';
 import { AlertTriangle } from 'lucide-react';
 
 export default function Settings() {
-  const { state, updateIncome, updateRollover, updateLimits, resetMonth } = useBudget();
+  const { state, updateLimits, resetMonth } = useBudget();
   
-  const [income, setIncome] = useState(state.income.toString());
-  const [rollover, setRollover] = useState(state.rollover.toString());
   const [nakitLimit, setNakitLimit] = useState(state.limits.nakit.toString());
   const [ykLimit, setYkLimit] = useState(state.limits.yk.toString());
 
   useEffect(() => {
-    setIncome(state.income.toString());
-    setRollover(state.rollover.toString());
-    setNakitLimit(state.limits.nakit.toString());
-    setYkLimit(state.limits.yk.toString());
-  }, [state.income, state.rollover, state.limits]);
+    if (state.limits.nakit.toString() !== nakitLimit) {
+      setNakitLimit(state.limits.nakit.toString());
+    }
+    if (state.limits.yk.toString() !== ykLimit) {
+      setYkLimit(state.limits.yk.toString());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.limits]);
 
   const handleSave = () => {
-    updateIncome(parseFloat(income) || 0);
-    updateRollover(parseFloat(rollover) || 0);
     updateLimits({
       nakit: parseFloat(nakitLimit) || 0,
       yk: parseFloat(ykLimit) || 0
@@ -39,31 +38,6 @@ export default function Settings() {
         <h1 className="text-2xl font-bold tracking-tight">Ayarlar</h1>
       </header>
 
-      <Card title="Gelir ve Devreden">
-        <div className="space-y-3 mt-2">
-          <div className="space-y-1">
-            <label className="text-xs text-muted-foreground">Aylık Gelir</label>
-            <input 
-              type="number" 
-              value={income} 
-              onChange={(e) => setIncome(e.target.value)}
-              onBlur={handleSave}
-              className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-          <div className="space-y-1">
-             <label className="text-xs text-muted-foreground">Geçen Aydan Devreden</label>
-             <input 
-               type="number" 
-               value={rollover} 
-               onChange={(e) => setRollover(e.target.value)}
-               onBlur={handleSave}
-               className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-             />
-          </div>
-        </div>
-      </Card>
-
       <Card title="Limitler">
         <div className="space-y-3 mt-2">
           <div className="space-y-1">
@@ -77,7 +51,7 @@ export default function Settings() {
             />
           </div>
           <div className="space-y-1">
-             <label className="text-xs text-muted-foreground">YK Limiti</label>
+             <label className="text-xs text-muted-foreground">Yemek Kartı Limiti</label>
              <input 
                type="number" 
                value={ykLimit} 

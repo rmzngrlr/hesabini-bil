@@ -64,7 +64,7 @@ export default function Dashboard() {
            </div>
         </Card>
         
-        <Card title="Toplam KK Borcu" className="border-red-900/20 bg-red-950/5">
+        <Card title="Toplam Kredi Kartı Borcu" className="border-red-900/20 bg-red-950/5">
            <div className="text-3xl font-bold text-red-500 mt-2">
              {totalCCDebt.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
            </div>
@@ -90,7 +90,7 @@ export default function Dashboard() {
             <ProgressBar value={nakitSpent} max={state.limits.nakit} color={nakitSpent > state.limits.nakit ? "bg-red-500" : "bg-green-500"} />
          </Card>
 
-         <Card title={`YK Durumu (Limit: ${state.limits.yk} ₺)`} className="space-y-3">
+         <Card title={`Yemek Kartı Durumu (Limit: ${state.limits.yk} ₺)`} className="space-y-3">
             <div className="flex justify-between items-baseline mb-1">
                <span className="text-2xl font-bold">{ykSpent.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</span>
                <span className="text-xs text-muted-foreground">/ {state.limits.yk.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</span>
