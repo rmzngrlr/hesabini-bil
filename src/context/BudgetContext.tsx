@@ -35,6 +35,8 @@ interface BudgetContextType {
   updateYkRollover: (amount: number) => void;
   resetMonth: () => void;
   loadState: (newState: BudgetState) => void;
+  theme: 'light' | 'dark';
+  toggleTheme: () => void;
 }
 
 const BudgetContext = createContext<BudgetContextType | undefined>(undefined);
@@ -47,6 +49,15 @@ function generateId() {
 }
 
 export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('theme');
+      if (stored === 'dark' || stored === 'light') return stored;
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    return 'light';
+  });
+
   const [state, setState] = useState<BudgetState>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -87,9 +98,75 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   });
 
+  // Auto-Reset Month Logic
+  useEffect(() => {
+    const actualCurrentMonth = getCurrentMonth();
+    if (state.currentMonth && state.currentMonth !== actualCurrentMonth) {
+       // Perform reset logic directly here to avoid dependency issues
+       setState(prev => {
+        // Archive current month
+        const historyEntry: MonthlyHistory = {
+          month: prev.currentMonth || getCurrentMonth(),
+          income: prev.income,
+          rollover: prev.rollover,
+          ykIncome: prev.ykIncome,
+          ykRollover: prev.ykRollover,
+          fixedExpenses: prev.fixedExpenses,
+          dailyExpenses: prev.dailyExpenses,
+          ccDebts: prev.ccDebts,
+        };
+
+        const nextMonthDebts: CCDebt[] = [];
+        const nextMonthInstallments = prev.installments.map(inst => {
+           if (inst.remainingInstallments > 1) {
+             const nextInstallmentNumber = (inst.installmentCount - inst.remainingInstallments) + 2;
+
+             nextMonthDebts.push({
+               id: generateId(),
+               description: `${inst.description} (${nextInstallmentNumber}/${inst.installmentCount})`,
+               amount: inst.monthlyAmount,
+               installmentId: inst.id,
+               currentInstallment: nextInstallmentNumber,
+               totalInstallments: inst.installmentCount
+             });
+
+             return { ...inst, remainingInstallments: inst.remainingInstallments - 1 };
+           } else {
+             return { ...inst, remainingInstallments: 0 };
+           }
+        }).filter(inst => inst.remainingInstallments > 0);
+
+        return {
+          ...prev,
+          version: 2,
+          currentMonth: actualCurrentMonth, // Update to actual current system month
+          history: [...prev.history, historyEntry],
+          installments: nextMonthInstallments,
+          ccDebts: nextMonthDebts,
+          dailyExpenses: [],
+          fixedExpenses: prev.fixedExpenses.map(ex => ({ ...ex, isPaid: false })),
+        };
+     });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount
+
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [state]);
+
+  useEffect(() => {
+    localStorage.setItem('theme', theme);
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  };
 
   const addFixedExpense = (expense: Omit<FixedExpense, 'id' | 'isPaid'>) => {
     const newExpense: FixedExpense = {
@@ -271,7 +348,9 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         updateYkIncome,
         updateYkRollover,
         resetMonth,
-        loadState
+        loadState,
+        theme,
+        toggleTheme
       }}
     >
       {children}
