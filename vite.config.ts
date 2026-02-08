@@ -9,8 +9,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
-        name: 'Bütçe Takip PWA',
-        short_name: 'Bütçe',
+        name: 'Hesabını Bil!',
+        short_name: 'HesabınıBil',
         description: 'Kişisel Bütçe ve Altın Takip Uygulaması',
         theme_color: '#020817',
         background_color: '#020817',

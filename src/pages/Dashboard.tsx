@@ -98,7 +98,7 @@ export default function Dashboard() {
     <div className="space-y-6 pb-20">
       <header className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Özet Paneli</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Hesabını Bil!</h1>
 
           <div className="relative inline-block text-left mt-1">
              <select
