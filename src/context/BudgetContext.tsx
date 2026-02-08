@@ -130,6 +130,36 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     if (state.currentMonth && state.currentMonth !== actualCurrentMonth) {
        // Perform reset logic directly here to avoid dependency issues
        setState(prev => {
+        // Guard clause: If month is already updated (by a parallel run), do nothing
+        if (prev.currentMonth === actualCurrentMonth) {
+            return prev;
+        }
+
+        // Calculate remaining resources from current month to carry over
+        const ykSpent = prev.dailyExpenses
+          .filter(e => e.type === 'YK' && e.amount < 0)
+          .reduce((sum, e) => sum + Math.abs(e.amount), 0);
+        const ykDailyIncome = prev.dailyExpenses
+          .filter(e => e.type === 'YK' && e.amount > 0)
+          .reduce((sum, e) => sum + e.amount, 0);
+        const totalYk = (prev.ykIncome || 0) + (prev.ykRollover || 0) + ykDailyIncome;
+        const remainingYk = totalYk - ykSpent;
+
+        const cashSpent = prev.dailyExpenses
+          .filter(e => e.type === 'NAKIT' && e.amount < 0)
+          .reduce((sum, e) => sum + Math.abs(e.amount), 0);
+        const cashDailyIncome = prev.dailyExpenses
+          .filter(e => e.type === 'NAKIT' && e.amount > 0)
+          .reduce((sum, e) => sum + e.amount, 0);
+        const paidFixed = prev.fixedExpenses
+          .filter(e => e.isPaid)
+          .reduce((sum, e) => sum + e.amount, 0);
+        const totalCash = prev.income + prev.rollover + cashDailyIncome;
+        const remainingCash = totalCash - (paidFixed + cashSpent);
+
+        // Total CC Debt to carry as fixed expense
+        const totalCCDebt = Math.abs(prev.ccDebts.reduce((sum, d) => sum + d.amount, 0));
+
         // Archive current month
         const historyEntry: MonthlyHistory = {
           month: prev.currentMonth || getCurrentMonth(),
@@ -162,15 +192,28 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
            }
         }).filter(inst => inst.remainingInstallments > 0);
 
+        // New Fixed Expenses list
+        const nextFixedExpenses = prev.fixedExpenses.map(ex => ({ ...ex, isPaid: false }));
+        if (totalCCDebt > 0) {
+          nextFixedExpenses.push({
+            id: generateId(),
+            title: 'Kredi Kartı Borcu (Geçen Ay)',
+            amount: totalCCDebt,
+            isPaid: false
+          });
+        }
+
         return {
           ...prev,
-          version: 2,
+          version: 3,
           currentMonth: actualCurrentMonth, // Update to actual current system month
           history: [...prev.history, historyEntry],
           installments: nextMonthInstallments,
           ccDebts: nextMonthDebts,
           dailyExpenses: [],
-          fixedExpenses: prev.fixedExpenses.map(ex => ({ ...ex, isPaid: false })),
+          fixedExpenses: nextFixedExpenses,
+          rollover: remainingCash > 0 ? remainingCash : 0,
+          ykRollover: remainingYk > 0 ? remainingYk : 0,
         };
      });
     }
@@ -326,7 +369,33 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const resetMonth = () => {
      setState(prev => {
+        // Calculate remaining resources from current month to carry over
+        const ykSpent = prev.dailyExpenses
+          .filter(e => e.type === 'YK' && e.amount < 0)
+          .reduce((sum, e) => sum + Math.abs(e.amount), 0);
+        const ykDailyIncome = prev.dailyExpenses
+          .filter(e => e.type === 'YK' && e.amount > 0)
+          .reduce((sum, e) => sum + e.amount, 0);
+        const totalYk = (prev.ykIncome || 0) + (prev.ykRollover || 0) + ykDailyIncome;
+        const remainingYk = totalYk - ykSpent;
+
+        const cashSpent = prev.dailyExpenses
+          .filter(e => e.type === 'NAKIT' && e.amount < 0)
+          .reduce((sum, e) => sum + Math.abs(e.amount), 0);
+        const cashDailyIncome = prev.dailyExpenses
+          .filter(e => e.type === 'NAKIT' && e.amount > 0)
+          .reduce((sum, e) => sum + e.amount, 0);
+        const paidFixed = prev.fixedExpenses
+          .filter(e => e.isPaid)
+          .reduce((sum, e) => sum + e.amount, 0);
+        const totalCash = prev.income + prev.rollover + cashDailyIncome;
+        const remainingCash = totalCash - (paidFixed + cashSpent);
+
+        // Total CC Debt to carry as fixed expense
+        const totalCCDebt = Math.abs(prev.ccDebts.reduce((sum, d) => sum + d.amount, 0));
+
         // Archive current month
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const historyEntry: MonthlyHistory = {
           month: prev.currentMonth || getCurrentMonth(),
           income: prev.income,
@@ -340,12 +409,9 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
         // Process installments for next month
         const nextMonthDebts: CCDebt[] = [];
-        // Logic fix:
-        // We are moving TO a new month.
 
         const nextMonthInstallments = prev.installments.map(inst => {
            if (inst.remainingInstallments > 1) {
-             // It will have at least 1 more payment in the NEW month
              const nextInstallmentNumber = (inst.installmentCount - inst.remainingInstallments) + 2;
 
              nextMonthDebts.push({
@@ -359,19 +425,25 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
              return { ...inst, remainingInstallments: inst.remainingInstallments - 1 };
            } else {
-             // Remaining is 1 (this was the last month). Next month it is 0. No debt added.
-             // We can filter these out or keep them with 0 remaining.
              return { ...inst, remainingInstallments: 0 };
            }
         }).filter(inst => inst.remainingInstallments > 0);
 
-        // Determine next month string (logic to increment YYYY-MM)
+        // Determine next month string
         const [year, month] = (prev.currentMonth || getCurrentMonth()).split('-').map(Number);
-        const nextDate = new Date(year, month, 1); // month is 0-indexed in Date? No, '2023-10' -> split gives 10. Date(2023, 10, 1) is Nov (Index 10).
-        // Actually Date(year, monthIndex) where monthIndex 0=Jan.
-        // '2023-01' -> 1. Date(2023, 1) is Feb. Correct.
-        // So passing the parsed number directly increments month by 1.
+        const nextDate = new Date(year, month, 1);
         const nextMonthStr = nextDate.toISOString().slice(0, 7);
+
+        // New Fixed Expenses list
+        const nextFixedExpenses = prev.fixedExpenses.map(ex => ({ ...ex, isPaid: false }));
+        if (totalCCDebt > 0) {
+          nextFixedExpenses.push({
+            id: generateId(),
+            title: 'Kredi Kartı Borcu (Geçen Ay)',
+            amount: totalCCDebt,
+            isPaid: false
+          });
+        }
 
         return {
           ...prev,
@@ -379,10 +451,11 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           currentMonth: nextMonthStr,
           history: [...prev.history, historyEntry],
           installments: nextMonthInstallments,
-          ccDebts: nextMonthDebts, // Start with only installment debts
-          dailyExpenses: [], // Clear daily expenses
-          fixedExpenses: prev.fixedExpenses.map(ex => ({ ...ex, isPaid: false })), // Reset paid status
-          // Income/Rollover stays same? Usually users might want to update, but we keep values.
+          ccDebts: nextMonthDebts,
+          dailyExpenses: [],
+          fixedExpenses: nextFixedExpenses,
+          rollover: remainingCash > 0 ? remainingCash : 0,
+          ykRollover: remainingYk > 0 ? remainingYk : 0,
         };
      });
   };
