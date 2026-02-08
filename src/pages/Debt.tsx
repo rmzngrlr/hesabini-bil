@@ -93,7 +93,7 @@ export default function Debt() {
         <h1 className="text-2xl font-bold tracking-tight">Kredi Kartı Borçları</h1>
       </header>
 
-      <Card title="Bu Ay Ödenecek" className="bg-red-950/20 border-red-900/20">
+      <Card title="Bu Ay Ödenecek Toplam Kredi Kartı Borcu" className="bg-red-950/20 border-red-900/20">
         <div className="text-3xl font-bold text-red-500 mt-2">
           {totalDebt.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
         </div>
@@ -128,7 +128,7 @@ export default function Debt() {
              <label className="text-xs text-muted-foreground">Açıklama</label>
              <input
                type="text"
-               placeholder="Örn: Telefon, Market"
+               placeholder="Harcama/Ödeme"
                value={description}
                onChange={(e) => setDescription(e.target.value)}
                className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"

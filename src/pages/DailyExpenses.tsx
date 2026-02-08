@@ -92,7 +92,7 @@ export default function DailyExpenses() {
         <h1 className="text-2xl font-bold tracking-tight">Günlük Defter</h1>
       </header>
       
-      <Card title={editingId ? "Harcamayı Düzenle" : "Yeni Harcama Ekle"}>
+      <Card title={editingId ? "Harcamayı Düzenle" : "Yeni Kazanç/Harcama Ekle"}>
         <form onSubmit={handleSubmit} className="space-y-3 mt-2">
            <div className="flex gap-2">
              <div className="flex-1 space-y-1">
@@ -120,7 +120,7 @@ export default function DailyExpenses() {
              <label className="text-xs text-muted-foreground">Açıklama</label>
              <input 
                type="text" 
-               placeholder="Market, Kahve, vs."
+               placeholder="Bu para nereden geldi/nereye gitti?"
                value={description} 
                onChange={(e) => setDescription(e.target.value)}
                className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
@@ -199,7 +199,7 @@ export default function DailyExpenses() {
             activeTab === 'YK' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
           )}
         >
-          Yemek Kartı
+          Yemek Kartı Harcamaları
         </button>
       </div>
 
