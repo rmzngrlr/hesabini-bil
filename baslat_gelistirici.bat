@@ -4,5 +4,5 @@ if not exist node_modules (
     call npm install
 )
 echo Baslatiliyor...
-npm run dev -- -p 1999 --host
+npm run dev -- --host
 pause
