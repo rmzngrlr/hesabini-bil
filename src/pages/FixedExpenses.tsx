@@ -157,11 +157,11 @@ export default function FixedExpenses() {
         <div className="flex justify-between items-end mt-2">
           <div>
             <div className="text-sm text-muted-foreground">Toplam</div>
-            <div className="text-2xl font-bold">{totalFixed.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</div>
+            <div className="text-2xl font-bold whitespace-nowrap">{totalFixed.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</div>
           </div>
           <div className="text-right">
             <div className="text-sm text-muted-foreground">Ödenen</div>
-            <div className="text-xl font-bold text-green-500">{paidFixed.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</div>
+            <div className="text-xl font-bold text-green-500 whitespace-nowrap">{paidFixed.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</div>
           </div>
         </div>
       </Card>
@@ -179,7 +179,7 @@ export default function FixedExpenses() {
           placeholder="Tutar"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
-          className="w-24 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          className="w-28 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
         />
 
         {editingId && (
@@ -220,7 +220,7 @@ export default function FixedExpenses() {
               )}
               <div className="text-left">
                 <div className={cn("font-medium", expense.isPaid && "line-through")}>{expense.title}</div>
-                <div className="text-sm text-muted-foreground">
+                <div className="text-sm text-muted-foreground whitespace-nowrap">
                   {expense.amount.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
                 </div>
               </div>
