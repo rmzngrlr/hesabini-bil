@@ -221,7 +221,7 @@ export default function DailyExpenses() {
                 </div>
 
                 <div className="text-right">
-                    <div className={`font-bold ${expense.amount > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                    <div className={`font-bold whitespace-nowrap ${expense.amount > 0 ? 'text-green-500' : 'text-red-500'}`}>
                       {expense.amount > 0 ? '+' : ''}
                       {expense.amount.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
                     </div>
