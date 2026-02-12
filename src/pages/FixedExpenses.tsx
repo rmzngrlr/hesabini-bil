@@ -166,13 +166,13 @@ export default function FixedExpenses() {
         </div>
       </Card>
 
-      <form onSubmit={handleSubmit} className="flex gap-2 items-center">
+      <form onSubmit={handleSubmit} className="flex gap-2 items-center w-full">
         <input
           type="text"
           placeholder="Gider Adı (örn: Kira)"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="flex-[2] px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          className="flex-[2] min-w-0 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
         />
         <input
           type="number"
