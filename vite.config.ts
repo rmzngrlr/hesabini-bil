@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import path from 'path'
 
 export default defineConfig({
   server: {
@@ -8,6 +9,16 @@ export default defineConfig({
   },
   preview: {
     port: 3002,
+  },
+  resolve: {
+    alias: {
+      // Use the resolved path for 'xlsx' to ensure we pick up the correct file
+      // even if the package.json "module" field isn't picked up by some tools
+      xlsx: path.resolve('node_modules/xlsx/xlsx.mjs'),
+    },
+  },
+  optimizeDeps: {
+    include: ['xlsx'],
   },
   plugins: [
     react(),
