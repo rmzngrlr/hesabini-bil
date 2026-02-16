@@ -12,8 +12,13 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      // Use the resolved path for 'xlsx' to ensure we pick up the correct file
+      // even if the package.json "module" field isn't picked up by some tools
       xlsx: path.resolve('node_modules/xlsx/xlsx.mjs'),
     },
+  },
+  optimizeDeps: {
+    include: ['xlsx'],
   },
   plugins: [
     react(),
