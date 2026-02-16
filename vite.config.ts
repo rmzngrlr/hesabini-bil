@@ -9,6 +9,9 @@ export default defineConfig({
   preview: {
     port: 3002,
   },
+  optimizeDeps: {
+    include: ['xlsx'],
+  },
   plugins: [
     react(),
     VitePWA({
