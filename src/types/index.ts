@@ -45,6 +45,12 @@ export interface MonthlyHistory {
   ccDebts: CCDebt[];
 }
 
+export interface FutureMonthData {
+  income?: number;
+  ykIncome?: number;
+  fixedExpenses: FixedExpense[];
+}
+
 export interface BudgetState {
   version?: number;
   currentMonth: string; // YYYY-MM
@@ -57,4 +63,5 @@ export interface BudgetState {
   ccDebts: CCDebt[];
   installments: Installment[];
   history: MonthlyHistory[];
+  futureData: Record<string, FutureMonthData>;
 }

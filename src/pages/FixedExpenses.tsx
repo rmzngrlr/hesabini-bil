@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useBudget } from '../context/BudgetContext';
 import { Card } from '../components/ui/Card';
-import { Plus, Trash2, CheckCircle, Circle, Pencil, X } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, Circle, Pencil, X, Calendar } from 'lucide-react';
 import { cn } from '../lib/utils';
 import type { FixedExpense } from '../types';
 
 export default function FixedExpenses() {
   const {
     state,
+    viewDate,
     addFixedExpense,
     updateFixedExpense,
     toggleFixedExpense,
@@ -17,30 +18,24 @@ export default function FixedExpenses() {
     updateYkIncome,
     updateYkRollover
   } = useBudget();
+
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
 
+  // Local state for inputs
   const [income, setIncome] = useState(state.income.toString());
   const [rollover, setRollover] = useState(state.rollover.toString());
   const [ykIncome, setYkIncome] = useState((state.ykIncome || 0).toString());
   const [ykRollover, setYkRollover] = useState((state.ykRollover || 0).toString());
 
+  // Sync when state changes (e.g. viewDate change or external update)
   useEffect(() => {
-    if (state.income.toString() !== income) {
-      setIncome(state.income.toString());
-    }
-    if (state.rollover.toString() !== rollover) {
-      setRollover(state.rollover.toString());
-    }
-    if ((state.ykIncome || 0).toString() !== ykIncome) {
-      setYkIncome((state.ykIncome || 0).toString());
-    }
-    if ((state.ykRollover || 0).toString() !== ykRollover) {
-      setYkRollover((state.ykRollover || 0).toString());
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.income, state.rollover, state.ykIncome, state.ykRollover]);
+    setIncome(state.income.toString());
+    setRollover(state.rollover.toString());
+    setYkIncome((state.ykIncome || 0).toString());
+    setYkRollover((state.ykRollover || 0).toString());
+  }, [state.income, state.rollover, state.ykIncome, state.ykRollover, viewDate]);
 
   const handleIncomeSave = () => {
     updateIncome(parseFloat(income) || 0);
@@ -62,10 +57,6 @@ export default function FixedExpenses() {
     setEditingId(expense.id);
     setTitle(expense.title);
     setAmount(expense.amount.toString());
-
-    // Scroll to form (which is lower down)
-    // Maybe scrolling isn't needed as form is visible above list?
-    // The form is above the list.
   };
 
   const cancelEdit = () => {
@@ -92,13 +83,24 @@ export default function FixedExpenses() {
     setAmount('');
   };
 
+  const isFuture = viewDate > new Date().toISOString().slice(0, 7);
+  const formattedMonth = new Date(
+      parseInt(viewDate.split('-')[0]),
+      parseInt(viewDate.split('-')[1]) - 1
+  ).toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
+
   const totalFixed = state.fixedExpenses.reduce((sum, e) => sum + e.amount, 0);
   const paidFixed = state.fixedExpenses.filter(e => e.isPaid).reduce((sum, e) => sum + e.amount, 0);
 
   return (
-    <div className="space-y-6 pb-20">
-      <header className="flex justify-between items-center">
+    <div className="space-y-6 pb-20 p-4">
+      <header className="flex flex-col gap-2">
         <h1 className="text-2xl font-bold tracking-tight">Sabit Gelirler</h1>
+        <div className="flex items-center gap-2 text-muted-foreground">
+            <Calendar size={16} />
+            <span className="capitalize">{formattedMonth}</span>
+            {isFuture && <span className="text-xs bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded ml-2">Planlama Modu</span>}
+        </div>
       </header>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -121,8 +123,13 @@ export default function FixedExpenses() {
                value={rollover}
                onChange={(e) => setRollover(e.target.value)}
                onBlur={handleRolloverSave}
-               className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+               disabled={isFuture}
+               className={cn(
+                 "w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary",
+                 isFuture && "opacity-50 cursor-not-allowed bg-secondary/30"
+               )}
              />
+             {isFuture && <div className="text-xs text-muted-foreground mt-1">Önceki aydan tahmini devir</div>}
           </div>
         </Card>
 
@@ -145,8 +152,13 @@ export default function FixedExpenses() {
                value={ykRollover}
                onChange={(e) => setYkRollover(e.target.value)}
                onBlur={handleYkRolloverSave}
-               className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+               disabled={isFuture}
+               className={cn(
+                 "w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary",
+                 isFuture && "opacity-50 cursor-not-allowed bg-secondary/30"
+               )}
              />
+             {isFuture && <div className="text-xs text-muted-foreground mt-1">Önceki aydan tahmini devir</div>}
           </div>
         </Card>
       </div>

@@ -1,142 +1,174 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Settings as SettingsIcon, ChevronDown, Sun, Moon } from 'lucide-react';
+import { Settings as SettingsIcon, Sun, Moon, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { useBudget } from '../context/BudgetContext';
-import type { BudgetState } from '../types';
 import { Card } from '../components/ui/Card';
 import { ProgressBar } from '../components/ui/ProgressBar';
 
 export default function Dashboard() {
-  const { state, theme, toggleTheme } = useBudget();
+  const { state, viewDate, setViewDate, theme, toggleTheme } = useBudget();
 
-  // Month Selection State
-  // Default to 'current' which represents live state.
-  // Other values will be 'YYYY-MM' strings from history.
-  const [selectedMonth, setSelectedMonth] = useState<string>('current');
+  // Helper to format month
+  const formatMonth = (dateStr: string) => {
+    const [y, m] = dateStr.split('-').map(Number);
+    const date = new Date(y, m - 1, 1);
+    return date.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
+  };
 
-  // Determine which data to show
-  let displayState: BudgetState;
-
-  if (selectedMonth === 'current') {
-    displayState = state;
-  } else {
-    // Find history entry
-    const historyEntry = state.history.find(h => h.month === selectedMonth);
-    if (historyEntry) {
-      // Construct a partial BudgetState for display purposes
-      // Warning: history entry doesn't have 'version', 'currentMonth', 'history', 'installments' usually
-      // We need to cast or mock them.
-      displayState = {
-        ...state, // fallback for missing props
-        ...historyEntry,
-        // Override arrays from history
-        fixedExpenses: historyEntry.fixedExpenses,
-        dailyExpenses: historyEntry.dailyExpenses,
-        ccDebts: historyEntry.ccDebts,
-      };
-    } else {
-      displayState = state; // Fallback
+  // Helper to change month
+  const changeMonth = (delta: number) => {
+    let [y, m] = viewDate.split('-').map(Number);
+    m += delta;
+    while (m > 12) {
+      m -= 12;
+      y++;
     }
-  }
+    while (m < 1) {
+      m += 12;
+      y--;
+    }
+    const newStr = `${y}-${String(m).padStart(2, '0')}`;
+    setViewDate(newStr);
+  };
 
-  // Available months for dropdown
-  // Unique months from history + current month
-  // state.history is array of { month: 'YYYY-MM', ... }
-  // We need to sort them.
-  const historyMonths = state.history.map(h => h.month).sort().reverse();
-  // Ensure current month is top
-  // If history is empty, just current.
-
-  const currentMonthLabel = new Date().toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
-
-  // Calculations based on displayState
+  // Calculations based on Derived State
+  // Note: Derived State has already projected values for future months.
 
   // YK Resources
-  const ykIncome = displayState.ykIncome || 0;
-  const ykRollover = displayState.ykRollover || 0;
-  const totalYkResources = ykIncome + ykRollover;
-
-  const ykSpent = displayState.dailyExpenses
-    .filter(e => e.type === 'YK' && e.amount < 0)
-    .reduce((sum, e) => sum + Math.abs(e.amount), 0);
-
-  // Cash Resources
-  const dailyCashIncome = displayState.dailyExpenses
-    .filter(e => e.amount > 0 && e.type === 'NAKIT')
-    .reduce((sum, e) => sum + e.amount, 0);
-
-  const dailyYkIncome = displayState.dailyExpenses
+  const ykIncome = state.ykIncome || 0;
+  const ykRollover = state.ykRollover || 0;
+  // Daily YK Income only exists in current/past. Future is 0.
+  const dailyYkIncome = state.dailyExpenses
     .filter(e => e.amount > 0 && e.type === 'YK')
     .reduce((sum, e) => sum + e.amount, 0);
 
-  // Update YK Resources with Daily YK Income
-  const finalYkResources = totalYkResources + dailyYkIncome;
-  const finalRemainingYk = finalYkResources - ykSpent;
+  const totalYkResources = ykIncome + ykRollover + dailyYkIncome;
 
-  // Cash Resources
-  const totalCashResources = displayState.income + displayState.rollover + dailyCashIncome;
-
-  const paidFixedExpenses = displayState.fixedExpenses
-    .filter(e => e.isPaid)
-    .reduce((sum, e) => sum + e.amount, 0);
-
-  const cashSpent = displayState.dailyExpenses
-    .filter(e => e.amount < 0 && e.type === 'NAKIT')
+  const ykSpent = state.dailyExpenses
+    .filter(e => e.type === 'YK' && e.amount < 0)
     .reduce((sum, e) => sum + Math.abs(e.amount), 0);
 
-  const totalCashSpent = paidFixedExpenses + cashSpent;
+  const finalRemainingYk = totalYkResources - ykSpent;
+
+  // Cash Resources
+  // Daily Cash Income only exists in current/past. Future is 0.
+  const dailyCashIncome = state.dailyExpenses
+    .filter(e => e.amount > 0 && e.type === 'NAKIT')
+    .reduce((sum, e) => sum + e.amount, 0);
+
+  const totalCashResources = state.income + state.rollover + dailyCashIncome;
+
+  // Expenses
+  // For Current/Past: Paid Fixed Expenses + Cash Spent
+  // For Future: Total Fixed Expenses (Projection assumes all will be paid)
+  // But wait, 'remainingCash' usually means "Available right now".
+  // If I look at next month, I want to see "Projected Ending Balance" or "Projected Remaining"?
+  // Usually "Projected Remaining" = Income - All Expenses.
+
+  // Let's differentiate:
+  // Is it Current/Past?
+  // Current: Show Actual Remaining (Total - Paid - Spent).
+  // Future: Show Projected Remaining (Total - All Fixed).
+  // History: Show Final Remaining (Total - Paid - Spent).
+
+  // We can just use the generic logic:
+  // "Paid" fixed expenses.
+  // In future, none are "Paid" (unless marked manually).
+  // But for projection, we want to see "Net Balance".
+  // If I show "Remaining: 20.000" in Next Month, and I have 5.000 Rent (Unpaid),
+  // Does "Remaining" mean "Money currently in pocket (virtual)" or "Money left after bills"?
+  // Usually "Money left after bills".
+  // So for Future, we should treat ALL Fixed Expenses as "To Be Paid" and subtract them from Total Resources?
+  // If I do that, the user sees how much "Safe to Spend" money they have.
+
+  // Let's check `state.fixedExpenses`.
+  // In Future projection (BudgetContext), we initialized them as `isPaid: false`.
+
+  // Logic:
+  // If Future: Subtract sum of ALL fixed expenses.
+  // If Current/Past: Subtract sum of PAID fixed expenses + Daily Spent.
+
+  const isFuture = viewDate > new Date().toISOString().slice(0, 7);
+
+  let totalCashSpent = 0;
+  let spendingLabel = "Harcama";
+
+  if (isFuture) {
+      // Future Projection Mode
+      // Assume all fixed expenses will be paid
+      const totalFixed = state.fixedExpenses.reduce((sum, e) => sum + e.amount, 0);
+      totalCashSpent = totalFixed;
+      // No daily expenses in future
+      spendingLabel = "Planlanan Gider";
+  } else {
+      // Normal Mode
+      const paidFixed = state.fixedExpenses
+        .filter(e => e.isPaid)
+        .reduce((sum, e) => sum + e.amount, 0);
+
+      const cashSpent = state.dailyExpenses
+        .filter(e => e.amount < 0 && e.type === 'NAKIT')
+        .reduce((sum, e) => sum + Math.abs(e.amount), 0);
+
+      totalCashSpent = paidFixed + cashSpent;
+  }
+
   const remainingCash = totalCashResources - totalCashSpent;
 
-  // Total CC Debt: Sum of negative spending and positive payments.
-  // Result is negative if debt exists.
-  // Display as positive magnitude.
-  const totalCCDebt = Math.abs(displayState.ccDebts.reduce((sum, d) => sum + d.amount, 0));
-
-  const spendingPercentage = totalCashResources > 0 ? (totalCashSpent / totalCashResources) * 100 : 0;
+  // CC Debt
+  // In future, CC Debts list contains "Projected Installments".
+  // We sum them up.
+  const totalCCDebt = Math.abs(state.ccDebts.reduce((sum, d) => sum + d.amount, 0));
   
-  return (
-    <div className="space-y-6 pb-20">
-      <header className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Hesabını Bil!</h1>
+  // Progress Bar
+  // If future, usage = fixed expenses / income
+  const usagePercentage = totalCashResources > 0 ? (totalCashSpent / totalCashResources) * 100 : 0;
 
-          <div className="relative inline-block text-left mt-1">
-             <select
-               value={selectedMonth}
-               onChange={(e) => setSelectedMonth(e.target.value)}
-               className="appearance-none bg-transparent text-sm text-muted-foreground font-medium capitalize pr-6 focus:outline-none cursor-pointer"
-             >
-               <option value="current">{currentMonthLabel} (Güncel)</option>
-               {historyMonths.map(month => (
-                 <option key={month} value={month}>
-                   {new Date(month + '-01').toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' })}
-                 </option>
-               ))}
-             </select>
-             <ChevronDown size={14} className="absolute right-0 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-          </div>
+  return (
+    <div className="space-y-6 pb-20 p-4">
+      {/* Header with Month Navigation */}
+      <header className="flex flex-col gap-4">
+        <div className="flex justify-between items-center">
+             <div className="flex items-center gap-2 bg-secondary/50 rounded-lg p-1">
+                <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-secondary rounded-md transition-colors">
+                    <ChevronLeft size={20} />
+                </button>
+                <div className="flex items-center gap-2 px-2 min-w-[140px] justify-center font-medium">
+                    <Calendar size={16} className="text-muted-foreground" />
+                    <span className="capitalize">{formatMonth(viewDate)}</span>
+                </div>
+                <button onClick={() => changeMonth(1)} className="p-2 hover:bg-secondary rounded-md transition-colors">
+                    <ChevronRight size={20} />
+                </button>
+             </div>
+
+             <div className="flex gap-2">
+              <button
+                onClick={toggleTheme}
+                className="p-2 rounded-full bg-secondary text-muted-foreground hover:text-primary transition-colors"
+              >
+                {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+              </button>
+              <Link to="/settings" className="p-2 rounded-full bg-secondary text-muted-foreground hover:text-primary transition-colors">
+                <SettingsIcon size={20} />
+              </Link>
+            </div>
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-full bg-secondary text-muted-foreground hover:text-primary transition-colors"
-          >
-            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-          </button>
-          <Link to="/settings" className="p-2 rounded-full bg-secondary text-muted-foreground hover:text-primary transition-colors">
-            <SettingsIcon size={20} />
-          </Link>
-        </div>
+
+        {isFuture && (
+            <div className="bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs px-3 py-2 rounded-md border border-blue-500/20 text-center">
+                Geçmiş veriler baz alınarak hesaplanan <strong>tahmini</strong> verilerdir.
+            </div>
+        )}
       </header>
 
       {/* Top Summary Cards */}
       <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
-        <Card title="Kalan Nakit" className="bg-gradient-to-br from-card to-secondary/10">
-           <div className="text-3xl font-bold text-foreground mt-2">
+        <Card title={isFuture ? "Tahmini Kalan Nakit" : "Kalan Nakit"} className="bg-gradient-to-br from-card to-secondary/10">
+           <div className={`text-3xl font-bold mt-2 ${remainingCash < 0 ? 'text-red-500' : 'text-foreground'}`}>
              {remainingCash.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
            </div>
            <div className="text-xs text-muted-foreground mt-1">
-             Toplam Nakit: {totalCashResources.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+             Toplam: {totalCashResources.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
            </div>
         </Card>
 
@@ -145,22 +177,23 @@ export default function Dashboard() {
              {finalRemainingYk.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
            </div>
            <div className="text-xs text-muted-foreground mt-1">
-             Toplam YK: {finalYkResources.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+             Toplam: {totalYkResources.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
            </div>
         </Card>
 
-        <Card title="Toplam Kredi Kartı Borcu" className="border-red-900/20 bg-red-950/5">
+        <Card title={isFuture ? "Tahmini Kredi Kartı Ödemesi" : "Toplam Kredi Kartı Borcu"} className="border-red-900/20 bg-red-950/5">
            <div className="text-3xl font-bold text-red-500 mt-2">
              {totalCCDebt.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
            </div>
+           {isFuture && <div className="text-xs text-muted-foreground mt-1">Bu ay ödenecek taksitler</div>}
         </Card>
       </div>
 
       {/* Main Budget Progress */}
-      <Card title="Aylık Nakit Bütçe Durumu" className="space-y-4">
+      <Card title={isFuture ? "Bütçe Planı" : "Aylık Nakit Bütçe Durumu"} className="space-y-4">
         <div className="flex justify-between items-center text-sm mb-1">
-           <span className="text-muted-foreground">Harcama: {totalCashSpent.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</span>
-           <span className="font-medium text-foreground">{(100 - spendingPercentage).toFixed(1)}% Kalan</span>
+           <span className="text-muted-foreground">{spendingLabel}: {totalCashSpent.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</span>
+           <span className="font-medium text-foreground">{(100 - usagePercentage).toFixed(1)}% Kalan</span>
         </div>
         <ProgressBar value={totalCashSpent} max={totalCashResources || 1} />
       </Card>
