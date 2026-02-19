@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useMemo, type ReactNode } from 'react';
-import type { BudgetState, FixedExpense, DailyExpense, CCDebt, Installment, MonthlyHistory, FutureMonthData } from '../types';
+import type { BudgetState, FixedExpense, DailyExpense, CCDebt, Installment, MonthlyHistory } from '../types';
 
 const STORAGE_KEY = 'budget_app_data';
 

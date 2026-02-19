@@ -6,7 +6,7 @@ import { cn } from '../lib/utils';
 import type { CCDebt } from '../types';
 
 export default function Debt() {
-  const { state, addCCDebt, updateCCDebt, deleteCCDebt, addInstallment, deleteInstallment } = useBudget();
+  const { state, viewDate, addCCDebt, updateCCDebt, deleteCCDebt, addInstallment, deleteInstallment } = useBudget();
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
 
@@ -87,10 +87,21 @@ export default function Debt() {
   // Display as positive magnitude.
   const totalDebt = Math.abs(state.ccDebts.reduce((sum, d) => sum + d.amount, 0));
 
+  const isFuture = viewDate > new Date().toISOString().slice(0, 7);
+  const formattedMonth = new Date(
+      parseInt(viewDate.split('-')[0]),
+      parseInt(viewDate.split('-')[1]) - 1
+  ).toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
+
   return (
-    <div className="space-y-6 pb-20">
-      <header className="flex justify-between items-center">
+    <div className="space-y-6 pb-20 p-4">
+      <header className="flex flex-col gap-2">
         <h1 className="text-2xl font-bold tracking-tight">Kredi Kartı Borçları</h1>
+        <div className="flex items-center gap-2 text-muted-foreground">
+            <CalendarClock size={16} />
+            <span className="capitalize">{formattedMonth}</span>
+            {isFuture && <span className="text-xs bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded ml-2">Planlama Modu</span>}
+        </div>
       </header>
 
       <Card title="Bu Ay Ödenecek Toplam Kredi Kartı Borcu" className="bg-red-950/20 border-red-900/20">
