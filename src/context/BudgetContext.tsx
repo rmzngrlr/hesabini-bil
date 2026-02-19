@@ -382,12 +382,10 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const projectedCCDebts: CCDebt[] = [];
 
         realState.installments.forEach(inst => {
+            // remainingInstallments is relative to currentMonth start.
+            // For iterMonth, we subtract monthsAway.
+            // But if monthsAway >= remaining, it's done.
             const effectiveRemaining = inst.remainingInstallments - monthsAway;
-
-            // Logic check:
-            // Current Month (M): remaining=6.
-            // Next Month (M+1): monthsAway=1. effective=5.
-            // If effective > 0, it contributes to CC Debt of M+1.
 
             if (effectiveRemaining > 0) {
                  const amount = inst.monthlyAmount;
@@ -398,13 +396,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                  projectedCCDebts.push({
                     id: `proj-${inst.id}-${iterMonth}`,
                     description: `${inst.description} (${currentInstNum}/${inst.installmentCount})`,
-                    amount: amount, // CC Debt is negative usually? In app logic: "totalCCDebt = Math.abs(...)".
-                    // Stored as negative in state?
-                    // Let's check resetMonth: nextMonthDebts.push({ ..., amount: inst.monthlyAmount }).
-                    // Wait, monthlyAmount is usually positive in Installment struct?
-                    // In loadState migration: "monthlyAmount: i.monthlyAmount > 0 ? -i.monthlyAmount : i.monthlyAmount".
-                    // So monthlyAmount is NEGATIVE.
-                    // So here we push negative amount.
+                    amount: amount,
                     installmentId: inst.id,
                     currentInstallment: currentInstNum,
                     totalInstallments: inst.installmentCount
@@ -414,10 +406,11 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
         // Calculate total CC Debt for THIS month (to become Fixed Expense in NEXT month)
         // Only installments for future months (no manual daily expenses)
+        // Note: amount is negative for debts, so reduce sums to negative total. Math.abs makes it positive debt.
         lastMonthCCDebt = Math.abs(projectedCCDebts.reduce((sum, d) => sum + d.amount, 0));
 
         if (isTarget) {
-            // Filter and project installments for view
+            // Filter and project installments for view (Active Installments List)
             const projectedInstallments = realState.installments
                 .map(inst => ({
                     ...inst,
