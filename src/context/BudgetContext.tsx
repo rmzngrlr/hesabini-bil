@@ -310,10 +310,17 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     runningYkRollover = currentTotalYk - currentYkSpent;
     if (runningYkRollover < 0) runningYkRollover = 0;
 
+    // Initial CC Debt (from current month)
+    let lastMonthCCDebt = Math.abs(realState.ccDebts.reduce((sum, d) => sum + d.amount, 0));
+
     // Iterate intervening months
     let iterMonth = addMonths(realState.currentMonth, 1);
 
-    while (iterMonth <= viewDate) {
+    while (iterMonth <= viewDate || (iterMonth > viewDate && false)) { // Ensure loop runs at least once if needed logic? No, <= viewDate is fine.
+        // Wait, if viewDate < current, we returned early.
+        // If viewDate == current, we returned early.
+        // So viewDate > current.
+
         const isTarget = iterMonth === viewDate;
         const future = realState.futureData[iterMonth] || {};
 
@@ -322,10 +329,24 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const monthYkIncome = future.ykIncome !== undefined ? future.ykIncome : realState.ykIncome;
 
         // Fixed Expenses
-        const monthFixedExpenses = future.fixedExpenses || realState.fixedExpenses;
+        // Filter out any existing 'Kredi Kartı Borcu (Geçen Ay)' to avoid duplication/stale data
+        // and inject the calculated one from previous iteration
+        let monthFixedExpenses = (future.fixedExpenses || realState.fixedExpenses)
+            .filter(e => e.title !== 'Kredi Kartı Borcu (Geçen Ay)')
+            .map(e => ({ ...e, isPaid: false })); // Project as unpaid by default
+
+        if (lastMonthCCDebt > 0) {
+            monthFixedExpenses.push({
+                id: `proj-cc-debt-${iterMonth}`,
+                title: 'Kredi Kartı Borcu (Geçen Ay)',
+                amount: lastMonthCCDebt,
+                isPaid: false
+            });
+        }
+
         const monthFixedTotal = monthFixedExpenses.reduce((sum, e) => sum + e.amount, 0);
 
-        // Installments for this month
+        // Installments for this month (to calculate CC Debt for NEXT month)
         const monthsAway = monthDiff(realState.currentMonth, iterMonth);
 
         let monthInstallmentTotal = 0;
@@ -334,22 +355,37 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         realState.installments.forEach(inst => {
             const effectiveRemaining = inst.remainingInstallments - monthsAway;
 
-            if (effectiveRemaining > 0) {
-                 monthInstallmentTotal += inst.monthlyAmount;
+            // Logic check:
+            // Current Month (M): remaining=6.
+            // Next Month (M+1): monthsAway=1. effective=5.
+            // If effective > 0, it contributes to CC Debt of M+1.
 
-                 if (isTarget) {
-                     const currentInstNum = (inst.installmentCount - effectiveRemaining) + 1;
-                     projectedCCDebts.push({
-                        id: `proj-${inst.id}-${iterMonth}`,
-                        description: `${inst.description} (${currentInstNum}/${inst.installmentCount})`,
-                        amount: inst.monthlyAmount,
-                        installmentId: inst.id,
-                        currentInstallment: currentInstNum,
-                        totalInstallments: inst.installmentCount
-                     });
-                 }
+            if (effectiveRemaining > 0) {
+                 const amount = inst.monthlyAmount;
+                 monthInstallmentTotal += amount;
+
+                 // Add to projected CC Debts list (for display if target)
+                 const currentInstNum = (inst.installmentCount - effectiveRemaining) + 1;
+                 projectedCCDebts.push({
+                    id: `proj-${inst.id}-${iterMonth}`,
+                    description: `${inst.description} (${currentInstNum}/${inst.installmentCount})`,
+                    amount: amount, // CC Debt is negative usually? In app logic: "totalCCDebt = Math.abs(...)".
+                    // Stored as negative in state?
+                    // Let's check resetMonth: nextMonthDebts.push({ ..., amount: inst.monthlyAmount }).
+                    // Wait, monthlyAmount is usually positive in Installment struct?
+                    // In loadState migration: "monthlyAmount: i.monthlyAmount > 0 ? -i.monthlyAmount : i.monthlyAmount".
+                    // So monthlyAmount is NEGATIVE.
+                    // So here we push negative amount.
+                    installmentId: inst.id,
+                    currentInstallment: currentInstNum,
+                    totalInstallments: inst.installmentCount
+                 });
             }
         });
+
+        // Calculate total CC Debt for THIS month (to become Fixed Expense in NEXT month)
+        // Only installments for future months (no manual daily expenses)
+        lastMonthCCDebt = Math.abs(projectedCCDebts.reduce((sum, d) => sum + d.amount, 0));
 
         if (isTarget) {
             // Filter and project installments for view
@@ -375,25 +411,15 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             };
         }
 
-        // Update Rollover for next iteration (Simplified: no CC debt rollover simulation)
-        // New Balance = Old Balance + Income - Fixed - Installments
-        const netCash = monthIncome - monthFixedTotal; // We assume installments go to CC Debt, which is a Fixed Expense NEXT month.
-        // Wait, if I assume Installments go to CC Debt, they don't reduce cash NOW.
-        // They reduce cash NEXT month when we pay "Kredi Kartı Borcu".
-        // BUT, in my simplified projection, I don't see "Kredi Kartı Borcu" in `monthFixedExpenses` unless I add it.
-        // `monthFixedExpenses` is derived from `future.fixedExpenses || realState.fixedExpenses`.
-        // `realState.fixedExpenses` MIGHT contain "Kredi Kartı Borcu" from current month.
-        // If we use it as template, we are effectively projecting "Paying same amount of CC Debt every month".
-        // This is a rough approximation but acceptable for now without full simulation engine.
+        // Update Rollover for next iteration
+        // Net Cash = Income - Total Fixed Expenses
+        // Note: 'monthFixedExpenses' now includes the CC Debt payment for the previous month.
+        const netCash = monthIncome - monthFixedTotal;
 
         runningRollover += netCash;
         if (runningRollover < 0) runningRollover = 0;
 
         // YK Rollover update
-        // YK usually doesn't have debts.
-        // New YK = Old YK + Income.
-        // We assume 0 spending for projection unless fixed expenses include YK?
-        // Fixed Expenses don't track type (Cash/YK). We assume Cash.
         runningYkRollover += monthYkIncome;
 
         iterMonth = addMonths(iterMonth, 1);
