@@ -25,16 +25,17 @@ export default function FixedExpenses() {
 
   // Local state for inputs
   const [income, setIncome] = useState(state.income.toString());
-  const [rollover, setRollover] = useState(state.rollover.toString());
+  const [rollover, setRollover] = useState(state.rollover.toFixed(2));
   const [ykIncome, setYkIncome] = useState((state.ykIncome || 0).toString());
-  const [ykRollover, setYkRollover] = useState((state.ykRollover || 0).toString());
+  const [ykRollover, setYkRollover] = useState((state.ykRollover || 0).toFixed(2));
 
   // Sync when state changes (e.g. viewDate change or external update)
   useEffect(() => {
     setIncome(state.income.toString());
-    setRollover(state.rollover.toString());
+    // Format rollovers to max 2 decimals to prevent long floating point numbers
+    setRollover(Number(state.rollover).toFixed(2));
     setYkIncome((state.ykIncome || 0).toString());
-    setYkRollover((state.ykRollover || 0).toString());
+    setYkRollover(Number(state.ykRollover || 0).toFixed(2));
   }, [state.income, state.rollover, state.ykIncome, state.ykRollover, viewDate]);
 
   const handleIncomeSave = () => {
