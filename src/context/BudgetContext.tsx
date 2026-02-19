@@ -1,12 +1,12 @@
 import React, { createContext, useContext, useEffect, useState, useMemo, type ReactNode } from 'react';
-import type { BudgetState, FixedExpense, DailyExpense, CCDebt, Installment, MonthlyHistory } from '../types';
+import type { BudgetState, FixedExpense, DailyExpense, CCDebt, Installment, MonthlyHistory, FutureMonthData } from '../types';
 
 const STORAGE_KEY = 'budget_app_data';
 
 const getCurrentMonth = () => new Date().toISOString().slice(0, 7); // YYYY-MM
 
 const initialState: BudgetState = {
-  version: 4,
+  version: 5,
   currentMonth: getCurrentMonth(),
   income: 0,
   rollover: 0,
@@ -92,7 +92,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
-        const parsed = JSON.parse(stored);
+        let parsed = JSON.parse(stored);
 
         // Migration logic:
         if (!parsed.version) {
@@ -130,7 +130,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             totalAmount: i.totalAmount > 0 ? -i.totalAmount : i.totalAmount
           }));
 
-          return {
+          parsed = {
             ...initialState,
             ...parsed,
             ccDebts: migratedDebts,
@@ -141,12 +141,35 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
         if (parsed.version === 3) {
            // Version 3 -> 4
-           return {
+           parsed = {
              ...initialState,
              ...parsed,
              futureData: {},
              version: 4
            };
+        }
+
+        if (parsed.version === 4) {
+          // Version 4 -> 5 (Cleanup duplicate CC debts from fixedExpenses)
+          // Also check installments' monthlyAmount and convert if positive
+          const ccDebtTitle = 'Kredi Kartı Borcu (Geçen Ay)';
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const otherExpenses = (parsed.fixedExpenses || []).filter((e: any) => e.title !== ccDebtTitle);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const ccDebts = (parsed.fixedExpenses || []).filter((e: any) => e.title === ccDebtTitle);
+
+          let newFixedExpenses = otherExpenses;
+          if (ccDebts.length > 0) {
+             // Keep the last one found in the array (assuming push() order)
+             newFixedExpenses = [...otherExpenses, ccDebts[ccDebts.length - 1]];
+          }
+
+          parsed = {
+            ...initialState,
+            ...parsed,
+            fixedExpenses: newFixedExpenses,
+            version: 5
+          };
         }
 
         return { ...initialState, ...parsed };
@@ -219,7 +242,16 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
            }
         }).filter(inst => inst.remainingInstallments > 0);
 
-        const nextFixedExpenses = prev.fixedExpenses.map(ex => ({ ...ex, isPaid: false }));
+        const [year, month] = (prev.currentMonth || getCurrentMonth()).split('-').map(Number);
+        const nextDate = new Date(year, month, 1);
+        const nextMonthStr = nextDate.toISOString().slice(0, 7);
+
+        // New Fixed Expenses list
+        // Remove old 'Kredi Kartı Borcu (Geçen Ay)' entries to prevent accumulation
+        const nextFixedExpenses = prev.fixedExpenses
+            .filter(ex => ex.title !== 'Kredi Kartı Borcu (Geçen Ay)')
+            .map(ex => ({ ...ex, isPaid: false }));
+
         if (totalCCDebt > 0) {
           nextFixedExpenses.push({
             id: generateId(),
@@ -231,8 +263,8 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
         return {
           ...prev,
-          version: 4,
-          currentMonth: actualCurrentMonth,
+          version: 5,
+          currentMonth: nextMonthStr,
           history: [...prev.history, historyEntry],
           installments: nextMonthInstallments,
           ccDebts: nextMonthDebts,
@@ -737,7 +769,12 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const nextDate = new Date(year, month, 1);
         const nextMonthStr = nextDate.toISOString().slice(0, 7);
 
-        const nextFixedExpenses = prev.fixedExpenses.map(ex => ({ ...ex, isPaid: false }));
+        // New Fixed Expenses list
+        // Remove old 'Kredi Kartı Borcu (Geçen Ay)' entries to prevent accumulation
+        const nextFixedExpenses = prev.fixedExpenses
+            .filter(ex => ex.title !== 'Kredi Kartı Borcu (Geçen Ay)')
+            .map(ex => ({ ...ex, isPaid: false }));
+
         if (totalCCDebt > 0) {
           nextFixedExpenses.push({
             id: generateId(),
@@ -749,7 +786,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
         return {
           ...prev,
-          version: 4,
+          version: 5,
           currentMonth: nextMonthStr,
           history: [...prev.history, historyEntry],
           installments: nextMonthInstallments,
