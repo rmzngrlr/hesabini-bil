@@ -71,7 +71,6 @@
   }
   html, body {
     overscroll-behavior: none;
-    overflow-x: hidden;
   }
   body {
     @apply bg-background text-foreground;
