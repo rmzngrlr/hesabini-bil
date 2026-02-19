@@ -125,33 +125,37 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 pb-20 p-4">
-      {/* Header with Month Navigation */}
       <header className="flex flex-col gap-4">
         <div className="flex justify-between items-center">
-             <div className="flex items-center gap-2 bg-secondary/50 rounded-lg p-1">
-                <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-secondary rounded-md transition-colors">
-                    <ChevronLeft size={20} />
-                </button>
-                <div className="flex items-center gap-2 px-2 min-w-[140px] justify-center font-medium">
-                    <Calendar size={16} className="text-muted-foreground" />
-                    <span className="capitalize">{formatMonth(viewDate)}</span>
-                </div>
-                <button onClick={() => changeMonth(1)} className="p-2 hover:bg-secondary rounded-md transition-colors">
-                    <ChevronRight size={20} />
-                </button>
-             </div>
+          <h1 className="text-2xl font-bold tracking-tight">Hesabını Bil!</h1>
+          <div className="flex gap-2">
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-full bg-secondary text-muted-foreground hover:text-primary transition-colors"
+            >
+              {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
+            <Link to="/settings" className="p-2 rounded-full bg-secondary text-muted-foreground hover:text-primary transition-colors">
+              <SettingsIcon size={20} />
+            </Link>
+          </div>
+        </div>
 
-             <div className="flex gap-2">
-              <button
-                onClick={toggleTheme}
-                className="p-2 rounded-full bg-secondary text-muted-foreground hover:text-primary transition-colors"
-              >
-                {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-              </button>
-              <Link to="/settings" className="p-2 rounded-full bg-secondary text-muted-foreground hover:text-primary transition-colors">
-                <SettingsIcon size={20} />
-              </Link>
-            </div>
+        <div className="flex justify-between items-center bg-secondary/30 rounded-xl p-2">
+           <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-secondary rounded-lg transition-colors">
+               <ChevronLeft size={20} />
+           </button>
+
+           <div className="flex flex-col items-center">
+               <div className="flex items-center gap-2 font-medium text-lg">
+                   <Calendar size={18} className="text-primary" />
+                   <span className="capitalize w-32 text-center">{formatMonth(viewDate)}</span>
+               </div>
+           </div>
+
+           <button onClick={() => changeMonth(1)} className="p-2 hover:bg-secondary rounded-lg transition-colors">
+               <ChevronRight size={20} />
+           </button>
         </div>
 
         {isFuture && (
