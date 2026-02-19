@@ -179,7 +179,8 @@ export const importFromExcel = (file: File): Promise<BudgetState> => {
             dailyExpenses: [],
             ccDebts: [],
             installments: [],
-            history: []
+            history: [],
+            futureData: {}
         };
 
         // Process sheets

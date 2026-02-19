@@ -2,13 +2,13 @@ import { useState } from 'react';
 import { useBudget } from '../context/BudgetContext';
 import type { DailyExpense } from '../types';
 import { Card } from '../components/ui/Card';
-import { Trash2, Banknote, Wallet, CreditCard, Pencil, X } from 'lucide-react';
+import { Trash2, Banknote, Wallet, CreditCard, Pencil, X, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { cn } from '../lib/utils';
 
 export default function DailyExpenses() {
-  const { state, addDailyExpense, updateDailyExpense, deleteDailyExpense } = useBudget();
+  const { state, viewDate, addDailyExpense, updateDailyExpense, deleteDailyExpense } = useBudget();
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
@@ -24,11 +24,7 @@ export default function DailyExpenses() {
     setAmount(Math.abs(expense.amount).toString());
     setType(expense.type);
     setTransactionType(expense.amount >= 0 ? 'INCOME' : 'EXPENSE');
-
-    // Switch to the tab where the item is, so user sees what they are editing contextually
     setActiveTab(expense.type);
-
-    // Scroll to top
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -36,7 +32,6 @@ export default function DailyExpenses() {
     setEditingId(null);
     setDescription('');
     setAmount('');
-    // Reset date to today? Or keep? Keep last used.
     setTransactionType('EXPENSE');
   };
 
@@ -66,12 +61,10 @@ export default function DailyExpenses() {
     
     setDescription('');
     setAmount('');
-    // Keep date as is for consecutive entries
   };
 
   const filteredExpenses = state.dailyExpenses.filter(e => e.type === activeTab);
 
-  // Group expenses by date
   const groupedExpenses = filteredExpenses.reduce((groups, expense) => {
     const date = expense.date;
     if (!groups[date]) {
@@ -81,107 +74,122 @@ export default function DailyExpenses() {
     return groups;
   }, {} as Record<string, DailyExpense[]>);
 
-  // Sort dates descending
   const sortedDates = Object.keys(groupedExpenses).sort((a, b) =>
     new Date(b).getTime() - new Date(a).getTime()
   );
 
+  const isFuture = viewDate > new Date().toISOString().slice(0, 7);
+  const formattedMonth = new Date(
+      parseInt(viewDate.split('-')[0]),
+      parseInt(viewDate.split('-')[1]) - 1
+  ).toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
+
   return (
-    <div className="space-y-6 pb-20">
-      <header className="flex justify-between items-center">
+    <div className="space-y-6 pb-20 p-4">
+      <header className="flex flex-col gap-2">
         <h1 className="text-2xl font-bold tracking-tight">Günlük Defter</h1>
+        <div className="flex items-center gap-2 text-muted-foreground">
+            <Calendar size={16} />
+            <span className="capitalize">{formattedMonth}</span>
+            {isFuture && <span className="text-xs bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded ml-2">Planlama Modu</span>}
+        </div>
       </header>
       
-      <Card title={editingId ? "Harcamayı Düzenle" : "Yeni Kazanç/Harcama Ekle"}>
-        <form onSubmit={handleSubmit} className="space-y-3 mt-2">
-           <div className="flex gap-2">
-             <div className="flex-1 space-y-1">
-               <label className="text-xs text-muted-foreground">Tarih</label>
-               <input 
-                 type="date" 
-                 value={date} 
-                 onChange={(e) => setDate(e.target.value)}
-                 className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-               />
-             </div>
-             <div className="flex-1 space-y-1">
-               <label className="text-xs text-muted-foreground">Tutar</label>
-               <input 
-                 type="number" 
-                 placeholder="0.00"
-                 value={amount} 
-                 onChange={(e) => setAmount(e.target.value)}
-                 className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-               />
-             </div>
-           </div>
-           
-           <div className="space-y-1">
-             <label className="text-xs text-muted-foreground">Açıklama</label>
-             <input 
-               type="text" 
-               placeholder="Bu para nereden geldi/nereye gitti?"
-               value={description} 
-               onChange={(e) => setDescription(e.target.value)}
-               className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-             />
-           </div>
+      {!isFuture ? (
+        <Card title={editingId ? "Harcamayı Düzenle" : "Yeni Kazanç/Harcama Ekle"}>
+            <form onSubmit={handleSubmit} className="space-y-3 mt-2">
+            <div className="flex gap-2">
+                <div className="flex-1 space-y-1">
+                <label className="text-xs text-muted-foreground">Tarih</label>
+                <input
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                </div>
+                <div className="flex-1 space-y-1">
+                <label className="text-xs text-muted-foreground">Tutar</label>
+                <input
+                    type="number"
+                    placeholder="0.00"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                </div>
+            </div>
 
-           <div className="flex gap-2 pt-1">
-             <button
-               type="button"
-               onClick={() => setTransactionType('INCOME')}
-               className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${transactionType === 'INCOME' ? 'bg-green-500/10 border-green-500 text-green-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
-             >
-               Gelir (+)
-             </button>
-             <button
-               type="button"
-               onClick={() => setTransactionType('EXPENSE')}
-               className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${transactionType === 'EXPENSE' ? 'bg-red-500/10 border-red-500 text-red-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
-             >
-               Gider (-)
-             </button>
-           </div>
+            <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Açıklama</label>
+                <input
+                type="text"
+                placeholder="Bu para nereden geldi/nereye gitti?"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+            </div>
 
-           <div className="flex gap-2">
-             <button
-               type="button"
-               onClick={() => { setType('NAKIT'); setActiveTab('NAKIT'); }}
-               className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${type === 'NAKIT' ? 'bg-primary/10 border-primary text-primary' : 'bg-secondary border-transparent text-muted-foreground'}`}
-             >
-               <Wallet size={16} /> Nakit
-             </button>
-             <button
-               type="button"
-               onClick={() => { setType('YK'); setActiveTab('YK'); }}
-               className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${type === 'YK' ? 'bg-primary/10 border-primary text-primary' : 'bg-secondary border-transparent text-muted-foreground'}`}
-             >
-               <CreditCard size={16} /> Yemek Kartı
-             </button>
-           </div>
-           
-           <div className="flex gap-2 mt-2">
-             {editingId && (
-               <button
-                 type="button"
-                 onClick={cancelEdit}
-                 className="flex-1 py-3 bg-secondary text-foreground font-medium rounded-lg hover:bg-secondary/80 transition-colors flex items-center justify-center gap-2"
-               >
-                 <X size={20} /> İptal
-               </button>
-             )}
-             <button
-               type="submit"
-               className="flex-[2] py-3 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors"
-             >
-               {editingId ? 'Güncelle' : 'Ekle'}
-             </button>
-           </div>
-        </form>
-      </Card>
+            <div className="flex gap-2 pt-1">
+                <button
+                type="button"
+                onClick={() => setTransactionType('INCOME')}
+                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${transactionType === 'INCOME' ? 'bg-green-500/10 border-green-500 text-green-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
+                >
+                Gelir (+)
+                </button>
+                <button
+                type="button"
+                onClick={() => setTransactionType('EXPENSE')}
+                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${transactionType === 'EXPENSE' ? 'bg-red-500/10 border-red-500 text-red-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
+                >
+                Gider (-)
+                </button>
+            </div>
 
-      {/* Tabs */}
+            <div className="flex gap-2">
+                <button
+                type="button"
+                onClick={() => { setType('NAKIT'); setActiveTab('NAKIT'); }}
+                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${type === 'NAKIT' ? 'bg-primary/10 border-primary text-primary' : 'bg-secondary border-transparent text-muted-foreground'}`}
+                >
+                <Wallet size={16} /> Nakit
+                </button>
+                <button
+                type="button"
+                onClick={() => { setType('YK'); setActiveTab('YK'); }}
+                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${type === 'YK' ? 'bg-primary/10 border-primary text-primary' : 'bg-secondary border-transparent text-muted-foreground'}`}
+                >
+                <CreditCard size={16} /> Yemek Kartı
+                </button>
+            </div>
+
+            <div className="flex gap-2 mt-2">
+                {editingId && (
+                <button
+                    type="button"
+                    onClick={cancelEdit}
+                    className="flex-1 py-3 bg-secondary text-foreground font-medium rounded-lg hover:bg-secondary/80 transition-colors flex items-center justify-center gap-2"
+                >
+                    <X size={20} /> İptal
+                </button>
+                )}
+                <button
+                type="submit"
+                className="flex-[2] py-3 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors"
+                >
+                {editingId ? 'Güncelle' : 'Ekle'}
+                </button>
+            </div>
+            </form>
+        </Card>
+      ) : (
+        <div className="text-center p-4 bg-blue-500/10 rounded-lg text-blue-600 dark:text-blue-400 border border-blue-500/20">
+            Planlama modundasınız. Gelecek aylar için günlük harcama girilemez, sadece sabit gider planlaması yapılabilir.
+        </div>
+      )}
+
       <div className="flex p-1 bg-secondary rounded-xl">
         <button
           onClick={() => setActiveTab('NAKIT')}
@@ -247,7 +255,7 @@ export default function DailyExpenses() {
 
         {sortedDates.length === 0 && (
           <div className="text-center text-muted-foreground py-12 bg-secondary/30 rounded-xl border border-dashed">
-            {activeTab === 'NAKIT' ? 'Nakit' : 'Yemek Kartı'} için henüz kayıt bulunmuyor.
+            {activeTab === 'NAKIT' ? 'Nakit' : 'Yemek Kartı'} için kayıt bulunmuyor.
           </div>
         )}
       </div>
