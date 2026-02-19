@@ -77,6 +77,82 @@ function monthDiff(d1: string, d2: string): number {
     return (y2 - y1) * 12 + (m2 - m1);
 }
 
+// Helper: Migrate State
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function migrateState(parsed: any): BudgetState {
+    if (!parsed.version) {
+      // Version 0 -> 1
+      const migratedDailyExpenses = (parsed.dailyExpenses || []).map((ex: any) => ({
+         ...ex,
+         amount: ex.amount > 0 ? -ex.amount : ex.amount
+      }));
+
+      parsed.dailyExpenses = migratedDailyExpenses;
+      parsed.version = 1;
+    }
+
+    if (parsed.version === 1) {
+      // Version 1 -> 2
+      parsed.currentMonth = initialState.currentMonth;
+      parsed.installments = [];
+      parsed.history = [];
+      parsed.version = 2;
+    }
+
+    if (parsed.version === 2) {
+      // Version 2 -> 3
+      const migratedDebts = (parsed.ccDebts || []).map((d: any) => ({
+        ...d,
+        amount: d.amount > 0 ? -d.amount : d.amount
+      }));
+
+      const migratedInstallments = (parsed.installments || []).map((i: any) => ({
+        ...i,
+        monthlyAmount: i.monthlyAmount > 0 ? -i.monthlyAmount : i.monthlyAmount,
+        totalAmount: i.totalAmount > 0 ? -i.totalAmount : i.totalAmount
+      }));
+
+      parsed = {
+        ...initialState,
+        ...parsed,
+        ccDebts: migratedDebts,
+        installments: migratedInstallments,
+        version: 3
+      };
+    }
+
+    if (parsed.version === 3) {
+       // Version 3 -> 4
+       parsed = {
+         ...initialState,
+         ...parsed,
+         futureData: {},
+         version: 4
+       };
+    }
+
+    if (parsed.version === 4) {
+      // Version 4 -> 5 (Cleanup duplicate CC debts from fixedExpenses)
+      const ccDebtTitle = 'Kredi Kartı Borcu (Geçen Ay)';
+      const otherExpenses = (parsed.fixedExpenses || []).filter((e: any) => e.title !== ccDebtTitle);
+      const ccDebts = (parsed.fixedExpenses || []).filter((e: any) => e.title === ccDebtTitle);
+
+      let newFixedExpenses = otherExpenses;
+      if (ccDebts.length > 0) {
+         newFixedExpenses = [...otherExpenses, ccDebts[ccDebts.length - 1]];
+      }
+
+      parsed = {
+        ...initialState,
+        ...parsed,
+        fixedExpenses: newFixedExpenses,
+        version: 5
+      };
+    }
+
+    return { ...initialState, ...parsed };
+}
+
 export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     try {
@@ -92,87 +168,8 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
-        let parsed = JSON.parse(stored);
-
-        // Migration logic:
-        if (!parsed.version) {
-          // Version 0 -> 1
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const migratedDailyExpenses = (parsed.dailyExpenses || []).map((ex: any) => ({
-             ...ex,
-             amount: ex.amount > 0 ? -ex.amount : ex.amount
-          }));
-
-          parsed.dailyExpenses = migratedDailyExpenses;
-          parsed.version = 1;
-        }
-
-        if (parsed.version === 1) {
-          // Version 1 -> 2
-          parsed.currentMonth = initialState.currentMonth;
-          parsed.installments = [];
-          parsed.history = [];
-          parsed.version = 2;
-        }
-
-        if (parsed.version === 2) {
-          // Version 2 -> 3
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const migratedDebts = (parsed.ccDebts || []).map((d: any) => ({
-            ...d,
-            amount: d.amount > 0 ? -d.amount : d.amount
-          }));
-
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const migratedInstallments = (parsed.installments || []).map((i: any) => ({
-            ...i,
-            monthlyAmount: i.monthlyAmount > 0 ? -i.monthlyAmount : i.monthlyAmount,
-            totalAmount: i.totalAmount > 0 ? -i.totalAmount : i.totalAmount
-          }));
-
-          parsed = {
-            ...initialState,
-            ...parsed,
-            ccDebts: migratedDebts,
-            installments: migratedInstallments,
-            version: 3
-          };
-        }
-
-        if (parsed.version === 3) {
-           // Version 3 -> 4
-           parsed = {
-             ...initialState,
-             ...parsed,
-             futureData: {},
-             version: 4
-           };
-        }
-
-        if (parsed.version === 4) {
-          // Version 4 -> 5 (Cleanup duplicate CC debts from fixedExpenses)
-          // Also check installments' monthlyAmount and convert if positive
-          const ccDebtTitle = 'Kredi Kartı Borcu (Geçen Ay)';
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const otherExpenses = (parsed.fixedExpenses || []).filter((e: any) => e.title !== ccDebtTitle);
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const ccDebts = (parsed.fixedExpenses || []).filter((e: any) => e.title === ccDebtTitle);
-
-          let newFixedExpenses = otherExpenses;
-          if (ccDebts.length > 0) {
-             // Keep the last one found in the array (assuming push() order)
-             newFixedExpenses = [...otherExpenses, ccDebts[ccDebts.length - 1]];
-          }
-
-          parsed = {
-            ...initialState,
-            ...parsed,
-            fixedExpenses: newFixedExpenses,
-            version: 5
-          };
-        }
-
-        return { ...initialState, ...parsed };
+        const parsed = JSON.parse(stored);
+        return migrateState(parsed);
       }
       return initialState;
     } catch (e) {
@@ -800,7 +797,8 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   };
 
   const loadState = (newState: BudgetState) => {
-    setRealState(newState);
+    const migrated = migrateState(newState);
+    setRealState(migrated);
   };
 
   return (
