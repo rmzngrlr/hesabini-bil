@@ -154,7 +154,7 @@ export default function FixedExpenses() {
       <h1 className="text-2xl font-bold tracking-tight mt-8">Sabit Giderler</h1>
 
       <Card title="Gider Özeti" className="bg-gradient-to-br from-card to-primary/5">
-        <div className="flex justify-between items-end mt-2">
+        <div className="flex flex-col gap-2 mt-2 sm:flex-row sm:justify-between sm:items-end sm:gap-0">
           <div>
             <div className="text-sm text-muted-foreground">Toplam</div>
             <div className="text-2xl font-bold whitespace-nowrap">{totalFixed.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</div>
@@ -166,38 +166,40 @@ export default function FixedExpenses() {
         </div>
       </Card>
 
-      <form onSubmit={handleSubmit} className="flex gap-2 items-center w-full">
+      <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2 w-full">
         <input
           type="text"
           placeholder="Gider Adı (örn: Kira)"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="flex-[2] min-w-0 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          className="w-full sm:flex-[2] min-w-0 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
         />
-        <input
-          type="number"
-          placeholder="Tutar"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          className="w-28 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-        />
+        <div className="flex gap-2 w-full sm:w-auto">
+          <input
+            type="number"
+            placeholder="Tutar"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className="flex-1 sm:flex-none sm:w-28 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          />
 
-        {editingId && (
-           <button
-             type="button"
-             onClick={cancelEdit}
-             className="p-2 rounded-lg bg-secondary text-foreground hover:bg-secondary/80"
-           >
-             <X size={24} />
-           </button>
-        )}
+          {editingId && (
+             <button
+               type="button"
+               onClick={cancelEdit}
+               className="p-2 rounded-lg bg-secondary text-foreground hover:bg-secondary/80"
+             >
+               <X size={24} />
+             </button>
+          )}
 
-        <button
-          type="submit"
-          className="p-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
-        >
-          {editingId ? <Pencil size={24} /> : <Plus size={24} />}
-        </button>
+          <button
+            type="submit"
+            className="p-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            {editingId ? <Pencil size={24} /> : <Plus size={24} />}
+          </button>
+        </div>
       </form>
 
       <div className="space-y-3">
@@ -211,15 +213,15 @@ export default function FixedExpenses() {
           >
             <button
               onClick={() => toggleFixedExpense(expense.id)}
-              className="flex items-center gap-3 flex-1"
+              className="flex items-center gap-3 flex-1 min-w-0"
             >
               {expense.isPaid ? (
-                <CheckCircle className="text-green-500" size={24} />
+                <CheckCircle className="text-green-500 flex-shrink-0" size={24} />
               ) : (
-                <Circle className="text-muted-foreground" size={24} />
+                <Circle className="text-muted-foreground flex-shrink-0" size={24} />
               )}
-              <div className="text-left">
-                <div className={cn("font-medium", expense.isPaid && "line-through")}>{expense.title}</div>
+              <div className="text-left min-w-0 flex-1">
+                <div className={cn("font-medium truncate", expense.isPaid && "line-through")}>{expense.title}</div>
                 <div className="text-sm text-muted-foreground whitespace-nowrap">
                   {expense.amount.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
                 </div>
