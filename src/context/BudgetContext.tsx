@@ -329,10 +329,9 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         // and inject the calculated one from previous iteration
         let monthFixedExpenses: FixedExpense[] = [];
 
+        // Use user-defined future expenses if available
         if (future.fixedExpenses) {
-             monthFixedExpenses = future.fixedExpenses
-                .filter(e => e.title !== 'Kredi Kartı Borcu (Geçen Ay)')
-                .map(e => ({ ...e, isPaid: false }));
+             monthFixedExpenses = future.fixedExpenses.map(e => ({ ...e }));
         } else {
              // Default Projection: Only Rent and Dues, reset to 0
              monthFixedExpenses = [
@@ -351,13 +350,24 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
              ];
         }
 
-        if (lastMonthCCDebt > 0) {
-            monthFixedExpenses.push({
-                id: `proj-cc-debt-${iterMonth}`,
-                title: 'Kredi Kartı Borcu (Geçen Ay)',
-                amount: lastMonthCCDebt,
-                isPaid: false
-            });
+        // Check if user has explicitly edited/overridden the CC Debt for this future month
+        const overriddenCCDebt = monthFixedExpenses.find(e => e.title === 'Kredi Kartı Borcu (Geçen Ay)');
+
+        if (!overriddenCCDebt) {
+             // Auto-inject calculated debt if not overridden
+             if (lastMonthCCDebt > 0) {
+                monthFixedExpenses.push({
+                    id: `proj-cc-debt-${iterMonth}`,
+                    title: 'Kredi Kartı Borcu (Geçen Ay)',
+                    amount: lastMonthCCDebt,
+                    isPaid: false
+                });
+            }
+        } else {
+             // If user modified it, it is already in monthFixedExpenses.
+             // But we need to make sure we use THAT value for calculating the next month's rollover?
+             // Actually, the rollover calculation uses `monthFixedTotal`.
+             // So if it's in the list, it's used.
         }
 
         // Installments for this month (to calculate CC Debt for NEXT month)
@@ -471,11 +481,18 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         }));
     } else if (viewDate > realState.currentMonth) {
         setRealState(prev => {
-             const future = prev.futureData[viewDate];
-             if (!future || !future.fixedExpenses) return prev;
+             const future = prev.futureData[viewDate] || {};
 
-             const currentList = future.fixedExpenses || prev.fixedExpenses.map(e => ({...e, isPaid: false}));
-             const updatedList = currentList.map(ex => ex.id === id ? { ...ex, isPaid: !ex.isPaid } : ex);
+             // Base on displayed expenses
+             const projectedExpenses = derivedState.fixedExpenses || [];
+             const newList = projectedExpenses.map(e => ({...e}));
+
+             const index = newList.findIndex(ex => ex.id === id);
+             if (index !== -1) {
+                 newList[index].isPaid = !newList[index].isPaid;
+             } else {
+                 return prev;
+             }
 
              return {
                 ...prev,
@@ -483,7 +500,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                     ...prev.futureData,
                     [viewDate]: {
                         ...future,
-                        fixedExpenses: updatedList
+                        fixedExpenses: newList
                     }
                 }
              };
@@ -500,7 +517,11 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     } else if (viewDate > realState.currentMonth) {
          setRealState(prev => {
             const future = prev.futureData[viewDate] || {};
-            const currentList = future.fixedExpenses || prev.fixedExpenses.map(e => ({...e, isPaid: false}));
+
+            const projectedExpenses = derivedState.fixedExpenses || [];
+
+            // Filter returns a new array
+            const newList = projectedExpenses.filter(ex => ex.id !== id);
 
             return {
                 ...prev,
@@ -508,7 +529,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                     ...prev.futureData,
                     [viewDate]: {
                         ...future,
-                        fixedExpenses: currentList.filter(ex => ex.id !== id)
+                        fixedExpenses: newList
                     }
                 }
             };
@@ -619,7 +640,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                     ...prev.futureData,
                     [viewDate]: {
                         ...future,
-                        fixedExpenses: currentList.map(ex => ex.id === id ? { ...ex, ...expense } : ex)
+                        fixedExpenses: newList
                     }
                 }
             };
