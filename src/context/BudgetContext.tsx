@@ -309,35 +309,6 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
 
     // Future Projection
-    let runningRollover = realState.rollover;
-    let runningYkRollover = realState.ykRollover;
-
-    // Calculate "End of Current Month" balance
-    const currentCashSpent = realState.dailyExpenses
-        .filter(e => e.type === 'NAKIT' && e.amount < 0)
-        .reduce((sum, e) => sum + Math.abs(e.amount), 0);
-    const currentCashIncome = realState.dailyExpenses
-        .filter(e => e.type === 'NAKIT' && e.amount > 0)
-        .reduce((sum, e) => sum + e.amount, 0);
-
-    // Assume all fixed expenses in current month WILL be paid for projection
-    const currentFixedTotal = realState.fixedExpenses.reduce((sum, e) => sum + e.amount, 0);
-
-    const currentTotalCash = realState.income + realState.rollover + currentCashIncome;
-    runningRollover = currentTotalCash - (currentFixedTotal + currentCashSpent);
-    if (runningRollover < 0) runningRollover = 0;
-
-    // YK Rollover logic (similar)
-    const currentYkSpent = realState.dailyExpenses
-        .filter(e => e.type === 'YK' && e.amount < 0)
-        .reduce((sum, e) => sum + Math.abs(e.amount), 0);
-    const currentYkIncome = realState.dailyExpenses
-        .filter(e => e.type === 'YK' && e.amount > 0)
-        .reduce((sum, e) => sum + e.amount, 0);
-
-    const currentTotalYk = realState.ykIncome + realState.ykRollover + currentYkIncome;
-    runningYkRollover = currentTotalYk - currentYkSpent;
-    if (runningYkRollover < 0) runningYkRollover = 0;
 
     // Initial CC Debt (from current month)
     let lastMonthCCDebt = Math.abs(realState.ccDebts.reduce((sum, d) => sum + d.amount, 0));
@@ -345,11 +316,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     // Iterate intervening months
     let iterMonth = addMonths(realState.currentMonth, 1);
 
-    while (iterMonth <= viewDate || (iterMonth > viewDate && false)) { // Ensure loop runs at least once if needed logic? No, <= viewDate is fine.
-        // Wait, if viewDate < current, we returned early.
-        // If viewDate == current, we returned early.
-        // So viewDate > current.
-
+    while (iterMonth <= viewDate) {
         const isTarget = iterMonth === viewDate;
         const future = realState.futureData[iterMonth] || {};
 
@@ -360,9 +327,29 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         // Fixed Expenses
         // Filter out any existing 'Kredi Kartı Borcu (Geçen Ay)' to avoid duplication/stale data
         // and inject the calculated one from previous iteration
-        let monthFixedExpenses = (future.fixedExpenses || realState.fixedExpenses)
-            .filter(e => e.title !== 'Kredi Kartı Borcu (Geçen Ay)')
-            .map(e => ({ ...e, isPaid: false })); // Project as unpaid by default
+        let monthFixedExpenses: FixedExpense[] = [];
+
+        if (future.fixedExpenses) {
+             monthFixedExpenses = future.fixedExpenses
+                .filter(e => e.title !== 'Kredi Kartı Borcu (Geçen Ay)')
+                .map(e => ({ ...e, isPaid: false }));
+        } else {
+             // Default Projection: Only Rent and Dues, reset to 0
+             monthFixedExpenses = [
+                {
+                    id: `proj-rent-${iterMonth}`,
+                    title: 'Ev Kirası',
+                    amount: 0,
+                    isPaid: false
+                },
+                {
+                    id: `proj-dues-${iterMonth}`,
+                    title: 'Aidat',
+                    amount: 0,
+                    isPaid: false
+                }
+             ];
+        }
 
         if (lastMonthCCDebt > 0) {
             monthFixedExpenses.push({
@@ -373,12 +360,9 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             });
         }
 
-        const monthFixedTotal = monthFixedExpenses.reduce((sum, e) => sum + e.amount, 0);
-
         // Installments for this month (to calculate CC Debt for NEXT month)
         const monthsAway = monthDiff(realState.currentMonth, iterMonth);
 
-        let monthInstallmentTotal = 0;
         const projectedCCDebts: CCDebt[] = [];
 
         realState.installments.forEach(inst => {
@@ -389,7 +373,6 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
             if (effectiveRemaining > 0) {
                  const amount = inst.monthlyAmount;
-                 monthInstallmentTotal += amount;
 
                  // Add to projected CC Debts list (for display if target)
                  const currentInstNum = (inst.installmentCount - effectiveRemaining) + 1;
@@ -423,8 +406,8 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 currentMonth: viewDate,
                 income: monthIncome,
                 ykIncome: monthYkIncome,
-                rollover: runningRollover,
-                ykRollover: runningYkRollover,
+                rollover: 0, // Future rollover is always 0
+                ykRollover: 0, // Future YK rollover is always 0
                 fixedExpenses: monthFixedExpenses,
                 dailyExpenses: [],
                 ccDebts: projectedCCDebts,
@@ -432,17 +415,6 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 futureData: realState.futureData,
             };
         }
-
-        // Update Rollover for next iteration
-        // Net Cash = Income - Total Fixed Expenses
-        // Note: 'monthFixedExpenses' now includes the CC Debt payment for the previous month.
-        const netCash = monthIncome - monthFixedTotal;
-
-        runningRollover += netCash;
-        if (runningRollover < 0) runningRollover = 0;
-
-        // YK Rollover update
-        runningYkRollover += monthYkIncome;
 
         iterMonth = addMonths(iterMonth, 1);
     }
