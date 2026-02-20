@@ -448,7 +448,11 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     } else if (viewDate > realState.currentMonth) {
         setRealState(prev => {
             const future = prev.futureData[viewDate] || {};
-            const currentList = future.fixedExpenses || prev.fixedExpenses.map(e => ({...e, isPaid: false}));
+
+            // Base on displayed expenses (Projected List)
+            const projectedExpenses = derivedState.fixedExpenses || [];
+            // We need a fresh copy to modify
+            const currentList = projectedExpenses.map(e => ({...e}));
 
             const newExpense: FixedExpense = {
                 id: generateId(),
@@ -632,7 +636,18 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     } else if (viewDate > realState.currentMonth) {
          setRealState(prev => {
             const future = prev.futureData[viewDate] || {};
-            const currentList = future.fixedExpenses || prev.fixedExpenses.map(e => ({...e, isPaid: false}));
+
+            // Start from the projected view seen by the user
+            const projectedExpenses = derivedState.fixedExpenses || [];
+
+            const newList = projectedExpenses.map(e => ({...e}));
+
+            const index = newList.findIndex(ex => ex.id === id);
+            if (index !== -1) {
+                newList[index] = { ...newList[index], ...expense };
+            } else {
+                return prev;
+            }
 
             return {
                 ...prev,
