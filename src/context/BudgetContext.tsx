@@ -350,24 +350,25 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
              ];
         }
 
-        // Check if user has explicitly edited/overridden the CC Debt for this future month
-        const overriddenCCDebt = monthFixedExpenses.find(e => e.title === 'Kredi Kartı Borcu (Geçen Ay)');
+        // Apply CC Debt Adjustment if exists
+        const ccDebtAdjustment = future.ccDebtAdjustment || 0;
+        const adjustedCCDebt = lastMonthCCDebt + ccDebtAdjustment;
 
-        if (!overriddenCCDebt) {
-             // Auto-inject calculated debt if not overridden
-             if (lastMonthCCDebt > 0) {
-                monthFixedExpenses.push({
-                    id: `proj-cc-debt-${iterMonth}`,
-                    title: 'Kredi Kartı Borcu (Geçen Ay)',
-                    amount: lastMonthCCDebt,
-                    isPaid: false
-                });
-            }
-        } else {
-             // If user modified it, it is already in monthFixedExpenses.
-             // But we need to make sure we use THAT value for calculating the next month's rollover?
-             // Actually, the rollover calculation uses `monthFixedTotal`.
-             // So if it's in the list, it's used.
+        // Ensure "Kredi Kartı Borcu (Geçen Ay)" is present with adjusted value
+        // Note: If user previously edited it, it might be in `monthFixedExpenses` via `future.fixedExpenses`.
+        // However, we want "Smart Update" where we apply adjustment to CURRENT calculated base.
+        // So we should find the item (or create it) and set amount to `adjustedCCDebt`.
+
+        // Filter out any stale entry first (to replace with fresh calculation + adjustment)
+        monthFixedExpenses = monthFixedExpenses.filter(e => e.title !== 'Kredi Kartı Borcu (Geçen Ay)');
+
+        if (adjustedCCDebt > 0 || ccDebtAdjustment !== 0) {
+             monthFixedExpenses.push({
+                id: `proj-cc-debt-${iterMonth}`,
+                title: 'Kredi Kartı Borcu (Geçen Ay)',
+                amount: adjustedCCDebt > 0 ? adjustedCCDebt : 0, // Ensure non-negative display
+                isPaid: false
+            });
         }
 
         // Installments for this month (to calculate CC Debt for NEXT month)
@@ -382,15 +383,19 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             const effectiveRemaining = inst.remainingInstallments - monthsAway;
 
             if (effectiveRemaining > 0) {
-                 const amount = inst.monthlyAmount;
+                 // Check for override
+                 let amount = inst.monthlyAmount;
+                 if (future.installmentOverrides && future.installmentOverrides[inst.id] !== undefined) {
+                     amount = future.installmentOverrides[inst.id];
+                 }
 
                  // Add to projected CC Debts list (for display if target)
                  const currentInstNum = (inst.installmentCount - effectiveRemaining) + 1;
                  projectedCCDebts.push({
-                    id: `proj-${inst.id}-${iterMonth}`,
+                    id: `proj-${inst.id}-${iterMonth}`, // Unique ID for projection
                     description: `${inst.description} (${currentInstNum}/${inst.installmentCount})`,
                     amount: amount,
-                    installmentId: inst.id,
+                    installmentId: inst.id, // Keep link to original
                     currentInstallment: currentInstNum,
                     totalInstallments: inst.installmentCount
                  });
@@ -586,13 +591,44 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   };
 
   const updateCCDebt = (id: string, debt: Partial<CCDebt>) => {
-    if (viewDate !== realState.currentMonth) return;
-    setRealState(prev => ({
-      ...prev,
-      ccDebts: prev.ccDebts.map(d =>
-        d.id === id ? { ...d, ...debt } : d
-      ),
-    }));
+    if (viewDate === realState.currentMonth) {
+        setRealState(prev => ({
+          ...prev,
+          ccDebts: prev.ccDebts.map(d =>
+            d.id === id ? { ...d, ...debt } : d
+          ),
+        }));
+    } else if (viewDate > realState.currentMonth) {
+        // Handle override for projected installment
+        // Check if ID is projected installment ID: proj-{instId}-{month}
+        if (id.startsWith('proj-') && debt.amount !== undefined) {
+             // Extract installment ID? Or just use the fact that `derivedState` has it mapped.
+             // We need to store: `futureData[viewDate].installmentOverrides[originalInstallmentId] = amount`
+
+             // Find the item in derivedState to get original installmentId
+             const item = derivedState.ccDebts.find(d => d.id === id);
+             if (item && item.installmentId) {
+                 setRealState(prev => {
+                     const future = prev.futureData[viewDate] || {};
+                     const overrides = future.installmentOverrides || {};
+
+                     return {
+                         ...prev,
+                         futureData: {
+                             ...prev.futureData,
+                             [viewDate]: {
+                                 ...future,
+                                 installmentOverrides: {
+                                     ...overrides,
+                                     [item.installmentId as string]: debt.amount as number
+                                 }
+                             }
+                         }
+                     };
+                 });
+             }
+        }
+    }
   };
 
   const addInstallment = (installment: Omit<Installment, 'id' | 'remainingInstallments'>) => {
@@ -637,7 +673,41 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
          setRealState(prev => {
             const future = prev.futureData[viewDate] || {};
 
-            // Start from the projected view seen by the user
+            // Handle CC Debt Override separately
+            // Need to identify if this update is for "Kredi Kartı Borcu (Geçen Ay)"
+            // We can check title or ID pattern? ID pattern `proj-cc-debt-` is reliable if generated by `derivedState`.
+
+            const isCCDebt = id.startsWith('proj-cc-debt-');
+
+            if (isCCDebt && expense.amount !== undefined) {
+                // Calculate adjustment
+                // We need the *calculated base* to determine adjustment.
+                // The current value in `derivedState` is `base + previousAdjustment`.
+                // We want to find `newAdjustment` such that `base + newAdjustment = newAmount`.
+                // `derivedState` has the `currentDisplayedAmount`.
+                // So `base = currentDisplayedAmount - previousAdjustment`.
+                // `newAdjustment = newAmount - base`.
+
+                const previousAdjustment = future.ccDebtAdjustment || 0;
+                const currentItem = derivedState.fixedExpenses.find(e => e.id === id);
+                const currentDisplayedAmount = currentItem ? currentItem.amount : 0;
+
+                const base = currentDisplayedAmount - previousAdjustment;
+                const newAdjustment = expense.amount - base;
+
+                return {
+                    ...prev,
+                    futureData: {
+                        ...prev.futureData,
+                        [viewDate]: {
+                            ...future,
+                            ccDebtAdjustment: newAdjustment
+                        }
+                    }
+                };
+            }
+
+            // Normal Fixed Expense Update
             const projectedExpenses = derivedState.fixedExpenses || [];
 
             const newList = projectedExpenses.map(e => ({...e}));
