@@ -48,7 +48,11 @@ export interface MonthlyHistory {
 export interface FutureMonthData {
   income?: number;
   ykIncome?: number;
-  fixedExpenses: FixedExpense[];
+  fixedExpenses?: FixedExpense[];
+  // For CC Debt override (adjustment amount)
+  ccDebtAdjustment?: number;
+  // For specific installment overrides (id -> amount)
+  installmentOverrides?: Record<string, number>;
 }
 
 export interface BudgetState {
