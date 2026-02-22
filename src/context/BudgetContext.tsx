@@ -374,6 +374,12 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         // Installments for this month (to calculate CC Debt for NEXT month)
         const monthsAway = monthDiff(realState.currentMonth, iterMonth);
 
+        // Start with Manual Future Debts if any
+        let allCCDebts: CCDebt[] = [];
+        if (future.ccDebts) {
+            allCCDebts = [...future.ccDebts];
+        }
+
         const projectedCCDebts: CCDebt[] = [];
 
         realState.installments.forEach(inst => {
@@ -391,21 +397,24 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
                  // Add to projected CC Debts list (for display if target)
                  const currentInstNum = (inst.installmentCount - effectiveRemaining) + 1;
-                 projectedCCDebts.push({
+                 const projDebt = {
                     id: `proj-${inst.id}-${iterMonth}`, // Unique ID for projection
                     description: `${inst.description} (${currentInstNum}/${inst.installmentCount})`,
                     amount: amount,
                     installmentId: inst.id, // Keep link to original
                     currentInstallment: currentInstNum,
                     totalInstallments: inst.installmentCount
-                 });
+                 };
+                 projectedCCDebts.push(projDebt);
             }
         });
 
+        // Combine Manual + Projected for Total Calculation and Display
+        allCCDebts = [...allCCDebts, ...projectedCCDebts];
+
         // Calculate total CC Debt for THIS month (to become Fixed Expense in NEXT month)
-        // Only installments for future months (no manual daily expenses)
-        // Note: amount is negative for debts, so reduce sums to negative total. Math.abs makes it positive debt.
-        lastMonthCCDebt = Math.abs(projectedCCDebts.reduce((sum, d) => sum + d.amount, 0));
+        // Includes Projected Installments AND Manual Future Debts
+        lastMonthCCDebt = Math.abs(allCCDebts.reduce((sum, d) => sum + d.amount, 0));
 
         if (isTarget) {
             // Filter and project installments for view (Active Installments List)
@@ -425,7 +434,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 ykRollover: 0, // Future YK rollover is always 0
                 fixedExpenses: monthFixedExpenses,
                 dailyExpenses: [],
-                ccDebts: projectedCCDebts,
+                ccDebts: allCCDebts, // Show merged list
                 installments: projectedInstallments,
                 futureData: realState.futureData,
             };
@@ -574,20 +583,64 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   };
 
   const addCCDebt = (debt: Omit<CCDebt, 'id'>) => {
-     if (viewDate !== realState.currentMonth) return;
-    const newDebt: CCDebt = {
-      ...debt,
-      id: generateId(),
-    };
-    setRealState(prev => ({ ...prev, ccDebts: [...prev.ccDebts, newDebt] }));
+    if (viewDate === realState.currentMonth) {
+        const newDebt: CCDebt = {
+          ...debt,
+          id: generateId(),
+        };
+        setRealState(prev => ({ ...prev, ccDebts: [...prev.ccDebts, newDebt] }));
+    } else if (viewDate > realState.currentMonth) {
+        // Add to future data
+        setRealState(prev => {
+            const future = prev.futureData[viewDate] || {};
+            const currentDebts = future.ccDebts || [];
+
+            const newDebt: CCDebt = {
+                ...debt,
+                id: generateId(),
+            };
+
+            return {
+                ...prev,
+                futureData: {
+                    ...prev.futureData,
+                    [viewDate]: {
+                        ...future,
+                        ccDebts: [...currentDebts, newDebt]
+                    }
+                }
+            };
+        });
+    }
   };
 
   const deleteCCDebt = (id: string) => {
-     if (viewDate !== realState.currentMonth) return;
-    setRealState(prev => ({
-      ...prev,
-      ccDebts: prev.ccDebts.filter(d => d.id !== id),
-    }));
+    if (viewDate === realState.currentMonth) {
+        setRealState(prev => ({
+          ...prev,
+          ccDebts: prev.ccDebts.filter(d => d.id !== id),
+        }));
+    } else if (viewDate > realState.currentMonth) {
+        setRealState(prev => {
+            const future = prev.futureData[viewDate] || {};
+            const currentDebts = future.ccDebts || [];
+
+            // If it's a projected installment, we can't "delete" it easily (it comes from prev month).
+            // Maybe we can "hide" it? But for now, let's only support deleting manually added future debts.
+            // If ID is not in currentDebts, it might be projected.
+
+            return {
+                ...prev,
+                futureData: {
+                    ...prev.futureData,
+                    [viewDate]: {
+                        ...future,
+                        ccDebts: currentDebts.filter(d => d.id !== id)
+                    }
+                }
+            };
+        });
+    }
   };
 
   const updateCCDebt = (id: string, debt: Partial<CCDebt>) => {
@@ -627,6 +680,25 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                      };
                  });
              }
+        } else {
+            // Handle Manual Future Debt Update
+            setRealState(prev => {
+                const future = prev.futureData[viewDate] || {};
+                const currentDebts = future.ccDebts || [];
+
+                const updatedDebts = currentDebts.map(d => d.id === id ? { ...d, ...debt } : d);
+
+                return {
+                    ...prev,
+                    futureData: {
+                        ...prev.futureData,
+                        [viewDate]: {
+                            ...future,
+                            ccDebts: updatedDebts
+                        }
+                    }
+                };
+            });
         }
     }
   };
