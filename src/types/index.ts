@@ -53,6 +53,8 @@ export interface FutureMonthData {
   ccDebtAdjustment?: number;
   // For specific installment overrides (id -> amount)
   installmentOverrides?: Record<string, number>;
+  // For manually added CC Debts in future
+  ccDebts?: CCDebt[];
 }
 
 export interface BudgetState {
