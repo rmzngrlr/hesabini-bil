@@ -410,7 +410,9 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         });
 
         // Combine Manual + Projected for Total Calculation and Display
-        allCCDebts = [...allCCDebts, ...projectedCCDebts];
+        // User requested "Newest Last". Projected installments are "old/automatic". Manual additions are "new".
+        // So Projected first, then Manual.
+        allCCDebts = [...projectedCCDebts, ...allCCDebts];
 
         // Calculate total CC Debt for THIS month (to become Fixed Expense in NEXT month)
         // Includes Projected Installments AND Manual Future Debts
