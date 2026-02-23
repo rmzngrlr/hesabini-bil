@@ -23,6 +23,7 @@ const initialState: BudgetState = {
 interface BudgetContextType {
   state: BudgetState;
   viewDate: string;
+  earliestAllowedMonth: string;
   setViewDate: (date: string) => void;
   addFixedExpense: (expense: Omit<FixedExpense, 'id' | 'isPaid'>) => void;
   toggleFixedExpense: (id: string) => void;
@@ -68,6 +69,11 @@ function addMonths(dateStr: string, months: number): string {
     y--;
   }
   return `${y}-${String(m).padStart(2, '0')}`;
+}
+
+// Helper: Subtract months
+function subtractMonths(dateStr: string, months: number): string {
+    return addMonths(dateStr, -months);
 }
 
 // Helper: Calculate diff in months between two YYYY-MM strings
@@ -179,6 +185,14 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   });
 
   const [viewDate, setViewDate] = useState<string>(() => realState.currentMonth || getCurrentMonth());
+
+  const earliestAllowedMonth = useMemo(() => {
+      const historyMonths = realState.history.map(h => h.month);
+      const allMonths = [realState.currentMonth, ...historyMonths];
+      const minMonth = allMonths.reduce((min, m) => m < min ? m : min, allMonths[0]);
+      // Allow going one month before the earliest data
+      return subtractMonths(minMonth, 1);
+  }, [realState.history, realState.currentMonth]);
 
   // Auto-Reset Month Logic (Operates on realState)
   useEffect(() => {
@@ -951,6 +965,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         value={{
             state: derivedState,
             viewDate,
+            earliestAllowedMonth,
             setViewDate,
             addFixedExpense,
             toggleFixedExpense,
