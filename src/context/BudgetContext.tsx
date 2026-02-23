@@ -258,18 +258,66 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const nextMonthStr = nextDate.toISOString().slice(0, 7);
 
         // New Fixed Expenses list
-        // Remove old 'Kredi Kartı Borcu (Geçen Ay)' entries to prevent accumulation
-        const nextFixedExpenses = prev.fixedExpenses
-            .filter(ex => ex.title !== 'Kredi Kartı Borcu (Geçen Ay)')
-            .map(ex => ({ ...ex, isPaid: false }));
+        // 1. Start with defaults (Rent, Dues) as 0, similar to projection logic
+        let nextFixedExpenses: FixedExpense[] = [
+            { id: generateId(), title: 'Ev Kirası', amount: 0, isPaid: false },
+            { id: generateId(), title: 'Aidat', amount: 0, isPaid: false }
+        ];
 
-        if (totalCCDebt > 0) {
-          nextFixedExpenses.push({
-            id: generateId(),
-            title: 'Kredi Kartı Borcu (Geçen Ay)',
-            amount: totalCCDebt,
-            isPaid: false
-          });
+        // 2. Check for Future Plan (Overrides)
+        const futurePlan = prev.futureData[nextMonthStr] || {};
+
+        if (futurePlan.fixedExpenses) {
+            // Use the planned expenses if available (user edited specific items)
+            // Note: If user planned, the list might already include Rent/Dues with modified values.
+            // We should trust the plan.
+            nextFixedExpenses = futurePlan.fixedExpenses.map(e => ({ ...e, isPaid: false }));
+        }
+
+        // 3. Handle CC Debt (Calculated + Adjustment)
+        // Check if there is an adjustment in the plan
+        const ccDebtAdjustment = futurePlan.ccDebtAdjustment || 0;
+        const finalCCDebt = totalCCDebt + ccDebtAdjustment;
+
+        // Check if "Kredi Kartı Borcu (Geçen Ay)" is already in the list (e.g. from plan)
+        const hasCCDebt = nextFixedExpenses.some(e => e.title === 'Kredi Kartı Borcu (Geçen Ay)');
+
+        if (!hasCCDebt && (finalCCDebt > 0 || ccDebtAdjustment !== 0)) {
+             nextFixedExpenses.push({
+                id: generateId(),
+                title: 'Kredi Kartı Borcu (Geçen Ay)',
+                amount: finalCCDebt > 0 ? finalCCDebt : 0,
+                isPaid: false
+             });
+        } else if (hasCCDebt) {
+             // If it exists (user override in plan), we might want to update it with the REAL total?
+             // If the user modified it in the plan, they modified the AMOUNT.
+             // But in `updateFixedExpense`, we stored the ADJUSTMENT.
+             // So if `futurePlan.fixedExpenses` contains the debt item, it contains the *Projected* amount at that time.
+             // But now `totalCCDebt` (Real) might be different from `lastMonthCCDebt` (Projected).
+             // So we should re-calculate using the adjustment.
+
+             // Remove the static entry from the plan and inject the dynamic one
+             nextFixedExpenses = nextFixedExpenses.filter(e => e.title !== 'Kredi Kartı Borcu (Geçen Ay)');
+
+             if (finalCCDebt > 0 || ccDebtAdjustment !== 0) {
+                 nextFixedExpenses.push({
+                    id: generateId(),
+                    title: 'Kredi Kartı Borcu (Geçen Ay)',
+                    amount: finalCCDebt > 0 ? finalCCDebt : 0,
+                    isPaid: false
+                 });
+             }
+        }
+
+        // 4. Handle Future Manual Debts (Add to CC Debts list)
+        // If the user added manual CC debts in the future month, they are in `futurePlan.ccDebts`.
+        // We need to append them to `nextMonthDebts` (which currently contains installments).
+        if (futurePlan.ccDebts) {
+            // Need to generate new IDs or keep existing?
+            // Usually keeping IDs is fine, but they might conflict if we are not careful.
+            // `futurePlan.ccDebts` are independent.
+            nextMonthDebts.push(...futurePlan.ccDebts);
         }
 
         return {

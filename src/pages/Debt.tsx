@@ -269,26 +269,28 @@ export default function Debt() {
                <div className={cn("p-2 rounded-full", debt.amount > 0 ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500")}>
                  <CreditCard size={20} />
                </div>
-               <div className="font-medium">{debt.description}</div>
+               <div>
+                 <div className="font-medium">{debt.description}</div>
+               </div>
             </div>
 
-            <div className="flex items-center gap-4">
-              <div className={cn("font-bold", debt.amount > 0 ? "text-green-500" : "text-red-500")}>
+            <div className="text-right">
+              <div className={cn("font-bold whitespace-nowrap", debt.amount > 0 ? "text-green-500" : "text-red-500")}>
                 {debt.amount > 0 ? '+' : ''}
                 {debt.amount.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
               </div>
-              <div className="flex flex-col gap-1">
+              <div className="flex justify-end gap-3 mt-1">
                 <button
                   onClick={() => handleEdit(debt)}
-                  className="text-primary hover:underline transition-colors"
+                  className="text-xs text-primary hover:underline flex items-center gap-1"
                 >
-                  <Pencil size={16} />
+                  <Pencil size={12} /> Düzenle
                 </button>
                 <button
                   onClick={() => deleteCCDebt(debt.id)}
-                  className="text-muted-foreground hover:text-destructive transition-colors"
+                  className="text-xs text-destructive hover:underline flex items-center gap-1"
                 >
-                  <Trash2 size={16} />
+                  <Trash2 size={12} /> Sil
                 </button>
               </div>
             </div>
