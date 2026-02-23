@@ -5,7 +5,7 @@ import { Card } from '../components/ui/Card';
 import { ProgressBar } from '../components/ui/ProgressBar';
 
 export default function Dashboard() {
-  const { state, viewDate, setViewDate, theme, toggleTheme } = useBudget();
+  const { state, viewDate, earliestAllowedMonth, setViewDate, theme, toggleTheme } = useBudget();
 
   // Helper to format month
   const formatMonth = (dateStr: string) => {
@@ -142,7 +142,11 @@ export default function Dashboard() {
         </div>
 
         <div className="flex justify-between items-center bg-secondary/30 rounded-xl p-2">
-           <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-secondary rounded-lg transition-colors">
+           <button
+             onClick={() => changeMonth(-1)}
+             disabled={viewDate <= earliestAllowedMonth}
+             className={`p-2 rounded-lg transition-colors ${viewDate <= earliestAllowedMonth ? 'opacity-30 cursor-not-allowed text-muted-foreground' : 'hover:bg-secondary'}`}
+           >
                <ChevronLeft size={20} />
            </button>
 
