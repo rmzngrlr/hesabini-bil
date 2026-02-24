@@ -53,7 +53,7 @@ export default function Settings() {
                     <CreditCard size={20} />
                 </div>
                 <div>
-                    <div className="font-medium">Yemek Kartı Modülü</div>
+                    <div className="font-medium">Yemek Kartı</div>
                     <div className="text-xs text-muted-foreground">Yemek kartı geliri ve harcamalarını takip et</div>
                 </div>
             </div>
