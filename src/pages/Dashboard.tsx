@@ -5,7 +5,7 @@ import { Card } from '../components/ui/Card';
 import { ProgressBar } from '../components/ui/ProgressBar';
 
 export default function Dashboard() {
-  const { state, viewDate, earliestAllowedMonth, setViewDate, theme, toggleTheme } = useBudget();
+  const { state, viewDate, earliestAllowedMonth, setViewDate, theme, toggleTheme, showMealCard } = useBudget();
 
   // Helper to format month
   const formatMonth = (dateStr: string) => {
@@ -180,14 +180,16 @@ export default function Dashboard() {
            </div>
         </Card>
 
-        <Card title="Kalan Yemek Kartı" className="bg-gradient-to-br from-card to-orange-500/5 border-orange-500/20">
-           <div className="text-3xl font-bold text-orange-600 mt-2">
-             {finalRemainingYk.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
-           </div>
-           <div className="text-xs text-muted-foreground mt-1">
-             Toplam: {totalYkResources.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
-           </div>
-        </Card>
+        {showMealCard && (
+            <Card title="Kalan Yemek Kartı" className="bg-gradient-to-br from-card to-orange-500/5 border-orange-500/20">
+            <div className="text-3xl font-bold text-orange-600 mt-2">
+                {finalRemainingYk.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+            </div>
+            <div className="text-xs text-muted-foreground mt-1">
+                Toplam: {totalYkResources.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+            </div>
+            </Card>
+        )}
 
         <Card title={isFuture ? "Tahmini Kredi Kartı Ödemesi" : "Toplam Kredi Kartı Borcu"} className="border-red-900/20 bg-red-950/5">
            <div className="text-3xl font-bold text-red-500 mt-2">

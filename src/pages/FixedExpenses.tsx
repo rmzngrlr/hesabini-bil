@@ -16,7 +16,8 @@ export default function FixedExpenses() {
     updateIncome,
     updateRollover,
     updateYkIncome,
-    updateYkRollover
+    updateYkRollover,
+    showMealCard
   } = useBudget();
 
   const [title, setTitle] = useState('');
@@ -134,34 +135,38 @@ export default function FixedExpenses() {
           </div>
         </Card>
 
-        <Card title="Yemek Kartı Geliri">
-          <div className="mt-2">
-             <input
-               type="number"
-               value={ykIncome}
-               onChange={(e) => setYkIncome(e.target.value)}
-               onBlur={handleYkIncomeSave}
-               className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-             />
-          </div>
-        </Card>
+        {showMealCard && (
+            <>
+                <Card title="Yemek Kartı Geliri">
+                <div className="mt-2">
+                    <input
+                    type="number"
+                    value={ykIncome}
+                    onChange={(e) => setYkIncome(e.target.value)}
+                    onBlur={handleYkIncomeSave}
+                    className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                </div>
+                </Card>
 
-        <Card title="Yemek Kartı Devreden">
-          <div className="mt-2">
-             <input
-               type="number"
-               value={ykRollover}
-               onChange={(e) => setYkRollover(e.target.value)}
-               onBlur={handleYkRolloverSave}
-               disabled={isFuture}
-               className={cn(
-                 "w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary",
-                 isFuture && "opacity-50 cursor-not-allowed bg-secondary/30"
-               )}
-             />
-             {isFuture && <div className="text-xs text-muted-foreground mt-1">Önceki aydan tahmini devir</div>}
-          </div>
-        </Card>
+                <Card title="Yemek Kartı Devreden">
+                <div className="mt-2">
+                    <input
+                    type="number"
+                    value={ykRollover}
+                    onChange={(e) => setYkRollover(e.target.value)}
+                    onBlur={handleYkRolloverSave}
+                    disabled={isFuture}
+                    className={cn(
+                        "w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary",
+                        isFuture && "opacity-50 cursor-not-allowed bg-secondary/30"
+                    )}
+                    />
+                    {isFuture && <div className="text-xs text-muted-foreground mt-1">Önceki aydan tahmini devir</div>}
+                </div>
+                </Card>
+            </>
+        )}
       </div>
 
       <h1 className="text-2xl font-bold tracking-tight mt-8">Sabit Giderler</h1>

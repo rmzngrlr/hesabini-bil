@@ -45,6 +45,8 @@ interface BudgetContextType {
   loadState: (newState: BudgetState) => void;
   theme: 'light' | 'dark';
   toggleTheme: () => void;
+  showMealCard: boolean;
+  toggleShowMealCard: () => void;
 }
 
 const BudgetContext = createContext<BudgetContextType | undefined>(undefined);
@@ -167,6 +169,15 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     } catch {
       return 'light';
+    }
+  });
+
+  const [showMealCard, setShowMealCard] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem('settings_showMealCard');
+      return stored !== 'false'; // Default true
+    } catch {
+      return true;
     }
   });
 
@@ -349,6 +360,10 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   }, [theme]);
 
+  useEffect(() => {
+    localStorage.setItem('settings_showMealCard', String(showMealCard));
+  }, [showMealCard]);
+
   // Projection Logic
   const derivedState = useMemo(() => {
     if (viewDate === realState.currentMonth) {
@@ -512,6 +527,10 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const toggleTheme = () => {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  };
+
+  const toggleShowMealCard = () => {
+    setShowMealCard(prev => !prev);
   };
 
   const addFixedExpense = (expense: Omit<FixedExpense, 'id' | 'isPaid'>) => {
@@ -1034,7 +1053,9 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             resetMonth,
             loadState,
             theme,
-            toggleTheme
+            toggleTheme,
+            showMealCard,
+            toggleShowMealCard
         }}
     >
         {children}

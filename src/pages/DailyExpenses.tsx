@@ -8,7 +8,7 @@ import { tr } from 'date-fns/locale';
 import { cn } from '../lib/utils';
 
 export default function DailyExpenses() {
-  const { state, viewDate, addDailyExpense, updateDailyExpense, deleteDailyExpense } = useBudget();
+  const { state, viewDate, addDailyExpense, updateDailyExpense, deleteDailyExpense, showMealCard } = useBudget();
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
@@ -148,22 +148,24 @@ export default function DailyExpenses() {
                 </button>
             </div>
 
-            <div className="flex gap-2">
-                <button
-                type="button"
-                onClick={() => { setType('NAKIT'); setActiveTab('NAKIT'); }}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${type === 'NAKIT' ? 'bg-primary/10 border-primary text-primary' : 'bg-secondary border-transparent text-muted-foreground'}`}
-                >
-                <Wallet size={16} /> Nakit
-                </button>
-                <button
-                type="button"
-                onClick={() => { setType('YK'); setActiveTab('YK'); }}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${type === 'YK' ? 'bg-primary/10 border-primary text-primary' : 'bg-secondary border-transparent text-muted-foreground'}`}
-                >
-                <CreditCard size={16} /> Yemek Kartı
-                </button>
-            </div>
+            {showMealCard && (
+                <div className="flex gap-2">
+                    <button
+                    type="button"
+                    onClick={() => { setType('NAKIT'); setActiveTab('NAKIT'); }}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${type === 'NAKIT' ? 'bg-primary/10 border-primary text-primary' : 'bg-secondary border-transparent text-muted-foreground'}`}
+                    >
+                    <Wallet size={16} /> Nakit
+                    </button>
+                    <button
+                    type="button"
+                    onClick={() => { setType('YK'); setActiveTab('YK'); }}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${type === 'YK' ? 'bg-primary/10 border-primary text-primary' : 'bg-secondary border-transparent text-muted-foreground'}`}
+                    >
+                    <CreditCard size={16} /> Yemek Kartı
+                    </button>
+                </div>
+            )}
 
             <div className="flex gap-2 mt-2">
                 {editingId && (
@@ -190,26 +192,28 @@ export default function DailyExpenses() {
         </div>
       )}
 
-      <div className="flex p-1 bg-secondary rounded-xl">
-        <button
-          onClick={() => setActiveTab('NAKIT')}
-          className={cn(
-            "flex-1 py-2 text-sm font-medium rounded-lg transition-all",
-            activeTab === 'NAKIT' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          Nakit Harcamalar
-        </button>
-        <button
-          onClick={() => setActiveTab('YK')}
-          className={cn(
-            "flex-1 py-2 text-sm font-medium rounded-lg transition-all",
-            activeTab === 'YK' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          Yemek Kartı Harcamaları
-        </button>
-      </div>
+      {showMealCard && (
+        <div className="flex p-1 bg-secondary rounded-xl">
+            <button
+            onClick={() => setActiveTab('NAKIT')}
+            className={cn(
+                "flex-1 py-2 text-sm font-medium rounded-lg transition-all",
+                activeTab === 'NAKIT' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+            )}
+            >
+            Nakit Harcamalar
+            </button>
+            <button
+            onClick={() => setActiveTab('YK')}
+            className={cn(
+                "flex-1 py-2 text-sm font-medium rounded-lg transition-all",
+                activeTab === 'YK' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+            )}
+            >
+            Yemek Kartı Harcamaları
+            </button>
+        </div>
+      )}
 
       <div className="space-y-6">
         {sortedDates.map((date) => (
