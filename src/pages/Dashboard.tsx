@@ -87,7 +87,11 @@ export default function Dashboard() {
   // If Future: Subtract sum of ALL fixed expenses.
   // If Current/Past: Subtract sum of PAID fixed expenses + Daily Spent.
 
-  const isFuture = viewDate > new Date().toISOString().slice(0, 7);
+  const getLocalMonth = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  };
+  const isFuture = viewDate > getLocalMonth();
 
   let totalCashSpent = 0;
   let spendingLabel = "Harcama";

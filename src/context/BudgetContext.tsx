@@ -3,7 +3,12 @@ import type { BudgetState, FixedExpense, DailyExpense, CCDebt, Installment, Mont
 
 const STORAGE_KEY = 'budget_app_data';
 
-const getCurrentMonth = () => new Date().toISOString().slice(0, 7); // YYYY-MM
+const getCurrentMonth = () => {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  return `${y}-${m}`;
+};
 
 const initialState: BudgetState = {
   version: 5,
@@ -208,13 +213,27 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   // Auto-Reset Month Logic (Operates on realState)
   useEffect(() => {
     const actualCurrentMonth = getCurrentMonth();
-    if (realState.currentMonth && realState.currentMonth !== actualCurrentMonth) {
-       setRealState(prev => {
-        if (prev.currentMonth === actualCurrentMonth) return prev;
 
-        const ykSpent = prev.dailyExpenses
-          .filter(e => e.type === 'YK' && e.amount < 0)
-          .reduce((sum, e) => sum + Math.abs(e.amount), 0);
+    // Only trigger if we moved FORWARD in time.
+    // If user changes system clock backwards, do nothing.
+    if (realState.currentMonth && actualCurrentMonth > realState.currentMonth) {
+       // Also snap the viewDate to the new actual month if it was pointing to the old current month
+       if (viewDate === realState.currentMonth) {
+           setViewDate(actualCurrentMonth);
+       }
+
+       setRealState(prevState => {
+        // Fast-forward catch-up loop
+        // We process all missing months sequentially to ensure correct rollover
+        // without causing a React render cascade or infinite loops.
+        let currentState = { ...prevState };
+
+        while (currentState.currentMonth < actualCurrentMonth) {
+            const prev = currentState;
+
+            const ykSpent = prev.dailyExpenses
+              .filter(e => e.type === 'YK' && e.amount < 0)
+              .reduce((sum, e) => sum + Math.abs(e.amount), 0);
         const ykDailyIncome = prev.dailyExpenses
           .filter(e => e.type === 'YK' && e.amount > 0)
           .reduce((sum, e) => sum + e.amount, 0);
@@ -264,9 +283,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
            }
         }).filter(inst => inst.remainingInstallments > 0);
 
-        const [year, month] = (prev.currentMonth || getCurrentMonth()).split('-').map(Number);
-        const nextDate = new Date(year, month, 1);
-        const nextMonthStr = nextDate.toISOString().slice(0, 7);
+        const nextMonthStr = addMonths(prev.currentMonth || getCurrentMonth(), 1);
 
         // New Fixed Expenses list
         // 1. Start with defaults (Rent, Dues) as 0, similar to projection logic
@@ -331,10 +348,25 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             nextMonthDebts.push(...futurePlan.ccDebts);
         }
 
-        return {
+        // 5. Apply Installment Overrides from Plan
+        if (futurePlan.installmentOverrides) {
+             nextMonthDebts.forEach(debt => {
+                 if (debt.installmentId && futurePlan.installmentOverrides![debt.installmentId] !== undefined) {
+                     debt.amount = futurePlan.installmentOverrides![debt.installmentId];
+                 }
+             });
+        }
+
+        // 6. Merge planned income if available
+        const finalIncome = futurePlan.income !== undefined ? futurePlan.income : prev.income;
+        const finalYkIncome = futurePlan.ykIncome !== undefined ? futurePlan.ykIncome : prev.ykIncome;
+
+        currentState = {
           ...prev,
           version: 5,
           currentMonth: nextMonthStr,
+          income: finalIncome,
+          ykIncome: finalYkIncome,
           history: [...prev.history, historyEntry],
           installments: nextMonthInstallments,
           ccDebts: nextMonthDebts,
@@ -343,6 +375,8 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           rollover: remainingCash > 0 ? remainingCash : 0,
           ykRollover: remainingYk > 0 ? remainingYk : 0,
         };
+      }
+      return currentState;
      });
     }
   }, [realState.currentMonth]);

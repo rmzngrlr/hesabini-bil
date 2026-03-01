@@ -9,7 +9,17 @@ import { cn } from '../lib/utils';
 
 export default function DailyExpenses() {
   const { state, viewDate, addDailyExpense, updateDailyExpense, deleteDailyExpense, showMealCard } = useBudget();
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+
+  // Get local date YYYY-MM-DD
+  const getLocalDate = () => {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+  };
+
+  const [date, setDate] = useState(getLocalDate());
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [type, setType] = useState<'NAKIT' | 'YK'>('NAKIT');
@@ -78,7 +88,11 @@ export default function DailyExpenses() {
     new Date(b).getTime() - new Date(a).getTime()
   );
 
-  const isFuture = viewDate > new Date().toISOString().slice(0, 7);
+  const getLocalMonth = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  };
+  const isFuture = viewDate > getLocalMonth();
   const formattedMonth = new Date(
       parseInt(viewDate.split('-')[0]),
       parseInt(viewDate.split('-')[1]) - 1
