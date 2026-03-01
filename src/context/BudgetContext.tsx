@@ -90,6 +90,129 @@ function monthDiff(d1: string, d2: string): number {
     return (y2 - y1) * 12 + (m2 - m1);
 }
 
+// Helper: Recalculate all subsequent months (Ripple Effect)
+function recalculateHistoryAndCurrent(state: BudgetState): BudgetState {
+    const newState = { ...state, history: [...state.history] };
+
+    // Sort history chronologically just in case
+    newState.history.sort((a, b) => a.month.localeCompare(b.month));
+
+    let runningRollover = 0;
+    let runningYkRollover = 0;
+    let runningCCDebt = 0;
+
+    // We assume the first history entry's starting rollover is correct (or 0).
+    // Actually, we should propagate from the first entry to the current month.
+
+    for (let i = 0; i < newState.history.length; i++) {
+        const hist = newState.history[i];
+
+        // Apply starting rollovers from previous iteration
+        if (i > 0) {
+            hist.rollover = runningRollover;
+            hist.ykRollover = runningYkRollover;
+
+            // Update CC Debt Fixed Expense for this month based on previous month's total debt
+            // Filter out old debt
+            hist.fixedExpenses = hist.fixedExpenses.filter(e => e.title !== 'Kredi Kartı Borcu (Geçen Ay)');
+            if (runningCCDebt > 0) {
+                hist.fixedExpenses.push({
+                    id: generateId(),
+                    title: 'Kredi Kartı Borcu (Geçen Ay)',
+                    amount: runningCCDebt,
+                    isPaid: true // Historical debts are assumed paid to not mess up historical cash flow, or maybe keep their original state?
+                    // Actually, if we re-inject it, we might lose the 'isPaid' state the user set.
+                    // Better approach: Find the existing item, update its amount, keep its isPaid state.
+                });
+            }
+        }
+
+        // Wait, if I just replace the CC Debt fixed expense, I lose `isPaid` state.
+        // Let's refine CC Debt injection for History:
+        if (i > 0) {
+            hist.rollover = runningRollover;
+            hist.ykRollover = runningYkRollover;
+
+            const existingCCDebtIdx = hist.fixedExpenses.findIndex(e => e.title === 'Kredi Kartı Borcu (Geçen Ay)');
+            if (runningCCDebt > 0) {
+                if (existingCCDebtIdx !== -1) {
+                    hist.fixedExpenses[existingCCDebtIdx].amount = runningCCDebt;
+                } else {
+                    hist.fixedExpenses.push({
+                        id: generateId(),
+                        title: 'Kredi Kartı Borcu (Geçen Ay)',
+                        amount: runningCCDebt,
+                        isPaid: true // default true for generated historical
+                    });
+                }
+            } else {
+                // If runningCCDebt is 0, remove it if exists
+                if (existingCCDebtIdx !== -1) {
+                    hist.fixedExpenses.splice(existingCCDebtIdx, 1);
+                }
+            }
+        }
+
+        // Calculate end-of-month balances for hist
+        // Nakit
+        const cashSpent = hist.dailyExpenses
+          .filter(e => e.type === 'NAKIT' && e.amount < 0)
+          .reduce((sum, e) => sum + Math.abs(e.amount), 0);
+        const cashDailyIncome = hist.dailyExpenses
+          .filter(e => e.type === 'NAKIT' && e.amount > 0)
+          .reduce((sum, e) => sum + e.amount, 0);
+        const paidFixed = hist.fixedExpenses
+          .filter(e => e.isPaid)
+          .reduce((sum, e) => sum + e.amount, 0);
+
+        const totalCash = hist.income + hist.rollover + cashDailyIncome;
+        runningRollover = totalCash - (paidFixed + cashSpent);
+        if (runningRollover < 0) runningRollover = 0;
+
+        // YK
+        const ykSpent = hist.dailyExpenses
+          .filter(e => e.type === 'YK' && e.amount < 0)
+          .reduce((sum, e) => sum + Math.abs(e.amount), 0);
+        const ykDailyIncome = hist.dailyExpenses
+          .filter(e => e.type === 'YK' && e.amount > 0)
+          .reduce((sum, e) => sum + e.amount, 0);
+
+        const totalYk = (hist.ykIncome || 0) + (hist.ykRollover || 0) + ykDailyIncome;
+        runningYkRollover = totalYk - ykSpent;
+        if (runningYkRollover < 0) runningYkRollover = 0;
+
+        // CC Debt
+        runningCCDebt = Math.abs(hist.ccDebts.reduce((sum, d) => sum + d.amount, 0));
+    }
+
+    // Finally, apply to Current Month
+    if (newState.history.length > 0) {
+        newState.rollover = runningRollover;
+        newState.ykRollover = runningYkRollover;
+
+        // Propagate CC Debt to Current Month
+        const existingCCDebtIdx = newState.fixedExpenses.findIndex(e => e.title === 'Kredi Kartı Borcu (Geçen Ay)');
+        if (runningCCDebt > 0) {
+            if (existingCCDebtIdx !== -1) {
+                newState.fixedExpenses[existingCCDebtIdx].amount = runningCCDebt;
+            } else {
+                newState.fixedExpenses.push({
+                    id: generateId(),
+                    title: 'Kredi Kartı Borcu (Geçen Ay)',
+                    amount: runningCCDebt,
+                    isPaid: false // default false for current month
+                });
+            }
+        } else {
+            if (existingCCDebtIdx !== -1) {
+                newState.fixedExpenses.splice(existingCCDebtIdx, 1);
+            }
+        }
+    }
+
+    return newState;
+}
+
 // Helper: Migrate State
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function migrateState(parsed: any): BudgetState {
@@ -568,29 +691,20 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   };
 
   const addFixedExpense = (expense: Omit<FixedExpense, 'id' | 'isPaid'>) => {
-    if (viewDate === realState.currentMonth) {
-        const newExpense: FixedExpense = {
-          id: generateId(),
-          title: expense.title,
-          amount: expense.amount,
-          isPaid: false,
-        };
-        setRealState(prev => ({ ...prev, fixedExpenses: [...prev.fixedExpenses, newExpense] }));
-    } else if (viewDate > realState.currentMonth) {
-        setRealState(prev => {
+    const newExpense: FixedExpense = {
+        id: generateId(),
+        title: expense.title,
+        amount: expense.amount,
+        isPaid: false,
+    };
+
+    setRealState(prev => {
+        if (viewDate === prev.currentMonth) {
+            return { ...prev, fixedExpenses: [...prev.fixedExpenses, newExpense] };
+        } else if (viewDate > prev.currentMonth) {
             const future = prev.futureData[viewDate] || {};
-
-            // Base on displayed expenses (Projected List)
             const projectedExpenses = derivedState.fixedExpenses || [];
-            // We need a fresh copy to modify
             const currentList = projectedExpenses.map(e => ({...e}));
-
-            const newExpense: FixedExpense = {
-                id: generateId(),
-                title: expense.title,
-                amount: expense.amount,
-                isPaid: false
-            };
 
             return {
                 ...prev,
@@ -602,23 +716,33 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                     }
                 }
             };
-        });
-    }
+        } else if (viewDate < prev.currentMonth) {
+            const histIndex = prev.history.findIndex(h => h.month === viewDate);
+            if (histIndex !== -1) {
+                const newHistory = [...prev.history];
+                newHistory[histIndex] = {
+                    ...newHistory[histIndex],
+                    fixedExpenses: [...newHistory[histIndex].fixedExpenses, newExpense]
+                };
+                return recalculateHistoryAndCurrent({ ...prev, history: newHistory });
+            }
+            return prev;
+        }
+        return prev;
+    });
   };
 
   const toggleFixedExpense = (id: string) => {
-    if (viewDate === realState.currentMonth) {
-        setRealState(prev => ({
-          ...prev,
-          fixedExpenses: prev.fixedExpenses.map(ex =>
-            ex.id === id ? { ...ex, isPaid: !ex.isPaid } : ex
-          ),
-        }));
-    } else if (viewDate > realState.currentMonth) {
-        setRealState(prev => {
+    setRealState(prev => {
+        if (viewDate === prev.currentMonth) {
+            return {
+              ...prev,
+              fixedExpenses: prev.fixedExpenses.map(ex =>
+                ex.id === id ? { ...ex, isPaid: !ex.isPaid } : ex
+              ),
+            };
+        } else if (viewDate > prev.currentMonth) {
              const future = prev.futureData[viewDate] || {};
-
-             // Base on displayed expenses
              const projectedExpenses = derivedState.fixedExpenses || [];
              const newList = projectedExpenses.map(e => ({...e}));
 
@@ -639,23 +763,34 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                     }
                 }
              };
-        });
-    }
+        } else if (viewDate < prev.currentMonth) {
+            const histIndex = prev.history.findIndex(h => h.month === viewDate);
+            if (histIndex !== -1) {
+                const newHistory = [...prev.history];
+                newHistory[histIndex] = {
+                    ...newHistory[histIndex],
+                    fixedExpenses: newHistory[histIndex].fixedExpenses.map(ex =>
+                        ex.id === id ? { ...ex, isPaid: !ex.isPaid } : ex
+                    )
+                };
+                return recalculateHistoryAndCurrent({ ...prev, history: newHistory });
+            }
+            return prev;
+        }
+        return prev;
+    });
   };
 
   const deleteFixedExpense = (id: string) => {
-    if (viewDate === realState.currentMonth) {
-        setRealState(prev => ({
-          ...prev,
-          fixedExpenses: prev.fixedExpenses.filter(ex => ex.id !== id),
-        }));
-    } else if (viewDate > realState.currentMonth) {
-         setRealState(prev => {
+    setRealState(prev => {
+        if (viewDate === prev.currentMonth) {
+            return {
+              ...prev,
+              fixedExpenses: prev.fixedExpenses.filter(ex => ex.id !== id),
+            };
+        } else if (viewDate > prev.currentMonth) {
             const future = prev.futureData[viewDate] || {};
-
             const projectedExpenses = derivedState.fixedExpenses || [];
-
-            // Filter returns a new array
             const newList = projectedExpenses.filter(ex => ex.id !== id);
 
             return {
@@ -668,55 +803,111 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                     }
                 }
             };
-        });
-    }
+        } else if (viewDate < prev.currentMonth) {
+            const histIndex = prev.history.findIndex(h => h.month === viewDate);
+            if (histIndex !== -1) {
+                const newHistory = [...prev.history];
+                newHistory[histIndex] = {
+                    ...newHistory[histIndex],
+                    fixedExpenses: newHistory[histIndex].fixedExpenses.filter(ex => ex.id !== id)
+                };
+                return recalculateHistoryAndCurrent({ ...prev, history: newHistory });
+            }
+            return prev;
+        }
+        return prev;
+    });
   };
 
   const addDailyExpense = (expense: Omit<DailyExpense, 'id'>) => {
-    if (viewDate !== realState.currentMonth) return;
     const newExpense: DailyExpense = {
       ...expense,
       id: generateId(),
     };
-    setRealState(prev => ({ ...prev, dailyExpenses: [...prev.dailyExpenses, newExpense] }));
+
+    setRealState(prev => {
+        if (viewDate === prev.currentMonth) {
+            return { ...prev, dailyExpenses: [...prev.dailyExpenses, newExpense] };
+        } else if (viewDate < prev.currentMonth) {
+            // Edit History
+            const histIndex = prev.history.findIndex(h => h.month === viewDate);
+            if (histIndex !== -1) {
+                const newHistory = [...prev.history];
+                newHistory[histIndex] = {
+                    ...newHistory[histIndex],
+                    dailyExpenses: [...newHistory[histIndex].dailyExpenses, newExpense]
+                };
+                return recalculateHistoryAndCurrent({ ...prev, history: newHistory });
+            }
+            return prev;
+        }
+        return prev;
+    });
   };
 
   const deleteDailyExpense = (id: string) => {
-    if (viewDate !== realState.currentMonth) return;
-    setRealState(prev => ({
-      ...prev,
-      dailyExpenses: prev.dailyExpenses.filter(ex => ex.id !== id),
-    }));
+    setRealState(prev => {
+        if (viewDate === prev.currentMonth) {
+            return {
+              ...prev,
+              dailyExpenses: prev.dailyExpenses.filter(ex => ex.id !== id),
+            };
+        } else if (viewDate < prev.currentMonth) {
+            const histIndex = prev.history.findIndex(h => h.month === viewDate);
+            if (histIndex !== -1) {
+                const newHistory = [...prev.history];
+                newHistory[histIndex] = {
+                    ...newHistory[histIndex],
+                    dailyExpenses: newHistory[histIndex].dailyExpenses.filter(ex => ex.id !== id)
+                };
+                return recalculateHistoryAndCurrent({ ...prev, history: newHistory });
+            }
+            return prev;
+        }
+        return prev;
+    });
   };
 
   const updateDailyExpense = (id: string, expense: Partial<DailyExpense>) => {
-     if (viewDate !== realState.currentMonth) return;
-     setRealState(prev => ({
-      ...prev,
-      dailyExpenses: prev.dailyExpenses.map(ex =>
-        ex.id === id ? { ...ex, ...expense } : ex
-      ),
-    }));
+     setRealState(prev => {
+        if (viewDate === prev.currentMonth) {
+             return {
+              ...prev,
+              dailyExpenses: prev.dailyExpenses.map(ex =>
+                ex.id === id ? { ...ex, ...expense } : ex
+              ),
+            };
+        } else if (viewDate < prev.currentMonth) {
+            const histIndex = prev.history.findIndex(h => h.month === viewDate);
+            if (histIndex !== -1) {
+                const newHistory = [...prev.history];
+                newHistory[histIndex] = {
+                    ...newHistory[histIndex],
+                    dailyExpenses: newHistory[histIndex].dailyExpenses.map(ex =>
+                        ex.id === id ? { ...ex, ...expense } : ex
+                    )
+                };
+                return recalculateHistoryAndCurrent({ ...prev, history: newHistory });
+            }
+            return prev;
+        }
+        return prev;
+    });
   };
 
   const addCCDebt = (debt: Omit<CCDebt, 'id'>) => {
-    if (viewDate === realState.currentMonth) {
-        const newDebt: CCDebt = {
-          ...debt,
-          id: generateId(),
-        };
-        setRealState(prev => ({ ...prev, ccDebts: [...prev.ccDebts, newDebt] }));
-    } else if (viewDate > realState.currentMonth) {
-        // Add to future data
-        setRealState(prev => {
+    const newDebt: CCDebt = {
+        ...debt,
+        id: generateId(),
+    };
+
+    setRealState(prev => {
+        if (viewDate === prev.currentMonth) {
+            return { ...prev, ccDebts: [...prev.ccDebts, newDebt] };
+        } else if (viewDate > prev.currentMonth) {
+            // Add to future data
             const future = prev.futureData[viewDate] || {};
             const currentDebts = future.ccDebts || [];
-
-            const newDebt: CCDebt = {
-                ...debt,
-                id: generateId(),
-            };
-
             return {
                 ...prev,
                 futureData: {
@@ -727,25 +918,33 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                     }
                 }
             };
-        });
-    }
+        } else if (viewDate < prev.currentMonth) {
+            // Edit History
+            const histIndex = prev.history.findIndex(h => h.month === viewDate);
+            if (histIndex !== -1) {
+                const newHistory = [...prev.history];
+                newHistory[histIndex] = {
+                    ...newHistory[histIndex],
+                    ccDebts: [...newHistory[histIndex].ccDebts, newDebt]
+                };
+                return recalculateHistoryAndCurrent({ ...prev, history: newHistory });
+            }
+            return prev;
+        }
+        return prev;
+    });
   };
 
   const deleteCCDebt = (id: string) => {
-    if (viewDate === realState.currentMonth) {
-        setRealState(prev => ({
-          ...prev,
-          ccDebts: prev.ccDebts.filter(d => d.id !== id),
-        }));
-    } else if (viewDate > realState.currentMonth) {
-        setRealState(prev => {
+    setRealState(prev => {
+        if (viewDate === prev.currentMonth) {
+            return {
+              ...prev,
+              ccDebts: prev.ccDebts.filter(d => d.id !== id),
+            };
+        } else if (viewDate > prev.currentMonth) {
             const future = prev.futureData[viewDate] || {};
             const currentDebts = future.ccDebts || [];
-
-            // If it's a projected installment, we can't "delete" it easily (it comes from prev month).
-            // Maybe we can "hide" it? But for now, let's only support deleting manually added future debts.
-            // If ID is not in currentDebts, it might be projected.
-
             return {
                 ...prev,
                 futureData: {
@@ -756,8 +955,20 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                     }
                 }
             };
-        });
-    }
+        } else if (viewDate < prev.currentMonth) {
+            const histIndex = prev.history.findIndex(h => h.month === viewDate);
+            if (histIndex !== -1) {
+                const newHistory = [...prev.history];
+                newHistory[histIndex] = {
+                    ...newHistory[histIndex],
+                    ccDebts: newHistory[histIndex].ccDebts.filter(d => d.id !== id)
+                };
+                return recalculateHistoryAndCurrent({ ...prev, history: newHistory });
+            }
+            return prev;
+        }
+        return prev;
+    });
   };
 
   const updateCCDebt = (id: string, debt: Partial<CCDebt>) => {
@@ -817,6 +1028,21 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 };
             });
         }
+    } else if (viewDate < realState.currentMonth) {
+        setRealState(prev => {
+            const histIndex = prev.history.findIndex(h => h.month === viewDate);
+            if (histIndex !== -1) {
+                const newHistory = [...prev.history];
+                newHistory[histIndex] = {
+                    ...newHistory[histIndex],
+                    ccDebts: newHistory[histIndex].ccDebts.map(d =>
+                        d.id === id ? { ...d, ...debt } : d
+                    )
+                };
+                return recalculateHistoryAndCurrent({ ...prev, history: newHistory });
+            }
+            return prev;
+        });
     }
   };
 
@@ -851,34 +1077,22 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   };
 
   const updateFixedExpense = (id: string, expense: Partial<FixedExpense>) => {
-    if (viewDate === realState.currentMonth) {
-        setRealState(prev => ({
-          ...prev,
-          fixedExpenses: prev.fixedExpenses.map(ex =>
-            ex.id === id ? { ...ex, ...expense } : ex
-          ),
-        }));
-    } else if (viewDate > realState.currentMonth) {
-         setRealState(prev => {
+    setRealState(prev => {
+        if (viewDate === prev.currentMonth) {
+            return {
+              ...prev,
+              fixedExpenses: prev.fixedExpenses.map(ex =>
+                ex.id === id ? { ...ex, ...expense } : ex
+              ),
+            };
+        } else if (viewDate > prev.currentMonth) {
             const future = prev.futureData[viewDate] || {};
 
-            // Handle CC Debt Override separately
-            // Need to identify if this update is for "Kredi Kartı Borcu (Geçen Ay)"
-            // We can check title or ID pattern? ID pattern `proj-cc-debt-` is reliable if generated by `derivedState`.
-
-            const isCCDebt = id.startsWith('proj-cc-debt-');
+            const isCCDebt = id.startsWith('proj-cc-debt-') || expense.title === 'Kredi Kartı Borcu (Geçen Ay)';
 
             if (isCCDebt && expense.amount !== undefined) {
-                // Calculate adjustment
-                // We need the *calculated base* to determine adjustment.
-                // The current value in `derivedState` is `base + previousAdjustment`.
-                // We want to find `newAdjustment` such that `base + newAdjustment = newAmount`.
-                // `derivedState` has the `currentDisplayedAmount`.
-                // So `base = currentDisplayedAmount - previousAdjustment`.
-                // `newAdjustment = newAmount - base`.
-
                 const previousAdjustment = future.ccDebtAdjustment || 0;
-                const currentItem = derivedState.fixedExpenses.find(e => e.id === id);
+                const currentItem = derivedState.fixedExpenses.find(e => e.id === id || e.title === 'Kredi Kartı Borcu (Geçen Ay)');
                 const currentDisplayedAmount = currentItem ? currentItem.amount : 0;
 
                 const base = currentDisplayedAmount - previousAdjustment;
@@ -896,9 +1110,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 };
             }
 
-            // Normal Fixed Expense Update
             const projectedExpenses = derivedState.fixedExpenses || [];
-
             const newList = projectedExpenses.map(e => ({...e}));
 
             const index = newList.findIndex(ex => ex.id === id);
@@ -918,48 +1130,95 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                     }
                 }
             };
-        });
-    }
+        } else if (viewDate < prev.currentMonth) {
+            const histIndex = prev.history.findIndex(h => h.month === viewDate);
+            if (histIndex !== -1) {
+                const newHistory = [...prev.history];
+
+                // If it's a CC Debt update in history, we should allow it but note that
+                // it might be overwritten by recalculateHistoryAndCurrent unless we treat it as an adjustment there too.
+                // For simplicity, let's just update the list and let the engine recalculate.
+                // Wait! If they edit CC Debt in history, it shouldn't be recalculated/overwritten?
+                // The prompt says "Geçtiğimiz aylarda ... düzenleme yapmama fırsat ver. O bugünü de etkilesin".
+                // If I edit "Rent", the rollover changes.
+                // If I edit "CC Debt" in history, well, CC Debt in history is calculated from the *previous* month.
+                // If they manually edit it, and then the recalculation engine runs, it will overwrite it based on the previous month.
+                // Is this desired? Usually yes, because CC debt is strictly derived from transactions.
+                // If they want to change CC debt, they should add a transaction in the previous month.
+                // However, we allow editing Fixed Expenses.
+
+                newHistory[histIndex] = {
+                    ...newHistory[histIndex],
+                    fixedExpenses: newHistory[histIndex].fixedExpenses.map(ex =>
+                        ex.id === id ? { ...ex, ...expense } : ex
+                    )
+                };
+                return recalculateHistoryAndCurrent({ ...prev, history: newHistory });
+            }
+            return prev;
+        }
+        return prev;
+    });
   };
 
   const updateIncome = (income: number) => {
-    if (viewDate === realState.currentMonth) {
-        setRealState(prev => ({ ...prev, income }));
-    } else if (viewDate > realState.currentMonth) {
-         setRealState(prev => ({
-            ...prev,
-            futureData: {
-                ...prev.futureData,
-                [viewDate]: {
-                    ...(prev.futureData[viewDate] || {}),
-                    income
+    setRealState(prev => {
+        if (viewDate === prev.currentMonth) {
+            return { ...prev, income };
+        } else if (viewDate > prev.currentMonth) {
+            const future = prev.futureData[viewDate] || {};
+            return {
+                ...prev,
+                futureData: {
+                    ...prev.futureData,
+                    [viewDate]: { ...future, income }
                 }
+            };
+        } else if (viewDate < prev.currentMonth) {
+            const histIndex = prev.history.findIndex(h => h.month === viewDate);
+            if (histIndex !== -1) {
+                const newHistory = [...prev.history];
+                newHistory[histIndex] = { ...newHistory[histIndex], income };
+                return recalculateHistoryAndCurrent({ ...prev, history: newHistory });
             }
-        }));
-    }
+            return prev;
+        }
+        return prev;
+    });
   };
 
   const updateRollover = (rollover: number) => {
+    // Rollover is dynamic. Allow manual override only for current month or history if really needed.
+    // Actually, setting rollover in history will just be overwritten by recalculateHistoryAndCurrent.
     if (viewDate === realState.currentMonth) {
         setRealState(prev => ({ ...prev, rollover }));
     }
   };
 
   const updateYkIncome = (ykIncome: number) => {
-    if (viewDate === realState.currentMonth) {
-        setRealState(prev => ({ ...prev, ykIncome }));
-    } else if (viewDate > realState.currentMonth) {
-        setRealState(prev => ({
-            ...prev,
-            futureData: {
-                ...prev.futureData,
-                [viewDate]: {
-                    ...(prev.futureData[viewDate] || {}),
-                    ykIncome
+    setRealState(prev => {
+        if (viewDate === prev.currentMonth) {
+            return { ...prev, ykIncome };
+        } else if (viewDate > prev.currentMonth) {
+            const future = prev.futureData[viewDate] || {};
+            return {
+                ...prev,
+                futureData: {
+                    ...prev.futureData,
+                    [viewDate]: { ...future, ykIncome }
                 }
+            };
+        } else if (viewDate < prev.currentMonth) {
+            const histIndex = prev.history.findIndex(h => h.month === viewDate);
+            if (histIndex !== -1) {
+                const newHistory = [...prev.history];
+                newHistory[histIndex] = { ...newHistory[histIndex], ykIncome };
+                return recalculateHistoryAndCurrent({ ...prev, history: newHistory });
             }
-        }));
-    }
+            return prev;
+        }
+        return prev;
+    });
   };
 
   const updateYkRollover = (ykRollover: number) => {

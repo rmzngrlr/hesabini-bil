@@ -182,9 +182,11 @@ export default function Debt() {
                <button
                  type="button"
                  onClick={() => setIsInstallment(!isInstallment)}
+                 disabled={viewDate < getLocalMonth()}
                  className={cn(
                    "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors text-sm",
-                   isInstallment ? "bg-primary/10 border-primary text-primary" : "bg-secondary border-transparent text-muted-foreground"
+                   isInstallment ? "bg-primary/10 border-primary text-primary" : "bg-secondary border-transparent text-muted-foreground",
+                   viewDate < getLocalMonth() && "opacity-50 cursor-not-allowed"
                  )}
                >
                  <CalendarClock size={16} />
@@ -210,6 +212,11 @@ export default function Debt() {
                {editingId ? 'Güncelle' : 'Ekle'}
              </button>
           </div>
+          {viewDate < getLocalMonth() && (
+             <div className="text-xs text-muted-foreground text-center mt-2">
+                Geçmiş aylara yeni taksit planı eklenemez, sadece tek çekim harcama eklenebilir.
+             </div>
+          )}
         </form>
       </Card>
 

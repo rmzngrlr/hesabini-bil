@@ -129,13 +129,14 @@ export default function FixedExpenses() {
                value={rollover}
                onChange={(e) => setRollover(e.target.value)}
                onBlur={handleRolloverSave}
-               disabled={isFuture}
+               disabled={isFuture || viewDate < getLocalMonth()}
                className={cn(
                  "w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary",
-                 isFuture && "opacity-50 cursor-not-allowed bg-secondary/30"
+                 (isFuture || viewDate < getLocalMonth()) && "opacity-50 cursor-not-allowed bg-secondary/30"
                )}
              />
              {isFuture && <div className="text-xs text-muted-foreground mt-1">Önceki aydan tahmini devir</div>}
+             {viewDate < getLocalMonth() && <div className="text-xs text-muted-foreground mt-1">Geçmiş devir otomatik hesaplanır</div>}
           </div>
         </Card>
 
@@ -160,13 +161,14 @@ export default function FixedExpenses() {
                     value={ykRollover}
                     onChange={(e) => setYkRollover(e.target.value)}
                     onBlur={handleYkRolloverSave}
-                    disabled={isFuture}
+                    disabled={isFuture || viewDate < getLocalMonth()}
                     className={cn(
                         "w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary",
-                        isFuture && "opacity-50 cursor-not-allowed bg-secondary/30"
+                        (isFuture || viewDate < getLocalMonth()) && "opacity-50 cursor-not-allowed bg-secondary/30"
                     )}
                     />
                     {isFuture && <div className="text-xs text-muted-foreground mt-1">Önceki aydan tahmini devir</div>}
+                    {viewDate < getLocalMonth() && <div className="text-xs text-muted-foreground mt-1">Geçmiş devir otomatik hesaplanır</div>}
                 </div>
                 </Card>
             </>

@@ -98,7 +98,17 @@ export const exportToExcel = (state: BudgetState) => {
   XLSX.utils.book_append_sheet(wb, wsCurrent, `Mevcut - ${state.currentMonth}`);
 
   // --- 2. History Sheets ---
-  state.history.forEach(hist => {
+  // To prevent memory crashes from corrupted data (infinite loops),
+  // limit export to the most recent 60 months and only months <= current actual month.
+  const actualDate = new Date();
+  const actualMonthStr = `${actualDate.getFullYear()}-${String(actualDate.getMonth() + 1).padStart(2, '0')}`;
+
+  const validHistory = state.history
+    .filter(h => h.month <= actualMonthStr)
+    .sort((a, b) => b.month.localeCompare(a.month)) // Sort descending to get most recent
+    .slice(0, 60); // Keep only last 60 months
+
+  validHistory.forEach(hist => {
     const histData: SheetData[] = [];
 
     // General Info
