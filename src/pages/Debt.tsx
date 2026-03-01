@@ -87,7 +87,11 @@ export default function Debt() {
   // Display as positive magnitude.
   const totalDebt = Math.abs(state.ccDebts.reduce((sum, d) => sum + d.amount, 0));
 
-  const isFuture = viewDate > new Date().toISOString().slice(0, 7);
+  const getLocalMonth = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  };
+  const isFuture = viewDate > getLocalMonth();
   const formattedMonth = new Date(
       parseInt(viewDate.split('-')[0]),
       parseInt(viewDate.split('-')[1]) - 1
