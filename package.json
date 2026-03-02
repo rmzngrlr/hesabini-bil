@@ -7,7 +7,13 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "server:install": "cd server && npm install",
+    "server:start": "cd server && npm start",
+    "server:build": "cd server && npm run build",
+    "server:serve": "cd server && npm run serve",
+    "dev:all": "concurrently \"npm run dev\" \"npm run server:start\"",
+    "start:all": "concurrently \"npm run preview\" \"npm run server:serve\""
   },
   "dependencies": {
     "clsx": "^2.1.1",
@@ -27,6 +33,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
     "autoprefixer": "^10.4.24",
+    "concurrently": "^9.2.1",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
