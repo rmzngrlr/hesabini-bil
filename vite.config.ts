@@ -6,9 +6,21 @@ import path from 'path'
 export default defineConfig({
   server: {
     port: 3002,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      }
+    }
   },
   preview: {
     port: 3002,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      }
+    }
   },
   resolve: {
     alias: {
