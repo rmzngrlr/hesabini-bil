@@ -13,7 +13,7 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
         const row = await db.get('SELECT data FROM budgets WHERE user_id = ?', [userId]);
 
         if (row) {
-            res.json({ data: JSON.parse(row.data) });
+            res.json(JSON.parse(row.data));
         } else {
             // Return 404 or an empty object. Usually 404 implies "not found, create one".
             // Let's return 404 to let frontend know it needs to initialize.

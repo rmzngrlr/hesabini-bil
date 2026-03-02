@@ -1,11 +1,13 @@
 import { useRef } from 'react';
 import { useBudget } from '../context/BudgetContext';
+import { useAuth } from '../context/AuthContext';
 import { Card } from '../components/ui/Card';
-import { Download, Upload, CreditCard } from 'lucide-react';
+import { Download, Upload, CreditCard, LogOut, User } from 'lucide-react';
 import { exportToExcel, importFromExcel } from '../services/excelService';
 
 export default function Settings() {
   const { state, loadState, showMealCard, toggleShowMealCard } = useBudget();
+  const { username, logout } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const handleExport = () => {
@@ -45,6 +47,27 @@ export default function Settings() {
        <header className="flex justify-between items-center">
         <h1 className="text-2xl font-bold tracking-tight">Ayarlar</h1>
       </header>
+
+      <Card title="Hesap">
+        <div className="flex items-center justify-between p-2">
+            <div className="flex items-center gap-3">
+                <div className="p-2 rounded-full bg-blue-500/10 text-blue-500">
+                    <User size={20} />
+                </div>
+                <div>
+                    <div className="font-medium">Giriş Yapılan Kullanıcı</div>
+                    <div className="text-xs text-muted-foreground">{username || 'Bilinmiyor'}</div>
+                </div>
+            </div>
+            <button
+              onClick={logout}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-100 rounded-lg hover:bg-red-200 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 transition-colors"
+            >
+              <LogOut size={16} />
+              <span>Çıkış Yap</span>
+            </button>
+        </div>
+      </Card>
 
       <Card title="Görünüm ve Özellikler">
         <div className="flex items-center justify-between p-2">

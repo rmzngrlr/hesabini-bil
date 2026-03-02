@@ -1,7 +1,7 @@
-import React, { createContext, useContext, useEffect, useState, useMemo, type ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo, useRef, type ReactNode } from 'react';
 import type { BudgetState, FixedExpense, DailyExpense, CCDebt, Installment, MonthlyHistory } from '../types';
-
-const STORAGE_KEY = 'budget_app_data';
+import { fetchWithAuth } from '../services/api';
+import { useAuth } from './AuthContext';
 
 const getCurrentMonth = () => {
   const d = new Date();
@@ -290,6 +290,10 @@ function migrateState(parsed: any): BudgetState {
 }
 
 export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const { isAuthenticated } = useAuth();
+  const isInitialMount = useRef(true);
+  const [isLoading, setIsLoading] = useState(true);
+
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     try {
       const stored = localStorage.getItem('theme');
@@ -309,21 +313,43 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   });
 
-  const [realState, setRealState] = useState<BudgetState>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        return migrateState(parsed);
-      }
-      return initialState;
-    } catch (e) {
-      console.error("Failed to parse local storage", e);
-      return initialState;
-    }
-  });
+  const [realState, setRealState] = useState<BudgetState>(initialState);
 
-  const [viewDate, setViewDate] = useState<string>(() => realState.currentMonth || getCurrentMonth());
+  const [viewDate, setViewDate] = useState<string>(getCurrentMonth());
+
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Fetch initial state from server when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      setIsLoading(true);
+      setLoadError(null);
+      fetchWithAuth('/budget')
+        .then(async res => {
+          if (!res.ok) {
+            if (res.status === 404) {
+               // New user, no data yet. That's fine, we use initialState
+               return null;
+            }
+            throw new Error(`Server returned ${res.status}`);
+          }
+          return res.json();
+        })
+        .then(data => {
+          if (data) {
+             const migrated = migrateState(data);
+             setRealState(migrated);
+             setViewDate(migrated.currentMonth || getCurrentMonth());
+          }
+          setIsLoading(false);
+        })
+        .catch(err => {
+          console.error("Failed to load budget data from server", err);
+          setLoadError("Sunucu ile iletişim kurulamadı. Verileriniz korunması için uygulama durduruldu.");
+          // Do NOT set isLoading to false if it's a critical error to prevent syncing empty state
+        });
+    }
+  }, [isAuthenticated]);
 
   const earliestAllowedMonth = useMemo(() => {
       const historyMonths = realState.history.map(h => h.month);
@@ -505,8 +531,29 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   }, [realState.currentMonth]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(realState));
-  }, [realState]);
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    // Skip sync if we are just loading from the server
+    if (isLoading || !isAuthenticated) return;
+
+    const syncState = async () => {
+      try {
+        await fetchWithAuth('/budget', {
+          method: 'POST',
+          body: JSON.stringify(realState)
+        });
+      } catch (e) {
+        console.error("Failed to sync budget data to server", e);
+      }
+    };
+
+    // Debounce the sync to avoid spamming the server
+    const timeoutId = setTimeout(syncState, 500);
+    return () => clearTimeout(timeoutId);
+  }, [realState, isAuthenticated, isLoading]);
 
   useEffect(() => {
     localStorage.setItem('theme', theme);
@@ -1319,6 +1366,25 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     const migrated = migrateState(newState);
     setRealState(migrated);
   };
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground gap-4">
+         <div className="text-red-500 text-xl font-bold">Hata</div>
+         <p className="text-center max-w-md">{loadError}</p>
+         <button
+           onClick={() => window.location.reload()}
+           className="px-4 py-2 bg-primary text-primary-foreground rounded-lg"
+         >
+           Yeniden Dene
+         </button>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center bg-background text-foreground">Veriler yükleniyor...</div>;
+  }
 
   return (
     <BudgetContext.Provider
