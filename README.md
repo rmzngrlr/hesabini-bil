@@ -25,25 +25,47 @@ Modern, sade ve tamamen çevrimdışı çalışabilen bir kişisel finans yönet
     *   **PWA Desteği:** "Ana Ekrana Ekle" diyerek bir uygulama gibi yükleyebilirsiniz.
     *   **Karanlık Mod (Dark Mode):** Göz yormayan, şık "Fintech" tasarımı.
 
-## Kurulum ve Çalıştırma
+## Kurulum ve Çalıştırma (Ubuntu / Linux Sunucu)
 
-Bu proje **React (Vite)** ve **Tailwind CSS** ile geliştirilmiştir.
+Bu proje **React (Vite)** frontend ve **Node.js/Express (SQLite)** backend bileşenlerinden oluşmaktadır. Ubuntu veya benzeri Linux sunucularda çalıştırmak için hazır scriptler bulunmaktadır.
 
-1.  **Bağımlılıkları Yükleyin:**
-    ```bash
-    npm install
-    ```
+Scriptleri çalıştırmadan önce çalıştırılabilir (executable) izinlerinin olduğundan emin olun:
+```bash
+chmod +x baslat_gelistirici.sh
+chmod +x baslat_uygulama.sh
+```
 
-2.  **Geliştirme Sunucusunu Başlatın:**
-    ```bash
-    npm run dev
-    ```
+### 1. Canlı/Kullanım Modu (Production/Preview)
 
-3.  **Uygulamayı Derleyin (Production Build):**
-    ```bash
-    npm run build
-    ```
-    Oluşan `dist` klasörünü herhangi bir statik sunucuda (Vercel, Netlify, GitHub Pages vb.) yayınlayabilirsiniz.
+Uygulamayı derleyip (build) hem frontend hem de backend'i aynı anda başlatmak için:
+
+```bash
+./baslat_uygulama.sh
+```
+
+*Bu script otomatik olarak:*
+* Eksikse hem ana dizin hem de `server` dizinindeki paketleri (`npm install`) yükler.
+* Frontend ve Backend'i derler (`npm run build` & `npm run server:build`).
+* Uygulamayı ağa açık (`--host`) şekilde, backend ile eşzamanlı olarak başlatır.
+
+### 2. Geliştirici Modu (Development)
+
+Kod üzerinde anlık değişiklikler yaparak çalışmak istiyorsanız:
+
+```bash
+./baslat_gelistirici.sh
+```
+
+*Bu script otomatik olarak:*
+* Eksikse gerekli paketleri yükler.
+* Frontend ve Backend'i geliştirici modunda (hot-reload desteğiyle) eşzamanlı olarak başlatır.
+* Sunucuya ağ üzerinden (`--host`) erişmenize olanak tanır.
+
+### Manuel Komutlar (Gelişmiş)
+
+Eğer scriptleri kullanmak istemezseniz aşağıdaki npm komutlarını kullanabilirsiniz:
+* `npm run dev:all` - Geliştirme sunucularını başlatır (Frontend + Backend).
+* `npm run start:all` - Uygulamayı derlenmiş haliyle canlı önizleme modunda başlatır.
 
 ## Teknolojiler
 

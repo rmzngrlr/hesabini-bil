@@ -1,8 +1,14 @@
 #!/bin/bash
 if [ ! -d "node_modules" ]; then
-    echo "Node modules bulunamadi, yukleniyor..."
+    echo "Ana dizindeki node_modules bulunamadi, yukleniyor..."
     npm install
 fi
-echo "Baslatiliyor..."
-npm run dev -- --host
+
+if [ ! -d "server/node_modules" ]; then
+    echo "Sunucu dizinindeki node_modules bulunamadi, yukleniyor..."
+    npm run server:install
+fi
+
+echo "Frontend ve Backend geliştirme ortamı başlatılıyor..."
+npm run dev:all
 read -p "Press any key to continue..."
