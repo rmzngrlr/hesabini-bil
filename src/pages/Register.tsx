@@ -31,16 +31,26 @@ export default function Register() {
         body: JSON.stringify({ username, password })
       });
 
-      const data = await res.json();
-
       if (!res.ok) {
-        throw new Error(data.error || 'Kayıt yapılamadı.');
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+            const data = await res.json();
+            throw new Error(data.error || 'Kayıt yapılamadı.');
+        } else {
+            throw new Error(`Sunucu hatası: ${res.status} ${res.statusText}`);
+        }
       }
 
-      login(data.token, data.username);
-      navigate('/');
+      const contentType = res.headers.get("content-type");
+      if (contentType && contentType.indexOf("application/json") !== -1) {
+          const data = await res.json();
+          login(data.token, data.username);
+          navigate('/');
+      } else {
+          throw new Error('Sunucudan geçersiz bir yanıt alındı.');
+      }
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || 'Beklenmeyen bir hata oluştu. Sunucu çalışmıyor olabilir.');
     } finally {
       setIsLoading(false);
     }
