@@ -8,7 +8,7 @@ import { getDb } from './db';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3005;
+const PORT = 3005; // Sabit port kullanımı, global PORT değişkeninin çakışmasını önler
 
 // Middleware
 app.use(cors());
@@ -30,8 +30,8 @@ const startServer = async () => {
         await getDb();
         console.log('Veritabanı bağlantısı başarılı.');
 
-        app.listen(PORT, () => {
-            console.log(`Sunucu http://localhost:${PORT} portunda çalışıyor.`);
+        app.listen(PORT as number, '0.0.0.0', () => {
+            console.log(`Sunucu http://0.0.0.0:${PORT} portunda çalışıyor.`);
         });
     } catch (error) {
         console.error('Sunucu başlatılamadı:', error);
