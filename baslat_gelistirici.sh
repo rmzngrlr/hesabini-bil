@@ -1,4 +1,7 @@
 #!/bin/bash
+echo "Dosya izinleri kontrol ediliyor ve düzeltiliyor..."
+sudo chown -R $(whoami) .
+
 if [ ! -d "node_modules" ]; then
     echo "Ana dizindeki node_modules bulunamadi, yukleniyor..."
     npm install

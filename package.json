@@ -12,8 +12,8 @@
     "server:start": "cd server && npm start",
     "server:build": "cd server && npm run build",
     "server:serve": "cd server && npm run serve",
-    "dev:all": "concurrently \"npm run dev\" \"npm run server:start\"",
-    "start:all": "concurrently \"npm run preview\" \"npm run server:serve\""
+    "dev:all": "npx concurrently \"npm run dev\" \"npm run server:start\"",
+    "start:all": "npx concurrently \"npm run preview\" \"npm run server:serve\""
   },
   "dependencies": {
     "clsx": "^2.1.1",
