@@ -4,12 +4,12 @@ sudo chown -R $(whoami) .
 
 if [ ! -d "node_modules" ]; then
     echo "Ana dizindeki node_modules bulunamadi, yukleniyor..."
-    npm install
+    npm install --include=dev
 fi
 
 if [ ! -d "server/node_modules" ]; then
     echo "Sunucu dizinindeki node_modules bulunamadi, yukleniyor..."
-    npm run server:install
+    cd server && npm install --include=dev && cd ..
 fi
 
 echo "Frontend derleniyor..."
