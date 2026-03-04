@@ -13,6 +13,8 @@ export default function FixedExpenses() {
     updateFixedExpense,
     toggleFixedExpense,
     deleteFixedExpense,
+    addCustomIncome,
+    deleteCustomIncome,
     updateIncome,
     updateRollover,
     updateYkIncome,
@@ -23,6 +25,9 @@ export default function FixedExpenses() {
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  const [incomeTitle, setIncomeTitle] = useState('');
+  const [incomeAmount, setIncomeAmount] = useState('');
 
   // Local state for inputs
   const [income, setIncome] = useState(state.income.toString());
@@ -65,6 +70,18 @@ export default function FixedExpenses() {
     setEditingId(null);
     setTitle('');
     setAmount('');
+  };
+
+  const handleAddCustomIncome = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!incomeTitle || !incomeAmount) return;
+
+    addCustomIncome({
+      title: incomeTitle,
+      amount: parseFloat(incomeAmount)
+    });
+    setIncomeTitle('');
+    setIncomeAmount('');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -173,6 +190,61 @@ export default function FixedExpenses() {
                 </Card>
             </>
         )}
+      </div>
+
+      <div className="mt-6 mb-8 space-y-4">
+        <h2 className="text-xl font-semibold tracking-tight">Ek Sabit Gelirler</h2>
+        <form onSubmit={handleAddCustomIncome} className="flex flex-col sm:flex-row gap-2 w-full">
+          <input
+            type="text"
+            placeholder="Gelir Adı (örn: Kira Geliri)"
+            value={incomeTitle}
+            onChange={(e) => setIncomeTitle(e.target.value)}
+            className="w-full sm:flex-[2] min-w-0 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+          <div className="flex gap-2 w-full sm:w-auto">
+            <div className="relative w-full sm:w-32">
+              <input
+                type="number"
+                placeholder="0"
+                value={incomeAmount}
+                onChange={(e) => setIncomeAmount(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary pr-8"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">₺</span>
+            </div>
+            <button
+              type="submit"
+              className="p-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors shrink-0"
+            >
+              <Plus size={24} />
+            </button>
+          </div>
+        </form>
+
+        <div className="space-y-2">
+          {state.customIncomes?.map((income) => (
+            <div key={income.id} className="flex items-center justify-between p-3 rounded-lg bg-card border border-border/50">
+              <span className="font-medium">{income.title}</span>
+              <div className="flex items-center gap-3">
+                <span className="font-bold text-green-500">
+                  +{income.amount.toLocaleString('tr-TR')} ₺
+                </span>
+                <button
+                  onClick={() => deleteCustomIncome(income.id)}
+                  className="p-1 text-muted-foreground hover:text-red-500 transition-colors rounded-lg hover:bg-red-500/10"
+                >
+                  <Trash2 size={18} />
+                </button>
+              </div>
+            </div>
+          ))}
+          {(!state.customIncomes || state.customIncomes.length === 0) && (
+            <div className="text-center p-4 text-muted-foreground text-sm bg-secondary/50 rounded-lg border border-border/50 border-dashed">
+              Bu ay için eklenmiş sabit gelir bulunmuyor.
+            </div>
+          )}
+        </div>
       </div>
 
       <h1 className="text-2xl font-bold tracking-tight mt-8">Sabit Giderler</h1>

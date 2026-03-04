@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useMemo, useRef, type ReactNode } from 'react';
-import type { BudgetState, FixedExpense, DailyExpense, CCDebt, Installment, MonthlyHistory } from '../types';
+import type { BudgetState, FixedExpense, CustomIncome, DailyExpense, CCDebt, Installment, MonthlyHistory } from '../types';
 import { fetchWithAuth } from '../services/api';
 import { useAuth } from './AuthContext';
 
@@ -11,13 +11,14 @@ const getCurrentMonth = () => {
 };
 
 const initialState: BudgetState = {
-  version: 5,
+  version: 6,
   currentMonth: getCurrentMonth(),
   income: 0,
   rollover: 0,
   ykIncome: 0,
   ykRollover: 0,
   fixedExpenses: [],
+  customIncomes: [],
   dailyExpenses: [],
   ccDebts: [],
   installments: [],
@@ -33,6 +34,8 @@ interface BudgetContextType {
   addFixedExpense: (expense: Omit<FixedExpense, 'id' | 'isPaid'>) => void;
   toggleFixedExpense: (id: string) => void;
   deleteFixedExpense: (id: string) => void;
+  addCustomIncome: (income: Omit<CustomIncome, 'id'>) => void;
+  deleteCustomIncome: (id: string) => void;
   addDailyExpense: (expense: Omit<DailyExpense, 'id'>) => void;
   deleteDailyExpense: (id: string) => void;
   addCCDebt: (debt: Omit<CCDebt, 'id'>) => void;
@@ -286,6 +289,15 @@ function migrateState(parsed: any): BudgetState {
       };
     }
 
+    if (parsed.version === 5) {
+      parsed = {
+        ...initialState,
+        ...parsed,
+        customIncomes: parsed.customIncomes || [],
+        version: 6
+      };
+    }
+
     return { ...initialState, ...parsed };
 }
 
@@ -398,7 +410,8 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const paidFixed = prev.fixedExpenses
           .filter(e => e.isPaid)
           .reduce((sum, e) => sum + e.amount, 0);
-        const totalCash = prev.income + prev.rollover + cashDailyIncome;
+        const customIncomeTotal = (prev.customIncomes || []).reduce((sum, e) => sum + e.amount, 0);
+        const totalCash = prev.income + prev.rollover + cashDailyIncome + customIncomeTotal;
         const remainingCash = totalCash - (paidFixed + cashSpent);
 
         const totalCCDebt = Math.abs(prev.ccDebts.reduce((sum, d) => sum + d.amount, 0));
@@ -410,6 +423,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           ykIncome: prev.ykIncome,
           ykRollover: prev.ykRollover,
           fixedExpenses: prev.fixedExpenses,
+          customIncomes: prev.customIncomes,
           dailyExpenses: prev.dailyExpenses,
           ccDebts: prev.ccDebts,
         };
@@ -605,6 +619,9 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const monthIncome = future.income !== undefined ? future.income : realState.income;
         const monthYkIncome = future.ykIncome !== undefined ? future.ykIncome : realState.ykIncome;
 
+        // Custom Incomes (Always empty in future unless explicitly added for that month)
+        const monthCustomIncomes = future.customIncomes || [];
+
         // Fixed Expenses
         // Filter out any existing 'Kredi Kartı Borcu (Geçen Ay)' to avoid duplication/stale data
         // and inject the calculated one from previous iteration
@@ -716,6 +733,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 rollover: 0, // Future rollover is always 0
                 ykRollover: 0, // Future YK rollover is always 0
                 fixedExpenses: monthFixedExpenses,
+                customIncomes: monthCustomIncomes,
                 dailyExpenses: [],
                 ccDebts: allCCDebts, // Show merged list
                 installments: projectedInstallments,
@@ -735,6 +753,76 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const toggleShowMealCard = () => {
     setShowMealCard(prev => !prev);
+  };
+
+  const addCustomIncome = (income: Omit<CustomIncome, 'id'>) => {
+    const newIncome: CustomIncome = {
+        id: generateId(),
+        title: income.title,
+        amount: income.amount,
+    };
+
+    setRealState(prev => {
+        if (viewDate === prev.currentMonth) {
+            return { ...prev, customIncomes: [...(prev.customIncomes || []), newIncome] };
+        } else if (viewDate > prev.currentMonth) {
+            const future = prev.futureData[viewDate] || {};
+            const currentIncomes = future.customIncomes || [];
+            return {
+                ...prev,
+                futureData: {
+                    ...prev.futureData,
+                    [viewDate]: {
+                        ...future,
+                        customIncomes: [...currentIncomes, newIncome]
+                    }
+                }
+            };
+        } else if (viewDate < prev.currentMonth) {
+            const histIndex = prev.history.findIndex(h => h.month === viewDate);
+            if (histIndex !== -1) {
+                const newHistory = [...prev.history];
+                newHistory[histIndex] = {
+                    ...newHistory[histIndex],
+                    customIncomes: [...(newHistory[histIndex].customIncomes || []), newIncome]
+                };
+                return recalculateHistoryAndCurrent({ ...prev, history: newHistory });
+            }
+        }
+        return prev;
+    });
+  };
+
+  const deleteCustomIncome = (id: string) => {
+    setRealState(prev => {
+        if (viewDate === prev.currentMonth) {
+            return { ...prev, customIncomes: (prev.customIncomes || []).filter(i => i.id !== id) };
+        } else if (viewDate > prev.currentMonth) {
+            const future = prev.futureData[viewDate] || {};
+            const currentIncomes = future.customIncomes || [];
+            return {
+                ...prev,
+                futureData: {
+                    ...prev.futureData,
+                    [viewDate]: {
+                        ...future,
+                        customIncomes: currentIncomes.filter(i => i.id !== id)
+                    }
+                }
+            };
+        } else if (viewDate < prev.currentMonth) {
+            const histIndex = prev.history.findIndex(h => h.month === viewDate);
+            if (histIndex !== -1) {
+                const newHistory = [...prev.history];
+                newHistory[histIndex] = {
+                    ...newHistory[histIndex],
+                    customIncomes: (newHistory[histIndex].customIncomes || []).filter(i => i.id !== id)
+                };
+                return recalculateHistoryAndCurrent({ ...prev, history: newHistory });
+            }
+        }
+        return prev;
+    });
   };
 
   const addFixedExpense = (expense: Omit<FixedExpense, 'id' | 'isPaid'>) => {
@@ -1294,7 +1382,8 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const paidFixed = prev.fixedExpenses
           .filter(e => e.isPaid)
           .reduce((sum, e) => sum + e.amount, 0);
-        const totalCash = prev.income + prev.rollover + cashDailyIncome;
+        const customIncomeTotal = (prev.customIncomes || []).reduce((sum, e) => sum + e.amount, 0);
+        const totalCash = prev.income + prev.rollover + cashDailyIncome + customIncomeTotal;
         const remainingCash = totalCash - (paidFixed + cashSpent);
 
         const totalCCDebt = Math.abs(prev.ccDebts.reduce((sum, d) => sum + d.amount, 0));
@@ -1306,6 +1395,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           ykIncome: prev.ykIncome,
           ykRollover: prev.ykRollover,
           fixedExpenses: prev.fixedExpenses,
+          customIncomes: prev.customIncomes,
           dailyExpenses: prev.dailyExpenses,
           ccDebts: prev.ccDebts,
         };
@@ -1349,13 +1439,14 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
         return {
           ...prev,
-          version: 5,
+          version: 6,
           currentMonth: nextMonthStr,
           history: [...prev.history, historyEntry],
           installments: nextMonthInstallments,
           ccDebts: nextMonthDebts,
           dailyExpenses: [],
           fixedExpenses: nextFixedExpenses,
+          customIncomes: [], // "önceki ay eklediğiniz bu özel sabit gelir kalemleri tamamen silinip 0'dan başlasın"
           rollover: remainingCash > 0 ? remainingCash : 0,
           ykRollover: remainingYk > 0 ? remainingYk : 0,
         };
@@ -1396,6 +1487,8 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             addFixedExpense,
             toggleFixedExpense,
             deleteFixedExpense,
+            addCustomIncome,
+            deleteCustomIncome,
             addDailyExpense,
             deleteDailyExpense,
             addCCDebt,

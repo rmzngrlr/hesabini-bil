@@ -5,6 +5,12 @@ export interface FixedExpense {
   isPaid: boolean;
 }
 
+export interface CustomIncome {
+  id: string;
+  title: string;
+  amount: number;
+}
+
 export type ExpenseType = 'NAKIT' | 'YK';
 
 export interface DailyExpense {
@@ -41,6 +47,7 @@ export interface MonthlyHistory {
   ykIncome: number;
   ykRollover: number;
   fixedExpenses: FixedExpense[];
+  customIncomes?: CustomIncome[];
   dailyExpenses: DailyExpense[];
   ccDebts: CCDebt[];
 }
@@ -49,6 +56,7 @@ export interface FutureMonthData {
   income?: number;
   ykIncome?: number;
   fixedExpenses?: FixedExpense[];
+  customIncomes?: CustomIncome[];
   // For CC Debt override (adjustment amount)
   ccDebtAdjustment?: number;
   // For specific installment overrides (id -> amount)
@@ -65,6 +73,7 @@ export interface BudgetState {
   ykIncome: number;
   ykRollover: number;
   fixedExpenses: FixedExpense[];
+  customIncomes: CustomIncome[];
   dailyExpenses: DailyExpense[];
   ccDebts: CCDebt[];
   installments: Installment[];
