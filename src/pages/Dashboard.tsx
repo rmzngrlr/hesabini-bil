@@ -55,7 +55,9 @@ export default function Dashboard() {
     .filter(e => e.amount > 0 && e.type === 'NAKIT')
     .reduce((sum, e) => sum + e.amount, 0);
 
-  const totalCashResources = state.income + state.rollover + dailyCashIncome;
+  const customIncomeTotal = (state.customIncomes || []).reduce((sum, e) => sum + e.amount, 0);
+
+  const totalCashResources = state.income + state.rollover + dailyCashIncome + customIncomeTotal;
 
   // Expenses
   // For Current/Past: Paid Fixed Expenses + Cash Spent

@@ -179,13 +179,14 @@ export const importFromExcel = (file: File): Promise<BudgetState> => {
         const wb = XLSX.read(data, { type: 'binary' });
 
         const newState: BudgetState = {
-            version: 5,
+            version: 6,
             currentMonth: new Date().toISOString().slice(0, 7),
             income: 0,
             rollover: 0,
             ykIncome: 0,
             ykRollover: 0,
             fixedExpenses: [],
+            customIncomes: [],
             dailyExpenses: [],
             ccDebts: [],
             installments: [],
