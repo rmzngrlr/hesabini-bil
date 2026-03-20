@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useDraftState } from '../hooks/useDraftState';
 import { useBudget } from '../context/BudgetContext';
 import type { DailyExpense } from '../types';
 import { Card } from '../components/ui/Card';
@@ -19,13 +19,13 @@ export default function DailyExpenses() {
       return `${y}-${m}-${day}`;
   };
 
-  const [date, setDate] = useState(getLocalDate());
-  const [description, setDescription] = useState('');
-  const [amount, setAmount] = useState('');
-  const [type, setType] = useState<'NAKIT' | 'YK'>('NAKIT');
-  const [transactionType, setTransactionType] = useState<'INCOME' | 'EXPENSE'>('EXPENSE');
-  const [activeTab, setActiveTab] = useState<'NAKIT' | 'YK'>('NAKIT');
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [date, setDate] = useDraftState('daily_draft_date', getLocalDate());
+  const [description, setDescription] = useDraftState('daily_draft_desc', '');
+  const [amount, setAmount] = useDraftState('daily_draft_amount', '');
+  const [type, setType] = useDraftState<'NAKIT' | 'YK'>('daily_draft_type', 'NAKIT');
+  const [transactionType, setTransactionType] = useDraftState<'INCOME' | 'EXPENSE'>('daily_draft_tx_type', 'EXPENSE');
+  const [activeTab, setActiveTab] = useDraftState<'NAKIT' | 'YK'>('daily_draft_tab', 'NAKIT');
+  const [editingId, setEditingId] = useDraftState<string | null>('daily_draft_editing_id', null);
 
   const handleEdit = (expense: DailyExpense) => {
     setEditingId(expense.id);
@@ -43,6 +43,10 @@ export default function DailyExpenses() {
     setDescription('');
     setAmount('');
     setTransactionType('EXPENSE');
+
+    sessionStorage.removeItem('daily_draft_desc');
+    sessionStorage.removeItem('daily_draft_amount');
+    sessionStorage.removeItem('daily_draft_editing_id');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -71,6 +75,10 @@ export default function DailyExpenses() {
     
     setDescription('');
     setAmount('');
+
+    sessionStorage.removeItem('daily_draft_desc');
+    sessionStorage.removeItem('daily_draft_amount');
+    sessionStorage.removeItem('daily_draft_editing_id');
   };
 
   const filteredExpenses = state.dailyExpenses.filter(e => e.type === activeTab);

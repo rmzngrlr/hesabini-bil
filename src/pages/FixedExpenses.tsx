@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useDraftState } from '../hooks/useDraftState';
 import { useBudget } from '../context/BudgetContext';
 import { Card } from '../components/ui/Card';
 import { Plus, Trash2, CheckCircle, Circle, Pencil, X, Calendar } from 'lucide-react';
@@ -22,12 +23,12 @@ export default function FixedExpenses() {
     showMealCard
   } = useBudget();
 
-  const [title, setTitle] = useState('');
-  const [amount, setAmount] = useState('');
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [title, setTitle] = useDraftState('fixed_draft_title', '');
+  const [amount, setAmount] = useDraftState('fixed_draft_amount', '');
+  const [editingId, setEditingId] = useDraftState<string | null>('fixed_draft_editing_id', null);
 
-  const [incomeTitle, setIncomeTitle] = useState('');
-  const [incomeAmount, setIncomeAmount] = useState('');
+  const [incomeTitle, setIncomeTitle] = useDraftState('fixed_draft_inc_title', '');
+  const [incomeAmount, setIncomeAmount] = useDraftState('fixed_draft_inc_amount', '');
 
   // Local state for inputs
   const [income, setIncome] = useState(state.income.toString());
@@ -70,6 +71,10 @@ export default function FixedExpenses() {
     setEditingId(null);
     setTitle('');
     setAmount('');
+
+    sessionStorage.removeItem('fixed_draft_title');
+    sessionStorage.removeItem('fixed_draft_amount');
+    sessionStorage.removeItem('fixed_draft_editing_id');
   };
 
   const handleAddCustomIncome = (e: React.FormEvent) => {
@@ -82,6 +87,9 @@ export default function FixedExpenses() {
     });
     setIncomeTitle('');
     setIncomeAmount('');
+
+    sessionStorage.removeItem('fixed_draft_inc_title');
+    sessionStorage.removeItem('fixed_draft_inc_amount');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
