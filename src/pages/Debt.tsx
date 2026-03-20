@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useDraftState } from '../hooks/useDraftState';
 import { useBudget } from '../context/BudgetContext';
 import { Card } from '../components/ui/Card';
 import { Plus, Trash2, CalendarClock, CreditCard, Pencil, X } from 'lucide-react';
@@ -7,14 +7,14 @@ import type { CCDebt } from '../types';
 
 export default function Debt() {
   const { state, viewDate, addCCDebt, updateCCDebt, deleteCCDebt, addInstallment, deleteInstallment } = useBudget();
-  const [description, setDescription] = useState('');
-  const [amount, setAmount] = useState('');
+  const [description, setDescription] = useDraftState('debt_draft_desc', '');
+  const [amount, setAmount] = useDraftState('debt_draft_amount', '');
 
   // Taksit modu
-  const [isInstallment, setIsInstallment] = useState(false);
-  const [installmentCount, setInstallmentCount] = useState('2');
-  const [transactionType, setTransactionType] = useState<'SPEND' | 'PAY'>('SPEND');
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [isInstallment, setIsInstallment] = useDraftState('debt_draft_is_inst', false);
+  const [installmentCount, setInstallmentCount] = useDraftState('debt_draft_inst_count', '2');
+  const [transactionType, setTransactionType] = useDraftState<'SPEND' | 'PAY'>('debt_draft_tx_type', 'SPEND');
+  const [editingId, setEditingId] = useDraftState<string | null>('debt_draft_editing_id', null);
 
   const handleEdit = (debt: CCDebt) => {
     // If it's linked to an installment, warn or handle?
@@ -37,6 +37,12 @@ export default function Debt() {
     setAmount('');
     setTransactionType('SPEND');
     setIsInstallment(false);
+
+    sessionStorage.removeItem('debt_draft_desc');
+    sessionStorage.removeItem('debt_draft_amount');
+    sessionStorage.removeItem('debt_draft_is_inst');
+    sessionStorage.removeItem('debt_draft_inst_count');
+    sessionStorage.removeItem('debt_draft_editing_id');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -80,6 +86,12 @@ export default function Debt() {
     setAmount('');
     setIsInstallment(false);
     setInstallmentCount('2');
+
+    sessionStorage.removeItem('debt_draft_desc');
+    sessionStorage.removeItem('debt_draft_amount');
+    sessionStorage.removeItem('debt_draft_is_inst');
+    sessionStorage.removeItem('debt_draft_inst_count');
+    sessionStorage.removeItem('debt_draft_editing_id');
   };
 
   // Total Debt is sum. Spending is negative. Payment is positive.
