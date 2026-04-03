@@ -22,6 +22,8 @@ export const getDb = async (): Promise<Database> => {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
+            security_question TEXT,
+            security_answer_hash TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -32,6 +34,20 @@ export const getDb = async (): Promise<Database> => {
             FOREIGN KEY (user_id) REFERENCES users (id)
         );
     `);
+
+    // Migration for existing databases
+    try {
+        const tableInfo = await dbInstance.all("PRAGMA table_info(users)");
+        const hasSecurityQuestion = tableInfo.some(col => col.name === 'security_question');
+        if (!hasSecurityQuestion) {
+            await dbInstance.exec(`
+                ALTER TABLE users ADD COLUMN security_question TEXT;
+                ALTER TABLE users ADD COLUMN security_answer_hash TEXT;
+            `);
+        }
+    } catch (err) {
+        console.error("Migration error: ", err);
+    }
 
     return dbInstance;
 };

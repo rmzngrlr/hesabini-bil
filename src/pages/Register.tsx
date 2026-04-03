@@ -9,6 +9,8 @@ export default function Register() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [securityQuestion, setSecurityQuestion] = useState('');
+  const [securityAnswer, setSecurityAnswer] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
@@ -24,11 +26,16 @@ export default function Register() {
 
     setIsLoading(true);
 
+    if (!securityQuestion || !securityAnswer) {
+      setError('Güvenlik sorusu ve cevabı boş bırakılamaz.');
+      return;
+    }
+
     try {
       const res = await fetch(`${API_URL}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ username, password, securityQuestion, securityAnswer })
       });
 
       if (!res.ok) {
@@ -106,6 +113,30 @@ export default function Register() {
                 required
                 className="w-full px-4 py-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 placeholder="••••••••"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-muted-foreground">Güvenlik Sorusu</label>
+              <input
+                type="text"
+                value={securityQuestion}
+                onChange={(e) => setSecurityQuestion(e.target.value)}
+                required
+                className="w-full px-4 py-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="Örn: İlk evcil hayvanınızın adı?"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-muted-foreground">Güvenlik Sorusu Cevabı</label>
+              <input
+                type="text"
+                value={securityAnswer}
+                onChange={(e) => setSecurityAnswer(e.target.value)}
+                required
+                className="w-full px-4 py-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="Cevabınız..."
               />
             </div>
 

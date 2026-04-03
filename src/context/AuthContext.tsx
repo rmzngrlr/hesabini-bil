@@ -65,3 +65,8 @@ export const useAuth = () => {
   }
   return context;
 };
+
+// Utility function to easily get the token outside of React hooks
+export const getAuthToken = () => {
+  return localStorage.getItem('budget_token');
+};
