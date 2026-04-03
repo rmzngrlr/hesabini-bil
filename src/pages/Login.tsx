@@ -91,6 +91,10 @@ export default function Login() {
               />
             </div>
 
+            <div className="flex justify-end w-full">
+               <Link to="/forgot-password" className="text-sm text-primary hover:underline">Şifremi Unuttum</Link>
+            </div>
+
             <button
               type="submit"
               disabled={isLoading}
