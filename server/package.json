@@ -6,8 +6,7 @@
   "scripts": {
     "start": "npx -y tsx src/index.ts",
     "build": "tsc",
-    "serve": "node dist/index.js",
-    "migrate:mysql": "npx -y tsx src/migrate_to_mysql.ts"
+    "serve": "node dist/index.js"
   },
   "keywords": [],
   "author": "",
@@ -19,9 +18,7 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
-    "mysql2": "^3.22.0",
-    "sqlite": "^5.1.1",
-    "sqlite3": "^5.1.7"
+    "mysql2": "^3.22.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
