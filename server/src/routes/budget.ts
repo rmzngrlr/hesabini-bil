@@ -39,13 +39,25 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
         const dataString = JSON.stringify(budgetData);
 
         // Upsert logic (Insert or Update)
-        await db.run(`
-            INSERT INTO budgets (user_id, data, updated_at)
-            VALUES (?, ?, CURRENT_TIMESTAMP)
-            ON CONFLICT(user_id) DO UPDATE SET
-                data=excluded.data,
-                updated_at=CURRENT_TIMESTAMP
-        `, [userId, dataString]);
+        const isMysql = process.env.DB_TYPE === 'mysql';
+
+        if (isMysql) {
+            await db.run(`
+                INSERT INTO budgets (user_id, data, updated_at)
+                VALUES (?, ?, CURRENT_TIMESTAMP)
+                ON DUPLICATE KEY UPDATE
+                    data=VALUES(data),
+                    updated_at=CURRENT_TIMESTAMP
+            `, [userId, dataString]);
+        } else {
+            await db.run(`
+                INSERT INTO budgets (user_id, data, updated_at)
+                VALUES (?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(user_id) DO UPDATE SET
+                    data=excluded.data,
+                    updated_at=CURRENT_TIMESTAMP
+            `, [userId, dataString]);
+        }
 
         res.json({ message: 'Bütçe başarıyla kaydedildi.' });
     } catch (error) {
