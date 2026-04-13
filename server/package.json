@@ -6,7 +6,8 @@
   "scripts": {
     "start": "npx -y tsx src/index.ts",
     "build": "tsc",
-    "serve": "node dist/index.js"
+    "serve": "node dist/index.js",
+    "migrate:mysql": "npx -y tsx src/migrate_to_mysql.ts"
   },
   "keywords": [],
   "author": "",
@@ -15,9 +16,10 @@
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
-    "dotenv": "^17.3.1",
+    "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
+    "mysql2": "^3.22.0",
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7"
   },
@@ -26,6 +28,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/mysql": "^2.15.27",
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
