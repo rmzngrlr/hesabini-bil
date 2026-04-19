@@ -15,8 +15,6 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
         if (row) {
             res.json(JSON.parse(row.data));
         } else {
-            // Return 404 or an empty object. Usually 404 implies "not found, create one".
-            // Let's return 404 to let frontend know it needs to initialize.
             res.status(404).json({ message: 'Bütçe verisi bulunamadı.' });
         }
     } catch (error) {

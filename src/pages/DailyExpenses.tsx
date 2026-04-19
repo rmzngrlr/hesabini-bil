@@ -238,11 +238,18 @@ export default function DailyExpenses() {
       )}
 
       <div className="space-y-6">
-        {sortedDates.map((date) => (
+        {sortedDates.map((date) => {
+          const dailyTotal = groupedExpenses[date].reduce((sum, item) => sum + item.amount, 0);
+          return (
           <div key={date} className="space-y-3">
-            <h3 className="text-sm font-medium text-muted-foreground ml-1">
-              {format(new Date(date), 'd MMMM yyyy, EEEE', { locale: tr })}
-            </h3>
+            <div className="flex justify-between items-center ml-1 pr-1">
+              <h3 className="text-sm font-medium text-muted-foreground">
+                {format(new Date(date), 'd MMMM yyyy, EEEE', { locale: tr })}
+              </h3>
+              <span className={`text-sm font-bold ${dailyTotal >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                 {dailyTotal > 0 ? '+' : ''}{dailyTotal.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+              </span>
+            </div>
             {groupedExpenses[date].map((expense) => (
               <div key={expense.id} className="flex items-center justify-between p-4 rounded-xl bg-card border border-border">
                 <div className="flex items-center gap-3">
@@ -277,7 +284,8 @@ export default function DailyExpenses() {
               </div>
             ))}
           </div>
-        ))}
+          );
+        })}
 
         {sortedDates.length === 0 && (
           <div className="text-center text-muted-foreground py-12 bg-secondary/30 rounded-xl border border-dashed">
