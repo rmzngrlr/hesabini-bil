@@ -51,15 +51,15 @@ export const getDb = async () => {
     // so we don't have to rewrite all our route controllers immediately.
     adapterInstance = {
         get: async (sql: string, params: any[] = []) => {
-            const [rows] = await pool!.execute<mysql.RowDataPacket[]>(sql, params);
+            const [rows] = await pool.execute<mysql.RowDataPacket[]>(sql, params);
             return rows.length > 0 ? rows[0] : undefined;
         },
         all: async (sql: string, params: any[] = []) => {
-            const [rows] = await pool!.execute<mysql.RowDataPacket[]>(sql, params);
+            const [rows] = await pool.execute<mysql.RowDataPacket[]>(sql, params);
             return rows;
         },
         run: async (sql: string, params: any[] = []) => {
-            const [result] = await pool!.execute<mysql.ResultSetHeader>(sql, params);
+            const [result] = await pool.execute<mysql.ResultSetHeader>(sql, params);
             return {
                 lastID: result.insertId,
                 changes: result.affectedRows
