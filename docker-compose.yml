@@ -20,7 +20,5 @@ services:
     env_file:
       - ./server/.env
     environment:
-      # Automatically route database connections to the docker0 bridge
-      # so the container can reach the host machine's MySQL instance
       - DB_HOST=172.17.0.1
     restart: unless-stopped
