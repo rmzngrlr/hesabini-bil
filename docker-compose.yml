@@ -22,5 +22,7 @@ services:
     env_file:
       - ./server/.env
     environment:
-      - DB_HOST=172.17.0.1
+      - DB_HOST=host.docker.internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     restart: unless-stopped
