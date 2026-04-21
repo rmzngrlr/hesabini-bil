@@ -725,13 +725,39 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 }))
                 .filter(inst => inst.remainingInstallments > 0);
 
+            // Dynamic Rollover Logic (Only from current month to immediately next month)
+            let dynamicRollover = 0;
+            let dynamicYkRollover = 0;
+
+            if (monthsAway === 1) {
+                // Calculate current month's net cash and YK to pass as dynamic rollover
+                const currentFixedTotal = realState.fixedExpenses.filter(e => e.isPaid).reduce((sum, e) => sum + e.amount, 0);
+                const currentCustomIncomes = realState.customIncomes.reduce((sum, i) => sum + i.amount, 0);
+                const totalCashResources = realState.income + realState.rollover + currentCustomIncomes;
+
+                const cashExpenses = realState.dailyExpenses.filter(e => e.type === 'NAKIT');
+                const ykExpenses = realState.dailyExpenses.filter(e => e.type === 'YK');
+
+                const totalCashDaily = Math.abs(cashExpenses.filter(e => e.amount < 0).reduce((sum, e) => sum + e.amount, 0));
+                const totalCashDailyIncome = cashExpenses.filter(e => e.amount > 0).reduce((sum, e) => sum + e.amount, 0);
+
+                const totalYkDaily = Math.abs(ykExpenses.filter(e => e.amount < 0).reduce((sum, e) => sum + e.amount, 0));
+                const totalYkDailyIncome = ykExpenses.filter(e => e.amount > 0).reduce((sum, e) => sum + e.amount, 0);
+
+                const currentNetCash = totalCashResources + totalCashDailyIncome - currentFixedTotal - totalCashDaily;
+                const currentNetYk = (realState.ykIncome + realState.ykRollover + totalYkDailyIncome) - totalYkDaily;
+
+                dynamicRollover = currentNetCash;
+                dynamicYkRollover = currentNetYk;
+            }
+
             return {
                 ...realState,
                 currentMonth: viewDate,
                 income: monthIncome,
                 ykIncome: monthYkIncome,
-                rollover: 0, // Future rollover is always 0
-                ykRollover: 0, // Future YK rollover is always 0
+                rollover: dynamicRollover,
+                ykRollover: dynamicYkRollover,
                 fixedExpenses: monthFixedExpenses,
                 customIncomes: monthCustomIncomes,
                 dailyExpenses: [],
