@@ -167,8 +167,9 @@ function recalculateHistoryAndCurrent(state: BudgetState): BudgetState {
         const paidFixed = hist.fixedExpenses
           .filter(e => e.isPaid)
           .reduce((sum, e) => sum + e.amount, 0);
+        const customIncomeTotal = (hist.customIncomes || []).reduce((sum, e) => sum + e.amount, 0);
 
-        const totalCash = hist.income + hist.rollover + cashDailyIncome;
+        const totalCash = hist.income + hist.rollover + cashDailyIncome + customIncomeTotal;
         runningRollover = totalCash - (paidFixed + cashSpent);
         if (runningRollover < 0) runningRollover = 0;
 
