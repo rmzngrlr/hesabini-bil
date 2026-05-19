@@ -65,7 +65,7 @@ export default function Debt() {
             // Otomatik olarak nakitten de düşmesini sağlıyoruz (Nakit gider olarak eklenir)
             addDailyExpense({
                 date: new Date().toISOString(),
-                description: `KK Ödemesi: ${description}`,
+                description: description,
                 amount: -Math.abs(numAmount),
                 type: 'NAKIT'
             });
