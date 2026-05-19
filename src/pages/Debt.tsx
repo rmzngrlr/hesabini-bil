@@ -6,7 +6,7 @@ import { cn } from '../lib/utils';
 import type { CCDebt } from '../types';
 
 export default function Debt() {
-  const { state, viewDate, addCCDebt, updateCCDebt, deleteCCDebt, addInstallment, deleteInstallment } = useBudget();
+  const { state, viewDate, addCCDebt, updateCCDebt, deleteCCDebt, addInstallment, deleteInstallment, addDailyExpense } = useBudget();
   const [description, setDescription] = useDraftState('debt_draft_desc', '');
   const [amount, setAmount] = useDraftState('debt_draft_amount', '');
 
@@ -62,6 +62,13 @@ export default function Debt() {
     } else {
         if (transactionType === 'PAY') {
             addCCDebt({ description, amount: Math.abs(numAmount) });
+            // Otomatik olarak nakitten de düşmesini sağlıyoruz (Nakit gider olarak eklenir)
+            addDailyExpense({
+                date: new Date().toISOString(),
+                description: `KK Ödemesi: ${description}`,
+                amount: -Math.abs(numAmount),
+                type: 'NAKIT'
+            });
         } else {
             const debtAmount = -Math.abs(numAmount);
 
