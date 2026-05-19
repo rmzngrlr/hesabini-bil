@@ -228,101 +228,108 @@ export default function Vault() {
                 ) : records.length === 0 ? (
                     <div className="text-center text-muted-foreground py-8">Henüz kayıt eklenmemiş.</div>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="border-b border-border">
-                                    <th className="pb-3 px-2 font-medium text-muted-foreground text-sm whitespace-nowrap">Tarih</th>
-                                    <th className="pb-3 px-2 font-medium text-muted-foreground text-sm">Kime Ait</th>
-                                    <th className="pb-3 px-2 font-medium text-muted-foreground text-sm text-right">Miktar</th>
-                                    <th className="pb-3 px-2 font-medium text-muted-foreground text-sm">Cinsi</th>
-                                    <th className="pb-3 px-2 font-medium text-muted-foreground text-sm text-center">İşlem</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {records.map(record => {
-                                    const isEditing = editingId === record.id;
-                                    const d = new Date(record.record_date);
-                                    const displayDate = !isNaN(d.getTime()) ? d.toLocaleDateString('tr-TR') : record.record_date;
+                    <div className="space-y-6">
+                        {Array.from(new Set(records.map(r => r.gold_type))).map(goldType => {
+                            const groupRecords = records.filter(r => r.gold_type === goldType);
+                            return (
+                                <div key={goldType} className="overflow-x-auto">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="border-b border-border">
+                                                <th className="pb-3 px-2 font-medium text-muted-foreground text-sm whitespace-nowrap">Tarih</th>
+                                                <th className="pb-3 px-2 font-medium text-muted-foreground text-sm">Kime Ait</th>
+                                                <th className="pb-3 px-2 font-medium text-muted-foreground text-sm text-right">Miktar</th>
+                                                <th className="pb-3 px-2 font-medium text-muted-foreground text-sm">Cinsi</th>
+                                                <th className="pb-3 px-2 font-medium text-muted-foreground text-sm text-center">İşlem</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {groupRecords.map(record => {
+                                                const isEditing = editingId === record.id;
+                                                const d = new Date(record.record_date);
+                                                const displayDate = !isNaN(d.getTime()) ? d.toLocaleDateString('tr-TR') : record.record_date;
 
-                                    return (
-                                        <tr key={record.id} className="border-b border-border last:border-0 hover:bg-secondary/50 transition-colors">
-                                            {isEditing ? (
-                                                <>
-                                                    <td className="py-3 px-2">
-                                                        <input
-                                                            type="date"
-                                                            value={editDate}
-                                                            onChange={e => setEditDate(e.target.value)}
-                                                            className="w-full px-2 py-1 rounded bg-background text-sm border border-border"
-                                                        />
-                                                    </td>
-                                                    <td className="py-3 px-2">
-                                                        <input
-                                                            type="text"
-                                                            value={editOwner}
-                                                            onChange={e => setEditOwner(e.target.value)}
-                                                            className="w-full px-2 py-1 rounded bg-background text-sm border border-border"
-                                                        />
-                                                    </td>
-                                                    <td className="py-3 px-2 text-right">
-                                                        <input
-                                                            type="number"
-                                                            step="0.01"
-                                                            value={editAmount}
-                                                            onChange={e => setEditAmount(e.target.value)}
-                                                            className="w-full px-2 py-1 rounded bg-background text-sm border border-border text-right"
-                                                        />
-                                                    </td>
-                                                    <td className="py-3 px-2">
-                                                        <select
-                                                            value={editGoldType}
-                                                            onChange={e => setEditGoldType(e.target.value)}
-                                                            className="w-full px-2 py-1 rounded bg-background text-sm border border-border"
-                                                        >
-                                                            <option value="Gram">Gram</option>
-                                                            <option value="Çeyrek">Çeyrek</option>
-                                                            <option value="Yarım">Yarım</option>
-                                                            <option value="Tam">Tam</option>
-                                                            <option value="Ata Lira">Ata Lira</option>
-                                                            <option value="Dolar">Dolar</option>
-                                                            <option value="Euro">Euro</option>
-                                                        </select>
-                                                    </td>
-                                                    <td className="py-3 px-2">
-                                                        <div className="flex justify-center gap-2">
-                                                            <button onClick={saveEdit} className="p-1.5 text-green-500 hover:bg-green-500/10 rounded-lg" title="Kaydet">
-                                                                <Check size={16} />
-                                                            </button>
-                                                            <button onClick={cancelEdit} className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-lg" title="İptal">
-                                                                <X size={16} />
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <td className="py-3 px-2 text-sm whitespace-nowrap">{displayDate}</td>
-                                                    <td className="py-3 px-2 font-medium">{record.owner}</td>
-                                                    <td className="py-3 px-2 text-right font-mono font-bold text-primary">{Number(record.amount)}</td>
-                                                    <td className="py-3 px-2">{record.gold_type}</td>
-                                                    <td className="py-3 px-2">
-                                                        <div className="flex justify-center gap-2">
-                                                            <button onClick={() => startEditing(record)} className="p-1.5 text-blue-500 hover:bg-blue-500/10 rounded-lg transition-colors" title="Düzenle">
-                                                                <Edit2 size={16} />
-                                                            </button>
-                                                            <button onClick={() => handleDelete(record.id as number)} className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors" title="Sil">
-                                                                <Trash2 size={16} />
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </>
-                                            )}
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
+                                                return (
+                                                    <tr key={record.id} className="border-b border-border last:border-0 hover:bg-secondary/50 transition-colors">
+                                                        {isEditing ? (
+                                                            <>
+                                                                <td className="py-3 px-2">
+                                                                    <input
+                                                                        type="date"
+                                                                        value={editDate}
+                                                                        onChange={e => setEditDate(e.target.value)}
+                                                                        className="w-full px-2 py-1 rounded bg-background text-sm border border-border"
+                                                                    />
+                                                                </td>
+                                                                <td className="py-3 px-2">
+                                                                    <input
+                                                                        type="text"
+                                                                        value={editOwner}
+                                                                        onChange={e => setEditOwner(e.target.value)}
+                                                                        className="w-full px-2 py-1 rounded bg-background text-sm border border-border"
+                                                                    />
+                                                                </td>
+                                                                <td className="py-3 px-2 text-right">
+                                                                    <input
+                                                                        type="number"
+                                                                        step="0.01"
+                                                                        value={editAmount}
+                                                                        onChange={e => setEditAmount(e.target.value)}
+                                                                        className="w-full px-2 py-1 rounded bg-background text-sm border border-border text-right"
+                                                                    />
+                                                                </td>
+                                                                <td className="py-3 px-2">
+                                                                    <select
+                                                                        value={editGoldType}
+                                                                        onChange={e => setEditGoldType(e.target.value)}
+                                                                        className="w-full px-2 py-1 rounded bg-background text-sm border border-border"
+                                                                    >
+                                                                        <option value="Gram">Gram</option>
+                                                                        <option value="Çeyrek">Çeyrek</option>
+                                                                        <option value="Yarım">Yarım</option>
+                                                                        <option value="Tam">Tam</option>
+                                                                        <option value="Ata Lira">Ata Lira</option>
+                                                                        <option value="Dolar">Dolar</option>
+                                                                        <option value="Euro">Euro</option>
+                                                                    </select>
+                                                                </td>
+                                                                <td className="py-3 px-2">
+                                                                    <div className="flex justify-center gap-2">
+                                                                        <button onClick={saveEdit} className="p-1.5 text-green-500 hover:bg-green-500/10 rounded-lg" title="Kaydet">
+                                                                            <Check size={16} />
+                                                                        </button>
+                                                                        <button onClick={cancelEdit} className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-lg" title="İptal">
+                                                                            <X size={16} />
+                                                                        </button>
+                                                                    </div>
+                                                                </td>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <td className="py-3 px-2 text-sm whitespace-nowrap">{displayDate}</td>
+                                                                <td className="py-3 px-2 font-medium">{record.owner}</td>
+                                                                <td className="py-3 px-2 text-right font-mono font-bold text-primary">{Number(record.amount)}</td>
+                                                                <td className="py-3 px-2">{record.gold_type}</td>
+                                                                <td className="py-3 px-2">
+                                                                    <div className="flex justify-center gap-2">
+                                                                        <button onClick={() => startEditing(record)} className="p-1.5 text-blue-500 hover:bg-blue-500/10 rounded-lg transition-colors" title="Düzenle">
+                                                                            <Edit2 size={16} />
+                                                                        </button>
+                                                                        <button onClick={() => handleDelete(record.id as number)} className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors" title="Sil">
+                                                                            <Trash2 size={16} />
+                                                                        </button>
+                                                                    </div>
+                                                                </td>
+                                                            </>
+                                                        )}
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
             </Card>
