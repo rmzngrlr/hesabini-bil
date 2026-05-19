@@ -38,7 +38,7 @@ export default function Login() {
       const contentType = res.headers.get("content-type");
       if (contentType && contentType.indexOf("application/json") !== -1) {
           const data = await res.json();
-          login(data.token, data.username);
+          login(data.token, data.username, data.isAdmin);
           navigate('/');
       } else {
           throw new Error('Sunucudan geçersiz bir yanıt alındı.');

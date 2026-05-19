@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Wallet, CreditCard, TurkishLira } from 'lucide-react';
+import { LayoutDashboard, Wallet, CreditCard, TurkishLira, Coins } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { useAuth } from '../context/AuthContext';
 
 interface LayoutProps {
   children: ReactNode;
@@ -15,6 +16,13 @@ const navItems = [
 ];
 
 export function Layout({ children }: LayoutProps) {
+  const { isAdmin } = useAuth();
+
+  const currentNavItems = [
+    ...navItems,
+    ...(isAdmin ? [{ path: '/kasa', label: 'Kasa', icon: Coins }] : [])
+  ];
+
   return (
     <div className="flex min-h-screen bg-background text-foreground overflow-x-hidden">
       {/* Desktop Sidebar */}
@@ -27,7 +35,7 @@ export function Layout({ children }: LayoutProps) {
         </div>
 
         <nav className="flex-1 space-y-2">
-          {navItems.map(({ path, label, icon: Icon }) => (
+          {currentNavItems.map(({ path, label, icon: Icon }) => (
             <NavLink
               key={path}
               to={path}
@@ -60,8 +68,8 @@ export function Layout({ children }: LayoutProps) {
 
       {/* Mobile Bottom Navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 border-t bg-card/95 backdrop-blur-lg border-border z-50 safe-area-pb">
-        <div className="flex items-center justify-around h-16 max-w-md mx-auto">
-          {navItems.map(({ path, label, icon: Icon }) => (
+        <div className="flex items-center justify-around h-16 max-w-md mx-auto px-2">
+          {currentNavItems.map(({ path, label, icon: Icon }) => (
             <NavLink
               key={path}
               to={path}

@@ -5,6 +5,7 @@ import FixedExpenses from './pages/FixedExpenses';
 import DailyExpenses from './pages/DailyExpenses';
 import Debt from './pages/Debt';
 import Settings from './pages/Settings';
+import Vault from './pages/Vault';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
@@ -59,6 +60,11 @@ function AppRoutes() {
       <Route path="/settings" element={
         <ProtectedRoute>
           <Settings />
+        </ProtectedRoute>
+      } />
+      <Route path="/kasa" element={
+        <ProtectedRoute>
+          <Vault />
         </ProtectedRoute>
       } />
     </Routes>
