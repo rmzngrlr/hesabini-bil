@@ -18,7 +18,7 @@ router.get('/', async (req, res) => {
     try {
         const db = await getDb();
         const userId = (req as AuthRequest).user!.userId;
-        const records = await db.all('SELECT * FROM gold_records WHERE user_id = ? ORDER BY record_date DESC', [userId]);
+        const records = await db.all('SELECT * FROM gold_records WHERE user_id = ? ORDER BY gold_type ASC', [userId]);
         res.json(records);
     } catch (error) {
         console.error('Error fetching vault records:', error);

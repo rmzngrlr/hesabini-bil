@@ -234,8 +234,8 @@ export default function Vault() {
                                 <tr className="border-b border-border">
                                     <th className="pb-3 px-2 font-medium text-muted-foreground text-sm whitespace-nowrap">Tarih</th>
                                     <th className="pb-3 px-2 font-medium text-muted-foreground text-sm">Kime Ait</th>
-                                    <th className="pb-3 px-2 font-medium text-muted-foreground text-sm">Cinsi</th>
                                     <th className="pb-3 px-2 font-medium text-muted-foreground text-sm text-right">Miktar</th>
+                                    <th className="pb-3 px-2 font-medium text-muted-foreground text-sm">Cinsi</th>
                                     <th className="pb-3 px-2 font-medium text-muted-foreground text-sm text-center">İşlem</th>
                                 </tr>
                             </thead>
@@ -265,6 +265,15 @@ export default function Vault() {
                                                             className="w-full px-2 py-1 rounded bg-background text-sm border border-border"
                                                         />
                                                     </td>
+                                                    <td className="py-3 px-2 text-right">
+                                                        <input
+                                                            type="number"
+                                                            step="0.01"
+                                                            value={editAmount}
+                                                            onChange={e => setEditAmount(e.target.value)}
+                                                            className="w-full px-2 py-1 rounded bg-background text-sm border border-border text-right"
+                                                        />
+                                                    </td>
                                                     <td className="py-3 px-2">
                                                         <select
                                                             value={editGoldType}
@@ -279,15 +288,6 @@ export default function Vault() {
                                                             <option value="Dolar">Dolar</option>
                                                             <option value="Euro">Euro</option>
                                                         </select>
-                                                    </td>
-                                                    <td className="py-3 px-2 text-right">
-                                                        <input
-                                                            type="number"
-                                                            step="0.01"
-                                                            value={editAmount}
-                                                            onChange={e => setEditAmount(e.target.value)}
-                                                            className="w-full px-2 py-1 rounded bg-background text-sm border border-border text-right"
-                                                        />
                                                     </td>
                                                     <td className="py-3 px-2">
                                                         <div className="flex justify-center gap-2">
@@ -304,8 +304,8 @@ export default function Vault() {
                                                 <>
                                                     <td className="py-3 px-2 text-sm whitespace-nowrap">{displayDate}</td>
                                                     <td className="py-3 px-2 font-medium">{record.owner}</td>
-                                                    <td className="py-3 px-2">{record.gold_type}</td>
                                                     <td className="py-3 px-2 text-right font-mono font-bold text-primary">{Number(record.amount)}</td>
+                                                    <td className="py-3 px-2">{record.gold_type}</td>
                                                     <td className="py-3 px-2">
                                                         <div className="flex justify-center gap-2">
                                                             <button onClick={() => startEditing(record)} className="p-1.5 text-blue-500 hover:bg-blue-500/10 rounded-lg transition-colors" title="Düzenle">
