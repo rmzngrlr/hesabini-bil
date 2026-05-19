@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth';
 import budgetRoutes from './routes/budget';
+import vaultRoutes from './routes/vault';
 import { getDb } from './db';
 
 dotenv.config();
@@ -18,6 +19,7 @@ app.use(express.json({ limit: '50mb' }));
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/budget', budgetRoutes);
+app.use('/api/vault', vaultRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
