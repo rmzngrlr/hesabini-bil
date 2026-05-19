@@ -43,6 +43,40 @@ export const getDb = async () => {
                 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         `);
+
+        // Check if is_admin column exists
+        const [columns] = await connection.query<mysql.RowDataPacket[]>(`
+            SELECT COLUMN_NAME
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_NAME = 'users' AND COLUMN_NAME = 'is_admin' AND TABLE_SCHEMA = DATABASE()
+        `);
+
+        if (columns.length === 0) {
+            await connection.query(`
+                ALTER TABLE users
+                ADD COLUMN is_admin BOOLEAN DEFAULT FALSE;
+            `);
+
+            // Yetkilendirme (rgurler)
+            await connection.query(`
+                UPDATE users
+                SET is_admin = TRUE
+                WHERE username = 'rgurler';
+            `);
+        }
+
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS gold_records (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                record_date DATE NOT NULL,
+                owner VARCHAR(255) NOT NULL,
+                gold_type VARCHAR(255) NOT NULL,
+                amount DECIMAL(10, 4) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        `);
     } finally {
         connection.release();
     }

@@ -45,10 +45,12 @@ router.post('/register', async (req, res) => {
             [username, passwordHash, question, answerHash]
         );
 
+        // Check if user is admin (e.g. newly created rgurler which is updated by db.ts but we just return default for now)
+        const isAdmin = username === 'rgurler';
         // Generate Token
-        const token = jwt.sign({ userId: result.lastID, username }, JWT_SECRET, { expiresIn: '30d' });
+        const token = jwt.sign({ userId: result.lastID, username, isAdmin }, JWT_SECRET, { expiresIn: '30d' });
 
-        res.status(201).json({ message: 'Kayıt başarılı', token, username });
+        res.status(201).json({ message: 'Kayıt başarılı', token, username, isAdmin });
     } catch (error) {
         console.error('Kayıt hatası:', error);
         res.status(500).json({ error: 'Sunucu hatası oluştu.' });
@@ -67,7 +69,7 @@ router.post('/login', async (req, res) => {
         const db = await getDb();
 
         // Find user
-        const user = await db.get('SELECT id, username, password_hash FROM users WHERE username = ?', [username]);
+        const user = await db.get('SELECT id, username, password_hash, is_admin FROM users WHERE username = ?', [username]);
         if (!user) {
             return res.status(401).json({ error: 'Geçersiz kullanıcı adı veya şifre.' });
         }
@@ -78,10 +80,12 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ error: 'Geçersiz kullanıcı adı veya şifre.' });
         }
 
-        // Generate Token
-        const token = jwt.sign({ userId: user.id, username: user.username }, JWT_SECRET, { expiresIn: '30d' });
+        const isAdmin = !!user.is_admin;
 
-        res.json({ message: 'Giriş başarılı', token, username: user.username });
+        // Generate Token
+        const token = jwt.sign({ userId: user.id, username: user.username, isAdmin }, JWT_SECRET, { expiresIn: '30d' });
+
+        res.json({ message: 'Giriş başarılı', token, username: user.username, isAdmin });
     } catch (error) {
         console.error('Giriş hatası:', error);
         res.status(500).json({ error: 'Sunucu hatası oluştu.' });
