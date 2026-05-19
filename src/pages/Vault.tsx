@@ -146,7 +146,7 @@ export default function Vault() {
                     <Coins size={28} />
                 </div>
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Kasa (Altın Takibi)</h1>
+                    <h1 className="text-2xl font-bold tracking-tight">Kasa</h1>
                     <p className="text-sm text-muted-foreground">Fiziksel birikimlerinizi takip edin.</p>
                 </div>
             </header>
@@ -161,7 +161,7 @@ export default function Vault() {
                 <form onSubmit={handleAdd} className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                         <div className="space-y-1.5">
-                            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Tarih</label>
+                            <label className="text-sm font-medium text-muted-foreground">Tarih</label>
                             <input
                                 type="date"
                                 required
@@ -171,7 +171,7 @@ export default function Vault() {
                             />
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Kime Ait</label>
+                            <label className="text-sm font-medium text-muted-foreground">Kime Ait</label>
                             <input
                                 type="text"
                                 required
@@ -182,18 +182,25 @@ export default function Vault() {
                             />
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Cinsi</label>
-                            <input
-                                type="text"
+                            <label className="text-sm font-medium text-muted-foreground">Cinsi</label>
+                            <select
                                 required
-                                placeholder="Örn: Çeyrek Altın"
                                 value={formGoldType}
                                 onChange={(e) => setFormGoldType(e.target.value)}
-                                className="w-full px-4 py-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                            />
+                                className="w-full px-4 py-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
+                            >
+                                <option value="" disabled>Seçiniz...</option>
+                                <option value="Gram">Gram</option>
+                                <option value="Çeyrek">Çeyrek</option>
+                                <option value="Yarım">Yarım</option>
+                                <option value="Tam">Tam</option>
+                                <option value="Ata Lira">Ata Lira</option>
+                                <option value="Dolar">Dolar</option>
+                                <option value="Euro">Euro</option>
+                            </select>
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Miktar</label>
+                            <label className="text-sm font-medium text-muted-foreground">Miktar</label>
                             <input
                                 type="number"
                                 required
@@ -259,12 +266,19 @@ export default function Vault() {
                                                         />
                                                     </td>
                                                     <td className="py-3 px-2">
-                                                        <input
-                                                            type="text"
+                                                        <select
                                                             value={editGoldType}
                                                             onChange={e => setEditGoldType(e.target.value)}
                                                             className="w-full px-2 py-1 rounded bg-background text-sm border border-border"
-                                                        />
+                                                        >
+                                                            <option value="Gram">Gram</option>
+                                                            <option value="Çeyrek">Çeyrek</option>
+                                                            <option value="Yarım">Yarım</option>
+                                                            <option value="Tam">Tam</option>
+                                                            <option value="Ata Lira">Ata Lira</option>
+                                                            <option value="Dolar">Dolar</option>
+                                                            <option value="Euro">Euro</option>
+                                                        </select>
                                                     </td>
                                                     <td className="py-3 px-2 text-right">
                                                         <input
@@ -291,7 +305,7 @@ export default function Vault() {
                                                     <td className="py-3 px-2 text-sm whitespace-nowrap">{displayDate}</td>
                                                     <td className="py-3 px-2 font-medium">{record.owner}</td>
                                                     <td className="py-3 px-2">{record.gold_type}</td>
-                                                    <td className="py-3 px-2 text-right font-mono font-bold text-primary">{record.amount}</td>
+                                                    <td className="py-3 px-2 text-right font-mono font-bold text-primary">{Number(record.amount)}</td>
                                                     <td className="py-3 px-2">
                                                         <div className="flex justify-center gap-2">
                                                             <button onClick={() => startEditing(record)} className="p-1.5 text-blue-500 hover:bg-blue-500/10 rounded-lg transition-colors" title="Düzenle">
