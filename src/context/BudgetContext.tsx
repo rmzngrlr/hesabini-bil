@@ -585,10 +585,6 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     localStorage.setItem('settings_showMealCard', String(showMealCard));
   }, [showMealCard]);
 
-  useEffect(() => {
-    localStorage.setItem('settings_showVault', String(showVault));
-  }, [showVault]);
-
   // Projection Logic
   const derivedState = useMemo(() => {
     if (viewDate === realState.currentMonth) {
@@ -800,6 +796,10 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const toggleShowVault = () => {
     setShowVault(prev => !prev);
   };
+
+  useEffect(() => {
+    localStorage.setItem('settings_showVault', String(showVault));
+  }, [showVault]);
 
   const addCustomIncome = (income: Omit<CustomIncome, 'id'>) => {
     const newIncome: CustomIncome = {
