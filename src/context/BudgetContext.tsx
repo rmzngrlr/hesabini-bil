@@ -55,6 +55,8 @@ interface BudgetContextType {
   toggleTheme: () => void;
   showMealCard: boolean;
   toggleShowMealCard: () => void;
+  showVault: boolean;
+  toggleShowVault: () => void;
 }
 
 const BudgetContext = createContext<BudgetContextType | undefined>(undefined);
@@ -583,6 +585,10 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     localStorage.setItem('settings_showMealCard', String(showMealCard));
   }, [showMealCard]);
 
+  useEffect(() => {
+    localStorage.setItem('settings_showVault', String(showVault));
+  }, [showVault]);
+
   // Projection Logic
   const derivedState = useMemo(() => {
     if (viewDate === realState.currentMonth) {
@@ -780,6 +786,19 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const toggleShowMealCard = () => {
     setShowMealCard(prev => !prev);
+  };
+
+  const [showVault, setShowVault] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem('settings_showVault');
+      return stored !== 'false'; // Default true
+    } catch {
+      return true;
+    }
+  });
+
+  const toggleShowVault = () => {
+    setShowVault(prev => !prev);
   };
 
   const addCustomIncome = (income: Omit<CustomIncome, 'id'>) => {
@@ -1534,7 +1553,9 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             theme,
             toggleTheme,
             showMealCard,
-            toggleShowMealCard
+            toggleShowMealCard,
+            showVault,
+            toggleShowVault
         }}
     >
         {children}

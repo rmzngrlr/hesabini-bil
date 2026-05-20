@@ -7,7 +7,7 @@ import { exportToExcel, importFromExcel } from '../services/excelService';
 import { API_URL } from '../services/api';
 
 export default function Settings() {
-  const { state, loadState, showMealCard, toggleShowMealCard } = useBudget();
+  const { state, loadState, showMealCard, toggleShowMealCard, showVault, toggleShowVault } = useBudget();
   const { username, logout } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [securityQuestion, setSecurityQuestion] = useState('');
@@ -254,25 +254,48 @@ export default function Settings() {
       </Card>
 
       <Card title="Görünüm ve Özellikler">
-        <div className="flex items-center justify-between p-2">
-            <div className="flex items-center gap-3">
-                <div className="p-2 rounded-full bg-orange-500/10 text-orange-500">
-                    <CreditCard size={20} />
-                </div>
-                <div>
-                    <div className="font-medium">Yemek Kartı</div>
-                    <div className="text-xs text-muted-foreground">Yemek kartı geliri ve harcamalarını takip et</div>
-                </div>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                    type="checkbox"
-                    className="sr-only peer"
-                    checked={showMealCard}
-                    onChange={toggleShowMealCard}
-                />
-                <div className="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
-            </label>
+        <div className="space-y-4 p-2">
+          <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-full bg-orange-500/10 text-orange-500">
+                      <CreditCard size={20} />
+                  </div>
+                  <div>
+                      <div className="font-medium">Yemek Kartı</div>
+                      <div className="text-xs text-muted-foreground">Yemek kartı geliri ve harcamalarını takip et</div>
+                  </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={showMealCard}
+                      onChange={toggleShowMealCard}
+                  />
+                  <div className="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+              </label>
+          </div>
+
+          <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-full bg-yellow-500/10 text-yellow-500">
+                      <Download size={20} className="rotate-180" />
+                  </div>
+                  <div>
+                      <div className="font-medium">Kasa Menüsü</div>
+                      <div className="text-xs text-muted-foreground">Altın ve diğer varlıkları takip etme menüsünü göster</div>
+                  </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={showVault}
+                      onChange={toggleShowVault}
+                  />
+                  <div className="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+              </label>
+          </div>
         </div>
       </Card>
 
