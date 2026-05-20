@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, Wallet, CreditCard, TurkishLira, Coins } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
+import { useBudget } from '../context/BudgetContext';
 
 interface LayoutProps {
   children: ReactNode;
@@ -17,10 +18,11 @@ const navItems = [
 
 export function Layout({ children }: LayoutProps) {
   const { isAdmin } = useAuth();
+  const { showVault } = useBudget();
 
   const currentNavItems = [
     ...navItems,
-    ...(isAdmin ? [{ path: '/kasa', label: 'Kasa', icon: Coins }] : [])
+    ...(isAdmin && showVault ? [{ path: '/kasa', label: 'Kasa', icon: Coins }] : [])
   ];
 
   return (
