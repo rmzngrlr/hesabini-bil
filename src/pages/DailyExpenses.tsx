@@ -4,6 +4,7 @@ import type { DailyExpense } from '../types';
 import { Card } from '../components/ui/Card';
 import { Trash2, Banknote, Wallet, CreditCard, Pencil, X, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
+import React, { useMemo } from 'react';
 import { tr } from 'date-fns/locale';
 import { cn } from '../lib/utils';
 
@@ -26,6 +27,19 @@ export default function DailyExpenses() {
   const [transactionType, setTransactionType] = useDraftState<'INCOME' | 'EXPENSE'>('daily_draft_tx_type', 'EXPENSE');
   const [activeTab, setActiveTab] = useDraftState<'NAKIT' | 'YK'>('daily_draft_tab', 'NAKIT');
   const [editingId, setEditingId] = useDraftState<string | null>('daily_draft_editing_id', null);
+
+  const uniqueDescriptions = useMemo(() => {
+    const descriptions = new Set<string>();
+    state.history.forEach(h => {
+        h.dailyExpenses.forEach(e => {
+            if (e.description) descriptions.add(e.description.trim());
+        });
+    });
+    state.dailyExpenses.forEach(e => {
+        if (e.description) descriptions.add(e.description.trim());
+    });
+    return Array.from(descriptions).filter(Boolean).sort();
+  }, [state.history, state.dailyExpenses]);
 
   const handleEdit = (expense: DailyExpense) => {
     setEditingId(expense.id);
@@ -146,11 +160,17 @@ export default function DailyExpenses() {
                 <label className="text-xs text-muted-foreground">Açıklama</label>
                 <input
                 type="text"
+                list="daily-expense-suggestions"
                 placeholder="Bu para nereden geldi/nereye gitti?"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 />
+                <datalist id="daily-expense-suggestions">
+                  {uniqueDescriptions.map((desc, idx) => (
+                    <option key={idx} value={desc} />
+                  ))}
+                </datalist>
             </div>
 
             <div className="flex gap-2 pt-1">
