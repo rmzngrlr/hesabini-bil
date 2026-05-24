@@ -41,17 +41,25 @@ export default function DailyExpenses() {
     return Array.from(descriptions).filter(Boolean).sort();
   }, [state.history, state.dailyExpenses]);
 
+  const activeExpenses = useMemo(() => {
+    if (viewDate < state.currentMonth) {
+      const historyEntry = state.history.find(h => h.month === viewDate);
+      return historyEntry ? historyEntry.dailyExpenses : [];
+    }
+    return state.dailyExpenses;
+  }, [viewDate, state.currentMonth, state.history, state.dailyExpenses]);
+
   const currentMonthSpentCash = useMemo(() => {
-    return state.dailyExpenses
+    return activeExpenses
       .filter(e => e.type === 'NAKIT' && e.amount < 0)
       .reduce((sum, e) => sum + Math.abs(e.amount), 0);
-  }, [state.dailyExpenses]);
+  }, [activeExpenses]);
 
   const currentMonthSpentYK = useMemo(() => {
-    return state.dailyExpenses
+    return activeExpenses
       .filter(e => e.type === 'YK' && e.amount < 0)
       .reduce((sum, e) => sum + Math.abs(e.amount), 0);
-  }, [state.dailyExpenses]);
+  }, [activeExpenses]);
 
   const handleEdit = (expense: DailyExpense) => {
     setEditingId(expense.id);
@@ -246,7 +254,7 @@ export default function DailyExpenses() {
         </div>
       )}
 
-      {viewDate === state.currentMonth && (
+      {viewDate <= state.currentMonth && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Card title="Bu Ay Harcanan Nakit" className="bg-red-500/5 border-red-500/20">
               <div className="text-2xl font-bold text-red-500 mt-2">
