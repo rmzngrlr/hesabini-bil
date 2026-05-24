@@ -41,6 +41,18 @@ export default function DailyExpenses() {
     return Array.from(descriptions).filter(Boolean).sort();
   }, [state.history, state.dailyExpenses]);
 
+  const currentMonthSpentCash = useMemo(() => {
+    return state.dailyExpenses
+      .filter(e => e.type === 'NAKIT' && e.amount < 0)
+      .reduce((sum, e) => sum + Math.abs(e.amount), 0);
+  }, [state.dailyExpenses]);
+
+  const currentMonthSpentYK = useMemo(() => {
+    return state.dailyExpenses
+      .filter(e => e.type === 'YK' && e.amount < 0)
+      .reduce((sum, e) => sum + Math.abs(e.amount), 0);
+  }, [state.dailyExpenses]);
+
   const handleEdit = (expense: DailyExpense) => {
     setEditingId(expense.id);
     setDate(expense.date);
@@ -231,6 +243,23 @@ export default function DailyExpenses() {
       ) : (
         <div className="text-center p-4 bg-blue-500/10 rounded-lg text-blue-600 dark:text-blue-400 border border-blue-500/20">
             Planlama modundasınız. Gelecek aylar için günlük harcama girilemez, sadece sabit gider planlaması yapılabilir.
+        </div>
+      )}
+
+      {viewDate === state.currentMonth && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Card title="Bu Ay Harcanan Nakit" className="bg-red-500/5 border-red-500/20">
+              <div className="text-2xl font-bold text-red-500 mt-2">
+                 {currentMonthSpentCash.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+              </div>
+            </Card>
+            {showMealCard && (
+                <Card title="Bu Ay Harcanan Yemek Kartı" className="bg-orange-500/5 border-orange-500/20">
+                  <div className="text-2xl font-bold text-orange-500 mt-2">
+                     {currentMonthSpentYK.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+                  </div>
+                </Card>
+            )}
         </div>
       )}
 
