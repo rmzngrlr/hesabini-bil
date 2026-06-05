@@ -11,6 +11,7 @@ interface GoldRecord {
     owner: string;
     gold_type: string;
     amount: number;
+    note?: string;
 }
 
 export default function Vault() {
@@ -23,12 +24,14 @@ export default function Vault() {
     const [formOwner, setFormOwner] = useState('');
     const [formGoldType, setFormGoldType] = useState('');
     const [formAmount, setFormAmount] = useState('');
+    const [formNote, setFormNote] = useState('');
 
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editDate, setEditDate] = useState('');
     const [editOwner, setEditOwner] = useState('');
     const [editGoldType, setEditGoldType] = useState('');
     const [editAmount, setEditAmount] = useState('');
+    const [editNote, setEditNote] = useState('');
 
     useEffect(() => {
         if (isAdmin) {
@@ -66,7 +69,8 @@ export default function Vault() {
                     record_date: formDate,
                     owner: formOwner,
                     gold_type: formGoldType,
-                    amount: parseFloat(formAmount)
+                    amount: parseFloat(formAmount),
+                    note: formNote
                 })
             });
 
@@ -106,6 +110,7 @@ export default function Vault() {
         setEditOwner(record.owner);
         setEditGoldType(record.gold_type);
         setEditAmount(record.amount.toString());
+        setEditNote(record.note || '');
     };
 
     const saveEdit = async () => {
@@ -118,7 +123,8 @@ export default function Vault() {
                     record_date: editDate,
                     owner: editOwner,
                     gold_type: editGoldType,
-                    amount: parseFloat(editAmount)
+                    amount: parseFloat(editAmount),
+                    note: editNote
                 })
             });
 
@@ -213,6 +219,16 @@ export default function Vault() {
                             />
                         </div>
                     </div>
+                    <div className="space-y-1.5">
+                        <label className="text-sm font-medium text-muted-foreground">Not (İsteğe Bağlı)</label>
+                        <input
+                            type="text"
+                            placeholder="Örn: Düğün hediyesi"
+                            value={formNote}
+                            onChange={(e) => setFormNote(e.target.value)}
+                            className="w-full px-4 py-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                    </div>
                     <button
                         type="submit"
                         className="w-full py-3 bg-primary text-primary-foreground font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-primary/90 transition-all"
@@ -240,6 +256,7 @@ export default function Vault() {
                                                 <th className="pb-3 px-2 font-medium text-muted-foreground text-sm">Kime Ait</th>
                                                 <th className="pb-3 px-2 font-medium text-muted-foreground text-sm text-right">Miktar</th>
                                                 <th className="pb-3 px-2 font-medium text-muted-foreground text-sm">Cinsi</th>
+                                                <th className="pb-3 px-2 font-medium text-muted-foreground text-sm">Not</th>
                                                 <th className="pb-3 px-2 font-medium text-muted-foreground text-sm text-center">İşlem</th>
                                             </tr>
                                         </thead>
@@ -294,6 +311,14 @@ export default function Vault() {
                                                                     </select>
                                                                 </td>
                                                                 <td className="py-3 px-2">
+                                                                    <input
+                                                                        type="text"
+                                                                        value={editNote}
+                                                                        onChange={e => setEditNote(e.target.value)}
+                                                                        className="w-full px-2 py-1 rounded bg-background text-sm border border-border"
+                                                                    />
+                                                                </td>
+                                                                <td className="py-3 px-2">
                                                                     <div className="flex justify-center gap-2">
                                                                         <button onClick={saveEdit} className="p-1.5 text-green-500 hover:bg-green-500/10 rounded-lg" title="Kaydet">
                                                                             <Check size={16} />
@@ -310,6 +335,7 @@ export default function Vault() {
                                                                 <td className="py-3 px-2 font-medium">{record.owner}</td>
                                                                 <td className="py-3 px-2 text-right font-mono font-bold text-primary">{Number(record.amount)}</td>
                                                                 <td className="py-3 px-2">{record.gold_type}</td>
+                                                                <td className="py-3 px-2 text-sm text-muted-foreground">{record.note || '-'}</td>
                                                                 <td className="py-3 px-2">
                                                                     <div className="flex justify-center gap-2">
                                                                         <button onClick={() => startEditing(record)} className="p-1.5 text-blue-500 hover:bg-blue-500/10 rounded-lg transition-colors" title="Düzenle">

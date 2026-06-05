@@ -28,7 +28,7 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
     try {
-        const { record_date, owner, gold_type, amount } = req.body;
+        const { record_date, owner, gold_type, amount, note } = req.body;
         if (!record_date || !owner || !gold_type || amount === undefined) {
             return res.status(400).json({ error: 'Eksik veri.' });
         }
@@ -36,8 +36,8 @@ router.post('/', async (req, res) => {
         const db = await getDb();
         const userId = (req as AuthRequest).user!.userId;
         const result = await db.run(
-            'INSERT INTO gold_records (user_id, record_date, owner, gold_type, amount) VALUES (?, ?, ?, ?, ?)',
-            [userId, record_date, owner, gold_type, amount]
+            'INSERT INTO gold_records (user_id, record_date, owner, gold_type, amount, note) VALUES (?, ?, ?, ?, ?, ?)',
+            [userId, record_date, owner, gold_type, amount, note || null]
         );
 
         res.status(201).json({ id: result.lastID, message: 'Kayıt başarıyla eklendi.' });
@@ -50,7 +50,7 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { record_date, owner, gold_type, amount } = req.body;
+        const { record_date, owner, gold_type, amount, note } = req.body;
 
         if (!record_date || !owner || !gold_type || amount === undefined) {
             return res.status(400).json({ error: 'Eksik veri.' });
@@ -59,8 +59,8 @@ router.put('/:id', async (req, res) => {
         const db = await getDb();
         const userId = (req as AuthRequest).user!.userId;
         await db.run(
-            'UPDATE gold_records SET record_date = ?, owner = ?, gold_type = ?, amount = ? WHERE id = ? AND user_id = ?',
-            [record_date, owner, gold_type, amount, id, userId]
+            'UPDATE gold_records SET record_date = ?, owner = ?, gold_type = ?, amount = ?, note = ? WHERE id = ? AND user_id = ?',
+            [record_date, owner, gold_type, amount, note || null, id, userId]
         );
 
         res.json({ message: 'Kayıt güncellendi.' });
