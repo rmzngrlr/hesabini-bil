@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, Wallet, CreditCard, TurkishLira, Coins } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
+import { useBudget } from '../context/BudgetContext';
 
 interface LayoutProps {
   children: ReactNode;
@@ -17,14 +18,15 @@ const navItems = [
 
 export function Layout({ children }: LayoutProps) {
   const { isAdmin } = useAuth();
+  const { showVault } = useBudget();
 
   const currentNavItems = [
     ...navItems,
-    ...(isAdmin ? [{ path: '/kasa', label: 'Kasa', icon: Coins }] : [])
+    ...(isAdmin && showVault ? [{ path: '/kasa', label: 'Kasa', icon: Coins }] : [])
   ];
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground overflow-x-hidden">
+    <div className="flex min-h-screen bg-background text-foreground w-full max-w-full">
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-64 border-r border-border bg-card p-6 space-y-8 fixed h-full left-0 top-0 overflow-y-auto">
         <div className="flex items-center gap-3 px-2">
@@ -60,8 +62,8 @@ export function Layout({ children }: LayoutProps) {
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-h-screen pb-20 md:pb-0 md:pl-64 transition-all duration-300">
-        <main className="flex-1 p-4 w-full mx-auto md:p-8 md:max-w-7xl">
+      <div className="flex-1 flex flex-col min-h-screen pb-20 md:pb-0 md:pl-64 transition-all duration-300 min-w-0">
+        <main className="flex-1 p-4 w-full mx-auto md:p-8 md:max-w-7xl min-w-0">
           {children}
         </main>
       </div>

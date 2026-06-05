@@ -4,6 +4,7 @@ import type { DailyExpense } from '../types';
 import { Card } from '../components/ui/Card';
 import { Trash2, Banknote, Wallet, CreditCard, Pencil, X, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
+import React, { useMemo } from 'react';
 import { tr } from 'date-fns/locale';
 import { cn } from '../lib/utils';
 
@@ -26,6 +27,39 @@ export default function DailyExpenses() {
   const [transactionType, setTransactionType] = useDraftState<'INCOME' | 'EXPENSE'>('daily_draft_tx_type', 'EXPENSE');
   const [activeTab, setActiveTab] = useDraftState<'NAKIT' | 'YK'>('daily_draft_tab', 'NAKIT');
   const [editingId, setEditingId] = useDraftState<string | null>('daily_draft_editing_id', null);
+
+  const uniqueDescriptions = useMemo(() => {
+    const descriptions = new Set<string>();
+    state.history.forEach(h => {
+        h.dailyExpenses.forEach(e => {
+            if (e.description) descriptions.add(e.description.trim());
+        });
+    });
+    state.dailyExpenses.forEach(e => {
+        if (e.description) descriptions.add(e.description.trim());
+    });
+    return Array.from(descriptions).filter(Boolean).sort();
+  }, [state.history, state.dailyExpenses]);
+
+  const activeExpenses = useMemo(() => {
+    if (viewDate < state.currentMonth) {
+      const historyEntry = state.history.find(h => h.month === viewDate);
+      return historyEntry ? historyEntry.dailyExpenses : [];
+    }
+    return state.dailyExpenses;
+  }, [viewDate, state.currentMonth, state.history, state.dailyExpenses]);
+
+  const currentMonthSpentCash = useMemo(() => {
+    return activeExpenses
+      .filter(e => e.type === 'NAKIT' && e.amount < 0)
+      .reduce((sum, e) => sum + Math.abs(e.amount), 0);
+  }, [activeExpenses]);
+
+  const currentMonthSpentYK = useMemo(() => {
+    return activeExpenses
+      .filter(e => e.type === 'YK' && e.amount < 0)
+      .reduce((sum, e) => sum + Math.abs(e.amount), 0);
+  }, [activeExpenses]);
 
   const handleEdit = (expense: DailyExpense) => {
     setEditingId(expense.id);
@@ -146,11 +180,17 @@ export default function DailyExpenses() {
                 <label className="text-xs text-muted-foreground">Açıklama</label>
                 <input
                 type="text"
+                list="daily-expense-suggestions"
                 placeholder="Bu para nereden geldi/nereye gitti?"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 />
+                <datalist id="daily-expense-suggestions">
+                  {uniqueDescriptions.map((desc, idx) => (
+                    <option key={idx} value={desc} />
+                  ))}
+                </datalist>
             </div>
 
             <div className="flex gap-2 pt-1">
@@ -211,6 +251,23 @@ export default function DailyExpenses() {
       ) : (
         <div className="text-center p-4 bg-blue-500/10 rounded-lg text-blue-600 dark:text-blue-400 border border-blue-500/20">
             Planlama modundasınız. Gelecek aylar için günlük harcama girilemez, sadece sabit gider planlaması yapılabilir.
+        </div>
+      )}
+
+      {viewDate <= state.currentMonth && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Card title="Bu Ay Harcanan Nakit" className="bg-red-500/5 border-red-500/20">
+              <div className="text-2xl font-bold text-red-500 mt-2">
+                 {currentMonthSpentCash.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+              </div>
+            </Card>
+            {showMealCard && (
+                <Card title="Bu Ay Harcanan Yemek Kartı" className="bg-orange-500/5 border-orange-500/20">
+                  <div className="text-2xl font-bold text-orange-500 mt-2">
+                     {currentMonthSpentYK.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+                  </div>
+                </Card>
+            )}
         </div>
       )}
 

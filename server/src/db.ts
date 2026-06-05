@@ -77,6 +77,21 @@ export const getDb = async () => {
                 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         `);
+
+        // Check if note column exists in gold_records
+        const [grColumns] = await connection.query<mysql.RowDataPacket[]>(`
+            SELECT COLUMN_NAME
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_NAME = 'gold_records' AND COLUMN_NAME = 'note' AND TABLE_SCHEMA = DATABASE()
+        `);
+
+        if (grColumns.length === 0) {
+            await connection.query(`
+                ALTER TABLE gold_records
+                ADD COLUMN note VARCHAR(1000) DEFAULT NULL;
+            `);
+        }
+
     } finally {
         connection.release();
     }

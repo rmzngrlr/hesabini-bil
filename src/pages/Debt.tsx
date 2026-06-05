@@ -1,12 +1,13 @@
 import { useDraftState } from '../hooks/useDraftState';
 import { useBudget } from '../context/BudgetContext';
 import { Card } from '../components/ui/Card';
+import React, { useMemo } from 'react';
 import { Plus, Trash2, CalendarClock, CreditCard, Pencil, X } from 'lucide-react';
 import { cn } from '../lib/utils';
 import type { CCDebt } from '../types';
 
 export default function Debt() {
-  const { state, viewDate, addCCDebt, updateCCDebt, deleteCCDebt, addInstallment, deleteInstallment } = useBudget();
+  const { state, viewDate, addCCDebt, updateCCDebt, deleteCCDebt, addInstallment, deleteInstallment, addDailyExpense } = useBudget();
   const [description, setDescription] = useDraftState('debt_draft_desc', '');
   const [amount, setAmount] = useDraftState('debt_draft_amount', '');
 
@@ -15,6 +16,19 @@ export default function Debt() {
   const [installmentCount, setInstallmentCount] = useDraftState('debt_draft_inst_count', '2');
   const [transactionType, setTransactionType] = useDraftState<'SPEND' | 'PAY'>('debt_draft_tx_type', 'SPEND');
   const [editingId, setEditingId] = useDraftState<string | null>('debt_draft_editing_id', null);
+
+  const uniqueDescriptions = useMemo(() => {
+    const descriptions = new Set<string>();
+    state.history.forEach(h => {
+        h.ccDebts.forEach(d => {
+            if (d.description) descriptions.add(d.description.trim());
+        });
+    });
+    state.ccDebts.forEach(d => {
+        if (d.description) descriptions.add(d.description.trim());
+    });
+    return Array.from(descriptions).filter(Boolean).sort();
+  }, [state.history, state.ccDebts]);
 
   const handleEdit = (debt: CCDebt) => {
     // If it's linked to an installment, warn or handle?
@@ -62,6 +76,13 @@ export default function Debt() {
     } else {
         if (transactionType === 'PAY') {
             addCCDebt({ description, amount: Math.abs(numAmount) });
+            // Otomatik olarak nakitten de düşmesini sağlıyoruz (Nakit gider olarak eklenir)
+            addDailyExpense({
+                date: new Date().toISOString(),
+                description: description,
+                amount: -Math.abs(numAmount),
+                type: 'NAKIT'
+            });
         } else {
             const debtAmount = -Math.abs(numAmount);
 
@@ -155,11 +176,17 @@ export default function Debt() {
              <label className="text-xs text-muted-foreground">Açıklama</label>
              <input
                type="text"
+               list="debt-expense-suggestions"
                placeholder="Harcama/Ödeme"
                value={description}
                onChange={(e) => setDescription(e.target.value)}
                className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
              />
+             <datalist id="debt-expense-suggestions">
+               {uniqueDescriptions.map((desc, idx) => (
+                 <option key={idx} value={desc} />
+               ))}
+             </datalist>
           </div>
 
           <div className="flex gap-2">
