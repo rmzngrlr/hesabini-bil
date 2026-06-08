@@ -401,16 +401,17 @@ export default function Vault() {
                                     onDragStart={(e) => handleDragStart(e, goldType)}
                                     onDragOver={handleDragOver}
                                     onDrop={(e) => handleDrop(e, goldType)}
-                                    className={`overflow-x-auto bg-card rounded-xl border border-border overflow-hidden cursor-move transition-transform ${draggedType === goldType ? 'opacity-50 scale-[0.98]' : 'opacity-100 scale-100'}`}
+                                    className={`overflow-x-auto bg-card rounded-xl border border-border cursor-move transition-transform ${draggedType === goldType ? 'opacity-50 scale-[0.98]' : 'opacity-100 scale-100'}`}
                                 >
-                                    <div className="p-4 bg-secondary/50 border-b border-border flex items-center justify-between pointer-events-none">
-                                        <h3 className="font-bold text-lg pointer-events-auto">{goldType}</h3>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-sm text-muted-foreground">Toplam:</span>
-                                            <span className="text-lg font-mono font-bold text-primary">{totalGiris} {goldType}</span>
+                                    <div className="min-w-max">
+                                        <div className="p-4 bg-secondary/50 border-b border-border flex items-center justify-between pointer-events-none">
+                                            <h3 className="font-bold text-lg pointer-events-auto">{goldType}</h3>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-sm text-muted-foreground">Toplam:</span>
+                                                <span className="text-lg font-mono font-bold text-primary">{totalGiris} {goldType}</span>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <table className="w-full text-left border-collapse">
+                                        <table className="w-full text-left border-collapse">
                                         <thead>
                                             <tr className="border-b border-border bg-muted/30">
                                                 <th className="py-3 px-4 font-medium text-muted-foreground text-sm whitespace-nowrap w-[15%]">Tarih</th>
@@ -530,6 +531,7 @@ export default function Vault() {
                                             })}
                                         </tbody>
                                     </table>
+                                    </div>
                                 </div>
                             );
                         })}
