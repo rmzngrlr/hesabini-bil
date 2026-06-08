@@ -57,7 +57,7 @@ export function Layout({ children }: LayoutProps) {
         </nav>
 
         <div className="text-xs text-center text-muted-foreground px-4">
-          © 2026 Hesabını Bil - Geliştiren: rgmedya
+          © 2026 Hesabını Bil - <span className="whitespace-nowrap">Geliştiren: rgmedya</span>
         </div>
       </aside>
 
