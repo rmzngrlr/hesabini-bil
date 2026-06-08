@@ -151,8 +151,18 @@ export default function Vault() {
         return <Navigate to="/" replace />;
     }
 
+    // Default suggestions + any custom types already in the records
+    const defaultGoldTypes = ["Gram", "Çeyrek", "Yarım", "Tam", "Ata Lira", "Dolar", "Euro"];
+    const uniqueGoldTypes = Array.from(new Set([...defaultGoldTypes, ...records.map(r => r.gold_type)]));
+
     return (
         <div className="space-y-6">
+            <datalist id="goldTypeSuggestions">
+                {uniqueGoldTypes.map(type => (
+                    <option key={type} value={type} />
+                ))}
+            </datalist>
+
             <header className="flex items-center gap-3">
                 <div className="p-3 bg-yellow-500/20 text-yellow-500 rounded-xl">
                     <Coins size={28} />
@@ -195,21 +205,15 @@ export default function Vault() {
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-sm font-medium text-muted-foreground">Cinsi</label>
-                            <select
+                            <input
+                                type="text"
                                 required
+                                placeholder="Örn: Gram veya Bosna Markı"
+                                list="goldTypeSuggestions"
                                 value={formGoldType}
                                 onChange={(e) => setFormGoldType(e.target.value)}
-                                className="w-full px-4 py-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
-                            >
-                                <option value="" disabled>Seçiniz...</option>
-                                <option value="Gram">Gram</option>
-                                <option value="Çeyrek">Çeyrek</option>
-                                <option value="Yarım">Yarım</option>
-                                <option value="Tam">Tam</option>
-                                <option value="Ata Lira">Ata Lira</option>
-                                <option value="Dolar">Dolar</option>
-                                <option value="Euro">Euro</option>
-                            </select>
+                                className="w-full px-4 py-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                            />
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-sm font-medium text-muted-foreground">Miktar</label>
@@ -335,6 +339,11 @@ export default function Vault() {
                                                                         <option value="Çıkış">Çıkış</option>
                                                                     </select>
                                                                 </td>
+                                                                {/* Edit Mode: The Cinsi column is hidden in display mode because tables are grouped by Cinsi,
+                                                                    but if the user needs to correct the Cinsi, we should probably allow it,
+                                                                    though currently it's not in the <tr> since grouping dictates it.
+                                                                    If they want to change Cinsi, they must delete and recreate.
+                                                                    I will leave this as is since we removed the Cinsi column from the loop earlier. */}
                                                                 <td className="py-3 px-4 text-right">
                                                                     <input
                                                                         type="number"
