@@ -38,12 +38,12 @@ export default function Vault() {
 
     useEffect(() => {
         if (isAdmin) {
-            loadRecords();
+            loadRecords(true);
         }
     }, [isAdmin]);
 
-    const loadRecords = async () => {
-        setIsLoading(true);
+    const loadRecords = async (showLoadingState = false) => {
+        if (showLoadingState) setIsLoading(true);
         try {
             const res = await fetchWithAuth('/vault');
             if (!res.ok) throw new Error('Veriler getirilemedi.');
@@ -52,7 +52,7 @@ export default function Vault() {
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Kasa kayıtları yüklenirken hata oluştu.');
         } finally {
-            setIsLoading(false);
+            if (showLoadingState) setIsLoading(false);
         }
     };
 
@@ -85,7 +85,7 @@ export default function Vault() {
             setFormGoldType('');
             setFormAmount('');
 
-            loadRecords();
+            loadRecords(false);
         } catch (err) {
             setError(err instanceof Error ? err.message : String(err));
         }
@@ -100,7 +100,7 @@ export default function Vault() {
             });
 
             if (!res.ok) throw new Error('Kayıt silinemedi.');
-            loadRecords();
+            loadRecords(false);
         } catch (err) {
             setError(err instanceof Error ? err.message : String(err));
         }
@@ -137,7 +137,7 @@ export default function Vault() {
             if (!res.ok) throw new Error('Kayıt güncellenemedi.');
 
             setEditingId(null);
-            loadRecords();
+            loadRecords(false);
         } catch (err) {
             setError(err instanceof Error ? err.message : String(err));
         }
@@ -235,7 +235,7 @@ export default function Vault() {
                                 className={`w-full px-4 py-3 rounded-xl bg-secondary focus:outline-none focus:ring-2 focus:ring-primary appearance-none font-medium ${formTransactionType === 'Giriş' ? 'text-primary' : 'text-red-500'}`}
                             >
                                 <option value="Giriş">Giriş (Birikim)</option>
-                                <option value="Çıkış">Çıkış (Hediye/Bozdurma)</option>
+                                <option value="Çıkış">Çıkış (Hediye)</option>
                             </select>
                         </div>
                         <div className="space-y-1.5">
@@ -276,26 +276,27 @@ export default function Vault() {
                                 return (b.id || 0) - (a.id || 0);
                             });
 
-                            const totalGiris = groupRecords.filter(r => (r.transaction_type || 'Giriş') === 'Giriş').reduce((sum, record) => sum + Number(record.amount), 0);
+                            const rawTotalGiris = groupRecords.filter(r => (r.transaction_type || 'Giriş') === 'Giriş').reduce((sum, record) => sum + Number(record.amount), 0);
+                            const totalGiris = Math.max(0, rawTotalGiris);
 
                             return (
                                 <div key={goldType} className="overflow-x-auto bg-card rounded-xl border border-border overflow-hidden">
                                     <div className="p-4 bg-secondary/50 border-b border-border flex items-center justify-between">
                                         <h3 className="font-bold text-lg">{goldType}</h3>
                                         <div className="flex items-center gap-2">
-                                            <span className="text-sm text-muted-foreground">Toplam (Sadece Girişler):</span>
-                                            <span className="text-lg font-mono font-bold text-primary">{totalGiris}</span>
+                                            <span className="text-sm text-muted-foreground">Toplam:</span>
+                                            <span className="text-lg font-mono font-bold text-primary">{totalGiris} {goldType}</span>
                                         </div>
                                     </div>
                                     <table className="w-full text-left border-collapse">
                                         <thead>
                                             <tr className="border-b border-border bg-muted/30">
-                                                <th className="py-3 px-4 font-medium text-muted-foreground text-sm whitespace-nowrap">Tarih</th>
-                                                <th className="py-3 px-4 font-medium text-muted-foreground text-sm">Kime Ait</th>
-                                                <th className="py-3 px-4 font-medium text-muted-foreground text-sm">Tür</th>
-                                                <th className="py-3 px-4 font-medium text-muted-foreground text-sm text-right">Miktar</th>
-                                                <th className="py-3 px-4 font-medium text-muted-foreground text-sm min-w-[120px]">Not</th>
-                                                <th className="py-3 px-4 font-medium text-muted-foreground text-sm text-center">İşlem</th>
+                                                <th className="py-3 px-4 font-medium text-muted-foreground text-sm whitespace-nowrap w-[15%]">Tarih</th>
+                                                <th className="py-3 px-4 font-medium text-muted-foreground text-sm w-[20%]">Kime Ait</th>
+                                                <th className="py-3 px-4 font-medium text-muted-foreground text-sm w-[10%]">Tür</th>
+                                                <th className="py-3 px-4 font-medium text-muted-foreground text-sm text-right w-[15%]">Miktar</th>
+                                                <th className="py-3 px-4 font-medium text-muted-foreground text-sm w-[30%]">Not</th>
+                                                <th className="py-3 px-4 font-medium text-muted-foreground text-sm text-center w-[10%]">İşlem</th>
                                             </tr>
                                         </thead>
                                         <tbody>
