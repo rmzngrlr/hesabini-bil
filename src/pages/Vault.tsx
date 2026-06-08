@@ -18,8 +18,11 @@ interface GoldRecord {
 export default function Vault() {
     const { isAdmin } = useAuth();
     const [records, setRecords] = useState<GoldRecord[]>([]);
+    const [vaultOrder, setVaultOrder] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
+
+    const [draggedType, setDraggedType] = useState<string | null>(null);
 
     const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
     const [formOwner, setFormOwner] = useState('');
@@ -48,12 +51,70 @@ export default function Vault() {
             const res = await fetchWithAuth('/vault');
             if (!res.ok) throw new Error('Veriler getirilemedi.');
             const data = await res.json();
-            setRecords(data);
+            setRecords(data.records || []);
+            if (data.vaultOrder && Array.isArray(data.vaultOrder)) {
+                setVaultOrder(data.vaultOrder);
+            }
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Kasa kayıtları yüklenirken hata oluştu.');
         } finally {
             if (showLoadingState) setIsLoading(false);
         }
+    };
+
+    const handleDragStart = (e: React.DragEvent, type: string) => {
+        setDraggedType(type);
+        // Required for Firefox
+        e.dataTransfer.setData('text/plain', type);
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    };
+
+    const handleDrop = async (e: React.DragEvent, targetType: string) => {
+        e.preventDefault();
+        if (!draggedType || draggedType === targetType) {
+            setDraggedType(null);
+            return;
+        }
+
+        const currentTypes = Array.from(new Set(records.map(r => r.gold_type)));
+
+        // Merge the saved vaultOrder with current types to ensure no types are missed
+        let orderArray = [...vaultOrder];
+        for (const type of currentTypes) {
+            if (!orderArray.includes(type)) {
+                orderArray.push(type);
+            }
+        }
+
+        const draggedIdx = orderArray.indexOf(draggedType);
+        const targetIdx = orderArray.indexOf(targetType);
+
+        if (draggedIdx !== -1 && targetIdx !== -1) {
+            // Optimistic update
+            const newOrder = [...orderArray];
+            newOrder.splice(draggedIdx, 1);
+            newOrder.splice(targetIdx, 0, draggedType);
+            setVaultOrder(newOrder);
+
+            // Persist
+            try {
+                await fetchWithAuth('/vault/order', {
+                    method: 'PUT',
+                    body: JSON.stringify({ order: newOrder })
+                });
+            } catch (err) {
+                console.error("Sıralama kaydedilemedi", err);
+                // Revert if failed
+                setVaultOrder(orderArray);
+                setError('Sıralama kaydedilemedi.');
+            }
+        }
+        setDraggedType(null);
     };
 
     const handleAdd = async (e: React.FormEvent) => {
@@ -269,7 +330,16 @@ export default function Vault() {
                     <div className="text-center text-muted-foreground py-8">Henüz kayıt eklenmemiş.</div>
                 ) : (
                     <div className="space-y-6">
-                        {Array.from(new Set(records.map(r => r.gold_type))).map(goldType => {
+                        {Array.from(new Set(records.map(r => r.gold_type)))
+                            .sort((a, b) => {
+                                const idxA = vaultOrder.indexOf(a);
+                                const idxB = vaultOrder.indexOf(b);
+                                if (idxA === -1 && idxB === -1) return 0;
+                                if (idxA === -1) return 1; // Put unknowns at the end
+                                if (idxB === -1) return -1;
+                                return idxA - idxB;
+                            })
+                            .map(goldType => {
                             const groupRecords = records.filter(r => r.gold_type === goldType).sort((a, b) => {
                                 const dateA = new Date(a.record_date).getTime();
                                 const dateB = new Date(b.record_date).getTime();
@@ -284,9 +354,16 @@ export default function Vault() {
                             const totalGiris = Math.max(0, rawTotalGiris);
 
                             return (
-                                <div key={goldType} className="overflow-x-auto bg-card rounded-xl border border-border overflow-hidden">
-                                    <div className="p-4 bg-secondary/50 border-b border-border flex items-center justify-between">
-                                        <h3 className="font-bold text-lg">{goldType}</h3>
+                                <div
+                                    key={goldType}
+                                    draggable
+                                    onDragStart={(e) => handleDragStart(e, goldType)}
+                                    onDragOver={handleDragOver}
+                                    onDrop={(e) => handleDrop(e, goldType)}
+                                    className={`overflow-x-auto bg-card rounded-xl border border-border overflow-hidden cursor-move transition-transform ${draggedType === goldType ? 'opacity-50 scale-[0.98]' : 'opacity-100 scale-100'}`}
+                                >
+                                    <div className="p-4 bg-secondary/50 border-b border-border flex items-center justify-between pointer-events-none">
+                                        <h3 className="font-bold text-lg pointer-events-auto">{goldType}</h3>
                                         <div className="flex items-center gap-2">
                                             <span className="text-sm text-muted-foreground">Toplam:</span>
                                             <span className="text-lg font-mono font-bold text-primary">{totalGiris} {goldType}</span>

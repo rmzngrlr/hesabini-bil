@@ -19,10 +19,40 @@ router.get('/', async (req, res) => {
         const db = await getDb();
         const userId = (req as AuthRequest).user!.userId;
         const records = await db.all('SELECT * FROM gold_records WHERE user_id = ? ORDER BY gold_type ASC', [userId]);
-        res.json(records);
+
+        // Also fetch the vault order preference
+        const userRow = await db.get('SELECT vault_order FROM users WHERE id = ?', [userId]);
+        let vaultOrder = [];
+        if (userRow && userRow.vault_order) {
+            try {
+                vaultOrder = JSON.parse(userRow.vault_order);
+            } catch (e) {
+                console.error("Error parsing vault_order JSON", e);
+            }
+        }
+
+        res.json({ records, vaultOrder });
     } catch (error) {
         console.error('Error fetching vault records:', error);
         res.status(500).json({ error: 'Kayıtlar getirilirken hata oluştu.' });
+    }
+});
+
+router.put('/order', async (req, res) => {
+    try {
+        const { order } = req.body;
+        if (!Array.isArray(order)) {
+            return res.status(400).json({ error: 'Geçersiz sıralama verisi.' });
+        }
+
+        const db = await getDb();
+        const userId = (req as AuthRequest).user!.userId;
+        await db.run('UPDATE users SET vault_order = ? WHERE id = ?', [JSON.stringify(order), userId]);
+
+        res.json({ message: 'Sıralama güncellendi.' });
+    } catch (error) {
+        console.error('Error updating vault order:', error);
+        res.status(500).json({ error: 'Sıralama güncellenirken hata oluştu.' });
     }
 });
 
