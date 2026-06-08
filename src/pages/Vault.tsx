@@ -23,6 +23,9 @@ export default function Vault() {
     const [error, setError] = useState('');
 
     const [draggedType, setDraggedType] = useState<string | null>(null);
+    const [hideOutflows, setHideOutflows] = useState<boolean>(() => {
+        return localStorage.getItem('vault_hideOutflows') === 'true';
+    });
 
     const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
     const [formOwner, setFormOwner] = useState('');
@@ -116,6 +119,10 @@ export default function Vault() {
         }
         setDraggedType(null);
     };
+
+    useEffect(() => {
+        localStorage.setItem('vault_hideOutflows', String(hideOutflows));
+    }, [hideOutflows]);
 
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -225,13 +232,32 @@ export default function Vault() {
                 ))}
             </datalist>
 
-            <header className="flex items-center gap-3">
-                <div className="p-3 bg-yellow-500/20 text-yellow-500 rounded-xl">
-                    <Coins size={28} />
+            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                    <div className="p-3 bg-yellow-500/20 text-yellow-500 rounded-xl">
+                        <Coins size={28} />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight">Kasa</h1>
+                        <p className="text-sm text-muted-foreground">Fiziksel birikimlerinizi takip edin.</p>
+                    </div>
                 </div>
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Kasa</h1>
-                    <p className="text-sm text-muted-foreground">Fiziksel birikimlerinizi takip edin.</p>
+
+                <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium cursor-pointer select-none" htmlFor="hideOutflows">
+                        Çıkışları Gizle
+                    </label>
+                    <div className="relative inline-block w-12 mr-2 align-middle select-none">
+                        <input
+                            type="checkbox"
+                            name="hideOutflows"
+                            id="hideOutflows"
+                            checked={hideOutflows}
+                            onChange={(e) => setHideOutflows(e.target.checked)}
+                            className="checked:bg-primary outline-none focus:outline-none right-4 checked:right-0 duration-200 ease-in absolute block w-6 h-6 rounded-full bg-white border-4 border-muted appearance-none cursor-pointer"
+                        />
+                        <label htmlFor="hideOutflows" className="block overflow-hidden h-6 rounded-full bg-muted cursor-pointer"></label>
+                    </div>
                 </div>
             </header>
 
@@ -342,17 +368,31 @@ export default function Vault() {
                             })
                             .map(goldType => {
                             const groupRecords = records.filter(r => r.gold_type === goldType).sort((a, b) => {
+                                const typeA = a.transaction_type || 'Giriş';
+                                const typeB = b.transaction_type || 'Giriş';
+
+                                // Group by transaction_type: 'Giriş' comes before 'Çıkış'
+                                if (typeA !== typeB) {
+                                    return typeA === 'Giriş' ? -1 : 1;
+                                }
+
+                                // Then sort by date descending
                                 const dateA = new Date(a.record_date).getTime();
                                 const dateB = new Date(b.record_date).getTime();
                                 if (dateA !== dateB) {
                                     return dateB - dateA; // Newest date first
                                 }
-                                // If dates are the same, newest ID (most recently added) first
+
+                                // Finally sort by ID descending
                                 return (b.id || 0) - (a.id || 0);
                             });
 
                             const rawTotalGiris = groupRecords.filter(r => (r.transaction_type || 'Giriş') === 'Giriş').reduce((sum, record) => sum + Number(record.amount), 0);
                             const totalGiris = Math.max(0, rawTotalGiris);
+
+                            const displayRecords = hideOutflows
+                                ? groupRecords.filter(r => (r.transaction_type || 'Giriş') !== 'Çıkış')
+                                : groupRecords;
 
                             return (
                                 <div
@@ -382,7 +422,13 @@ export default function Vault() {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {groupRecords.map(record => {
+                                            {displayRecords.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={6} className="py-4 text-center text-muted-foreground text-sm">
+                                                        Gösterilecek kayıt bulunamadı.
+                                                    </td>
+                                                </tr>
+                                            ) : displayRecords.map(record => {
                                                 const isEditing = editingId === record.id;
                                                 const d = new Date(record.record_date);
                                                 const displayDate = !isNaN(d.getTime()) ? d.toLocaleDateString('tr-TR') : record.record_date;
