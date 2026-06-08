@@ -239,11 +239,11 @@ export default function Vault() {
                             </select>
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-sm font-medium text-muted-foreground">Not (İsteğe Bağlı)</label>
+                            <label className="text-sm font-medium text-muted-foreground">Not</label>
                             <input
-                            type="text"
-                            placeholder="Örn: Düğün hediyesi"
-                            value={formNote}
+                                type="text"
+                                placeholder="İsteğe Bağlı"
+                                value={formNote}
                                 onChange={(e) => setFormNote(e.target.value)}
                                 className="w-full px-4 py-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                             />
