@@ -246,7 +246,16 @@ export default function Vault() {
                 ) : (
                     <div className="space-y-6">
                         {Array.from(new Set(records.map(r => r.gold_type))).map(goldType => {
-                            const groupRecords = records.filter(r => r.gold_type === goldType);
+                            const groupRecords = records.filter(r => r.gold_type === goldType).sort((a, b) => {
+                                const dateA = new Date(a.record_date).getTime();
+                                const dateB = new Date(b.record_date).getTime();
+                                if (dateA !== dateB) {
+                                    return dateB - dateA; // Newest date first
+                                }
+                                // If dates are the same, newest ID (most recently added) first
+                                return (b.id || 0) - (a.id || 0);
+                            });
+
                             return (
                                 <div key={goldType} className="overflow-x-auto">
                                     <table className="w-full text-left border-collapse">
