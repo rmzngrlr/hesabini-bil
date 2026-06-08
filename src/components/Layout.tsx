@@ -56,8 +56,8 @@ export function Layout({ children }: LayoutProps) {
           ))}
         </nav>
 
-        <div className="text-xs text-muted-foreground px-4">
-          v1.2.0 • Masaüstü Modu
+        <div className="text-xs text-center text-muted-foreground px-4">
+          © 2026 Hesabını Bil - Geliştiren: rgmedya
         </div>
       </aside>
 
