@@ -82,13 +82,22 @@ export const getDb = async () => {
         const [grColumns] = await connection.query<mysql.RowDataPacket[]>(`
             SELECT COLUMN_NAME
             FROM INFORMATION_SCHEMA.COLUMNS
-            WHERE TABLE_NAME = 'gold_records' AND COLUMN_NAME = 'note' AND TABLE_SCHEMA = DATABASE()
+            WHERE TABLE_NAME = 'gold_records' AND COLUMN_NAME IN ('note', 'transaction_type') AND TABLE_SCHEMA = DATABASE()
         `);
 
-        if (grColumns.length === 0) {
+        const columnNames = grColumns.map((col: any) => col.COLUMN_NAME);
+
+        if (!columnNames.includes('note')) {
             await connection.query(`
                 ALTER TABLE gold_records
                 ADD COLUMN note VARCHAR(1000) DEFAULT NULL;
+            `);
+        }
+
+        if (!columnNames.includes('transaction_type')) {
+            await connection.query(`
+                ALTER TABLE gold_records
+                ADD COLUMN transaction_type VARCHAR(50) DEFAULT 'Giriş';
             `);
         }
 
