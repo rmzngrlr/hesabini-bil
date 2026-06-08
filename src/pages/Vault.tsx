@@ -256,7 +256,7 @@ export default function Vault() {
                                                 <th className="pb-3 px-2 font-medium text-muted-foreground text-sm">Kime Ait</th>
                                                 <th className="pb-3 px-2 font-medium text-muted-foreground text-sm text-right">Miktar</th>
                                                 <th className="pb-3 px-2 font-medium text-muted-foreground text-sm">Cinsi</th>
-                                                <th className="pb-3 px-2 font-medium text-muted-foreground text-sm">Not</th>
+                                                <th className="pb-3 px-2 font-medium text-muted-foreground text-sm min-w-[120px]">Not</th>
                                                 <th className="pb-3 px-2 font-medium text-muted-foreground text-sm text-center">İşlem</th>
                                             </tr>
                                         </thead>
@@ -315,7 +315,7 @@ export default function Vault() {
                                                                         type="text"
                                                                         value={editNote}
                                                                         onChange={e => setEditNote(e.target.value)}
-                                                                        className="w-full px-2 py-1 rounded bg-background text-sm border border-border"
+                                                                        className="w-full min-w-[120px] px-2 py-1 rounded bg-background text-sm border border-border"
                                                                     />
                                                                 </td>
                                                                 <td className="py-3 px-2">
@@ -335,7 +335,7 @@ export default function Vault() {
                                                                 <td className="py-3 px-2 font-medium">{record.owner}</td>
                                                                 <td className="py-3 px-2 text-right font-mono font-bold text-primary">{Number(record.amount)}</td>
                                                                 <td className="py-3 px-2">{record.gold_type}</td>
-                                                                <td className="py-3 px-2 text-sm text-muted-foreground">{record.note || '-'}</td>
+                                                                <td className="py-3 px-2 text-sm text-muted-foreground break-words max-w-[200px]">{record.note || '-'}</td>
                                                                 <td className="py-3 px-2">
                                                                     <div className="flex justify-center gap-2">
                                                                         <button onClick={() => startEditing(record)} className="p-1.5 text-blue-500 hover:bg-blue-500/10 rounded-lg transition-colors" title="Düzenle">
