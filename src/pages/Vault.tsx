@@ -174,7 +174,8 @@ export default function Vault() {
         setEditDate(d.toISOString().split('T')[0]);
         setEditOwner(record.owner);
         setEditGoldType(record.gold_type);
-        setEditAmount(record.amount.toString());
+        // Clean trailing zeros from decimal (e.g. "1.0000" -> "1")
+        setEditAmount(Number(record.amount).toString());
         setEditNote(record.note || '');
         setEditTransactionType(record.transaction_type || 'Giriş');
     };
