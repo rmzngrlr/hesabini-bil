@@ -44,14 +44,16 @@ export const getDb = async () => {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         `);
 
-        // Check if is_admin column exists
-        const [columns] = await connection.query<mysql.RowDataPacket[]>(`
+        // Check if is_admin and vault_order columns exist
+        const [userColumns] = await connection.query<mysql.RowDataPacket[]>(`
             SELECT COLUMN_NAME
             FROM INFORMATION_SCHEMA.COLUMNS
-            WHERE TABLE_NAME = 'users' AND COLUMN_NAME = 'is_admin' AND TABLE_SCHEMA = DATABASE()
+            WHERE TABLE_NAME = 'users' AND COLUMN_NAME IN ('is_admin', 'vault_order') AND TABLE_SCHEMA = DATABASE()
         `);
 
-        if (columns.length === 0) {
+        const uColumnNames = userColumns.map((col: any) => col.COLUMN_NAME);
+
+        if (!uColumnNames.includes('is_admin')) {
             await connection.query(`
                 ALTER TABLE users
                 ADD COLUMN is_admin BOOLEAN DEFAULT FALSE;
@@ -62,6 +64,13 @@ export const getDb = async () => {
                 UPDATE users
                 SET is_admin = TRUE
                 WHERE username = 'rgurler';
+            `);
+        }
+
+        if (!uColumnNames.includes('vault_order')) {
+            await connection.query(`
+                ALTER TABLE users
+                ADD COLUMN vault_order TEXT DEFAULT NULL;
             `);
         }
 
