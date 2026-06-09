@@ -245,7 +245,7 @@ export default function Vault() {
 
                 <div className="flex items-center gap-2">
                     <label className="text-sm font-medium cursor-pointer select-none" htmlFor="hideOutflows">
-                        Düğün Hediyelerini Gizle
+                        Gizle/Göster
                     </label>
                     <div className="relative inline-block w-12 mr-2 align-middle select-none">
                         <input
@@ -324,11 +324,11 @@ export default function Vault() {
                                 required
                                 value={formTransactionType}
                                 onChange={(e) => setFormTransactionType(e.target.value)}
-                                className={`w-full px-4 py-3 rounded-xl bg-secondary focus:outline-none focus:ring-2 focus:ring-primary appearance-none font-medium ${formTransactionType === 'Birikim' ? 'text-green-600' : formTransactionType === 'Düğün Hediyesi' ? 'text-muted-foreground' : 'text-red-500'}`}
+                                className={`w-full px-4 py-3 rounded-xl bg-secondary focus:outline-none focus:ring-2 focus:ring-primary appearance-none font-medium ${formTransactionType === 'Birikim' ? 'text-green-600' : formTransactionType === 'Düğün Hediyesi / Takı' ? 'text-muted-foreground' : 'text-red-500'}`}
                             >
-                                <option value="Birikim">Birikim</option>
-                                <option value="Düğün Hediyesi">Düğün Hediyesi</option>
-                                <option value="Borç Verdim">Borç Verdim</option>
+                                <option value="Birikim" className="text-green-600">Birikim</option>
+                                <option value="Düğün Hediyesi / Takı" className="text-muted-foreground">Düğün Hediyesi / Takı</option>
+                                <option value="Borç Verdim" className="text-red-500">Borç Verdim</option>
                             </select>
                         </div>
                         <div className="space-y-1.5">
@@ -361,10 +361,10 @@ export default function Vault() {
                         {/* Upper Section: Birikimler and Borçlar */}
                         <div>
                             <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-primary border-b pb-2">
-                                BİRİKİMLER
+                                Birikimler
                             </h2>
                             <div className="space-y-6">
-                                {Array.from(new Set(records.filter(r => (r.transaction_type || 'Birikim') !== 'Düğün Hediyesi').map(r => r.gold_type)))
+                                {Array.from(new Set(records.filter(r => (r.transaction_type || 'Birikim') !== 'Düğün Hediyesi / Takı').map(r => r.gold_type)))
                                     .sort((a, b) => {
                                         const idxA = vaultOrder.indexOf(a);
                                         const idxB = vaultOrder.indexOf(b);
@@ -374,7 +374,7 @@ export default function Vault() {
                                         return idxA - idxB;
                                     })
                                     .map(goldType => {
-                                    const groupRecords = records.filter(r => r.gold_type === goldType && (r.transaction_type || 'Birikim') !== 'Düğün Hediyesi').sort((a, b) => {
+                                    const groupRecords = records.filter(r => r.gold_type === goldType && (r.transaction_type || 'Birikim') !== 'Düğün Hediyesi / Takı').sort((a, b) => {
                                         const typeA = a.transaction_type || 'Birikim';
                                         const typeB = b.transaction_type || 'Birikim';
 
@@ -450,10 +450,10 @@ export default function Vault() {
                                                                     <select
                                                                         value={editTransactionType}
                                                                         onChange={e => setEditTransactionType(e.target.value)}
-                                                                        className={`w-full px-2 py-1 rounded bg-background text-sm border border-border font-medium ${editTransactionType === 'Birikim' ? 'text-green-600' : editTransactionType === 'Düğün Hediyesi' ? 'text-muted-foreground' : 'text-red-500'}`}
+                                                                        className={`w-full px-2 py-1 rounded bg-background text-sm border border-border font-medium ${editTransactionType === 'Birikim' ? 'text-green-600' : editTransactionType === 'Düğün Hediyesi / Takı' ? 'text-muted-foreground' : 'text-red-500'}`}
                                                                     >
                                                                         <option value="Birikim">Birikim</option>
-                                                                        <option value="Düğün Hediyesi">Düğün Hediyesi</option>
+                                                                        <option value="Düğün Hediyesi / Takı">Düğün Hediyesi / Takı</option>
                                                                         <option value="Borç Verdim">Borç Verdim</option>
                                                                     </select>
                                                                 </td>
@@ -491,15 +491,15 @@ export default function Vault() {
                                                                 <td className="py-3 px-4 font-medium">{record.owner}</td>
                                                                 <td className="py-3 px-4">
                                                                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                                                    (record.transaction_type || 'Birikim') === 'Birikim' ? 'bg-green-500/10 text-green-600' : (record.transaction_type === 'Düğün Hediyesi') ? 'bg-muted text-muted-foreground' : 'bg-red-500/10 text-red-500'
+                                                    (record.transaction_type || 'Birikim') === 'Birikim' ? 'bg-green-500/10 text-green-600' : (record.transaction_type === 'Düğün Hediyesi / Takı') ? 'bg-muted text-muted-foreground' : 'bg-red-500/10 text-red-500'
                                                                     }`}>
                                                     {record.transaction_type || 'Birikim'}
                                                                     </span>
                                                                 </td>
                                                                 <td className={`py-3 px-4 text-right font-mono font-bold ${
-                                                (record.transaction_type || 'Birikim') === 'Birikim' ? 'text-green-600' : (record.transaction_type === 'Düğün Hediyesi') ? 'text-muted-foreground' : 'text-red-500'
+                                                (record.transaction_type || 'Birikim') === 'Birikim' ? 'text-green-600' : (record.transaction_type === 'Düğün Hediyesi / Takı') ? 'text-muted-foreground' : 'text-red-500'
                                                                 }`}>
-                                                {(record.transaction_type === 'Düğün Hediyesi' || record.transaction_type === 'Borç Verdim') ? '-' : ''}{Number(record.amount)}
+                                                {(record.transaction_type === 'Düğün Hediyesi / Takı' || record.transaction_type === 'Borç Verdim') ? '-' : ''}{Number(record.amount)}
                                                                 </td>
                                                                 <td className="py-3 px-4 text-sm text-muted-foreground break-words max-w-[200px]">{record.note || '-'}</td>
                                                                 <td className="py-3 px-4">
@@ -530,12 +530,12 @@ export default function Vault() {
                         {!hideOutflows && (
                             <div>
                                 <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-muted-foreground border-b pb-2">
-                                    DÜĞÜN HEDİYELERİ
+                                    Dışarıdakiler
                                 </h2>
                                 <div className="space-y-6">
-                                    {Array.from(new Set(records.filter(r => r.transaction_type === 'Düğün Hediyesi').map(r => r.gold_type)))
+                                    {Array.from(new Set(records.filter(r => r.transaction_type === 'Düğün Hediyesi / Takı').map(r => r.gold_type)))
                                         .map(goldType => {
-                                        const groupRecords = records.filter(r => r.gold_type === goldType && r.transaction_type === 'Düğün Hediyesi').sort((a, b) => {
+                                        const groupRecords = records.filter(r => r.gold_type === goldType && r.transaction_type === 'Düğün Hediyesi / Takı').sort((a, b) => {
                                             const dateA = new Date(a.record_date).getTime();
                                             const dateB = new Date(b.record_date).getTime();
                                             if (dateA !== dateB) return dateB - dateA;
@@ -591,10 +591,10 @@ export default function Vault() {
                                                                                 <select
                                                                                     value={editTransactionType}
                                                                                     onChange={e => setEditTransactionType(e.target.value)}
-                                                                                    className={`w-full px-2 py-1 rounded bg-background text-sm border border-border font-medium ${editTransactionType === 'Birikim' ? 'text-green-600' : editTransactionType === 'Düğün Hediyesi' ? 'text-muted-foreground' : 'text-red-500'}`}
+                                                                                    className={`w-full px-2 py-1 rounded bg-background text-sm border border-border font-medium ${editTransactionType === 'Birikim' ? 'text-green-600' : editTransactionType === 'Düğün Hediyesi / Takı' ? 'text-muted-foreground' : 'text-red-500'}`}
                                                                                 >
                                                                                     <option value="Birikim">Birikim</option>
-                                                                                    <option value="Düğün Hediyesi">Düğün Hediyesi</option>
+                                                                                    <option value="Düğün Hediyesi / Takı">Düğün Hediyesi / Takı</option>
                                                                                     <option value="Borç Verdim">Borç Verdim</option>
                                                                                 </select>
                                                                             </td>
@@ -604,7 +604,7 @@ export default function Vault() {
                                                                                     step="0.01"
                                                                                     value={editAmount}
                                                                                     onChange={e => setEditAmount(e.target.value)}
-                                                                                    className={`w-full px-2 py-1 rounded bg-background text-sm border border-border text-right font-mono font-bold ${editTransactionType === 'Birikim' ? 'text-green-600' : editTransactionType === 'Düğün Hediyesi' ? 'text-muted-foreground' : 'text-red-500'}`}
+                                                                                    className={`w-full px-2 py-1 rounded bg-background text-sm border border-border text-right font-mono font-bold ${editTransactionType === 'Birikim' ? 'text-green-600' : editTransactionType === 'Düğün Hediyesi / Takı' ? 'text-muted-foreground' : 'text-red-500'}`}
                                                                                 />
                                                                             </td>
                                                                             <td className="py-3 px-4">
@@ -632,7 +632,7 @@ export default function Vault() {
                                                                             <td className="py-3 px-4 font-medium">{record.owner}</td>
                                                                             <td className="py-3 px-4">
                                                                                 <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground`}>
-                                                                                    Düğün Hediyesi
+                                                                                    Düğün Hediyesi / Takı
                                                                                 </span>
                                                                             </td>
                                                                             <td className={`py-3 px-4 text-right font-mono font-bold text-muted-foreground`}>
