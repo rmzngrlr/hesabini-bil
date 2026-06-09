@@ -119,8 +119,8 @@ export const getDb = async () => {
 
         await connection.query(`
             UPDATE gold_records
-            SET transaction_type = 'Düğün Hediyesi'
-            WHERE transaction_type = 'Çıkış';
+            SET transaction_type = 'Düğün Hediyesi / Takı'
+            WHERE transaction_type IN ('Çıkış', 'Düğün Hediyesi');
         `);
 
     } finally {

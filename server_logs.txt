@@ -15,14 +15,14 @@
 [1] > npx -y tsx src/index.ts
 [1]
 [0]
-[0]   VITE v7.3.1  ready in 236 ms
+[0]   VITE v7.3.1  ready in 265 ms
 [0]
 [0]   ➜  Local:   http://localhost:3002/
 [0]   ➜  Network: http://192.168.0.2:3002/
-[1] ◇ injected env (0) from .env // tip: ⌘ override existing { override: true }
-[1] ◇ injected env (0) from .env // tip: ⌁ auth for agents [www.vestauth.com]
-[1] ◇ injected env (0) from .env // tip: ⌘ suppress logs { quiet: true }
+[1] ◇ injected env (0) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
 [1] ◇ injected env (0) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+[1] ◇ injected env (0) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+[1] ◇ injected env (0) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
 [1] Sunucu başlatılamadı: Error: connect ECONNREFUSED 127.0.0.1:3306
 [1]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16) {
 [1]   errno: -111,
