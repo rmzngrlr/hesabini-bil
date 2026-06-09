@@ -32,7 +32,7 @@ export default function Vault() {
     const [formGoldType, setFormGoldType] = useState('');
     const [formAmount, setFormAmount] = useState('');
     const [formNote, setFormNote] = useState('');
-    const [formTransactionType, setFormTransactionType] = useState('Giriş');
+    const [formTransactionType, setFormTransactionType] = useState('Birikim');
 
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editDate, setEditDate] = useState('');
@@ -40,7 +40,7 @@ export default function Vault() {
     const [editGoldType, setEditGoldType] = useState('');
     const [editAmount, setEditAmount] = useState('');
     const [editNote, setEditNote] = useState('');
-    const [editTransactionType, setEditTransactionType] = useState('Giriş');
+    const [editTransactionType, setEditTransactionType] = useState('Birikim');
 
     useEffect(() => {
         if (isAdmin) {
@@ -184,7 +184,7 @@ export default function Vault() {
         // Clean trailing zeros from decimal (e.g. "1.0000" -> "1")
         setEditAmount(Number(record.amount).toString());
         setEditNote(record.note || '');
-        setEditTransactionType(record.transaction_type || 'Giriş');
+        setEditTransactionType(record.transaction_type || 'Birikim');
     };
 
     const saveEdit = async () => {
@@ -245,7 +245,7 @@ export default function Vault() {
 
                 <div className="flex items-center gap-2">
                     <label className="text-sm font-medium cursor-pointer select-none" htmlFor="hideOutflows">
-                        Çıkışları Gizle
+                        Düğün Hediyelerini Gizle
                     </label>
                     <div className="relative inline-block w-12 mr-2 align-middle select-none">
                         <input
@@ -324,10 +324,11 @@ export default function Vault() {
                                 required
                                 value={formTransactionType}
                                 onChange={(e) => setFormTransactionType(e.target.value)}
-                                className={`w-full px-4 py-3 rounded-xl bg-secondary focus:outline-none focus:ring-2 focus:ring-primary appearance-none font-medium ${formTransactionType === 'Giriş' ? 'text-primary' : 'text-red-500'}`}
+                                className={`w-full px-4 py-3 rounded-xl bg-secondary focus:outline-none focus:ring-2 focus:ring-primary appearance-none font-medium ${formTransactionType === 'Birikim' ? 'text-green-600' : formTransactionType === 'Düğün Hediyesi' ? 'text-muted-foreground' : 'text-red-500'}`}
                             >
-                                <option value="Giriş">Giriş (Birikim)</option>
-                                <option value="Çıkış">Çıkış (Hediye)</option>
+                                <option value="Birikim">Birikim</option>
+                                <option value="Düğün Hediyesi">Düğün Hediyesi</option>
+                                <option value="Borç Verdim">Borç Verdim</option>
                             </select>
                         </div>
                         <div className="space-y-1.5">
@@ -356,59 +357,56 @@ export default function Vault() {
                 ) : records.length === 0 ? (
                     <div className="text-center text-muted-foreground py-8">Henüz kayıt eklenmemiş.</div>
                 ) : (
-                    <div className="space-y-6">
-                        {Array.from(new Set(records.map(r => r.gold_type)))
-                            .sort((a, b) => {
-                                const idxA = vaultOrder.indexOf(a);
-                                const idxB = vaultOrder.indexOf(b);
-                                if (idxA === -1 && idxB === -1) return 0;
-                                if (idxA === -1) return 1; // Put unknowns at the end
-                                if (idxB === -1) return -1;
-                                return idxA - idxB;
-                            })
-                            .map(goldType => {
-                            const groupRecords = records.filter(r => r.gold_type === goldType).sort((a, b) => {
-                                const typeA = a.transaction_type || 'Giriş';
-                                const typeB = b.transaction_type || 'Giriş';
+                    <div className="space-y-12">
+                        {/* Upper Section: Birikimler and Borçlar */}
+                        <div>
+                            <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-primary border-b pb-2">
+                                BİRİKİMLER
+                            </h2>
+                            <div className="space-y-6">
+                                {Array.from(new Set(records.filter(r => (r.transaction_type || 'Birikim') !== 'Düğün Hediyesi').map(r => r.gold_type)))
+                                    .sort((a, b) => {
+                                        const idxA = vaultOrder.indexOf(a);
+                                        const idxB = vaultOrder.indexOf(b);
+                                        if (idxA === -1 && idxB === -1) return 0;
+                                        if (idxA === -1) return 1; // Put unknowns at the end
+                                        if (idxB === -1) return -1;
+                                        return idxA - idxB;
+                                    })
+                                    .map(goldType => {
+                                    const groupRecords = records.filter(r => r.gold_type === goldType && (r.transaction_type || 'Birikim') !== 'Düğün Hediyesi').sort((a, b) => {
+                                        const typeA = a.transaction_type || 'Birikim';
+                                        const typeB = b.transaction_type || 'Birikim';
 
-                                // Group by transaction_type: 'Giriş' comes before 'Çıkış'
-                                if (typeA !== typeB) {
-                                    return typeA === 'Giriş' ? -1 : 1;
-                                }
+                                        // Birikim first, then Borç Verdim
+                                        if (typeA !== typeB) {
+                                            return typeA === 'Birikim' ? -1 : 1;
+                                        }
 
-                                // Then sort by date descending
-                                const dateA = new Date(a.record_date).getTime();
-                                const dateB = new Date(b.record_date).getTime();
-                                if (dateA !== dateB) {
-                                    return dateB - dateA; // Newest date first
-                                }
+                                        const dateA = new Date(a.record_date).getTime();
+                                        const dateB = new Date(b.record_date).getTime();
+                                        if (dateA !== dateB) return dateB - dateA;
+                                        return (b.id || 0) - (a.id || 0);
+                                    });
 
-                                // Finally sort by ID descending
-                                return (b.id || 0) - (a.id || 0);
-                            });
+                                    const rawTotalGiris = groupRecords.filter(r => (r.transaction_type || 'Birikim') === 'Birikim').reduce((sum, record) => sum + Number(record.amount), 0);
+                                    const totalGiris = Math.max(0, rawTotalGiris);
 
-                            const rawTotalGiris = groupRecords.filter(r => (r.transaction_type || 'Giriş') === 'Giriş').reduce((sum, record) => sum + Number(record.amount), 0);
-                            const totalGiris = Math.max(0, rawTotalGiris);
-
-                            const displayRecords = hideOutflows
-                                ? groupRecords.filter(r => (r.transaction_type || 'Giriş') !== 'Çıkış')
-                                : groupRecords;
-
-                            return (
-                                <div
-                                    key={goldType}
-                                    draggable
-                                    onDragStart={(e) => handleDragStart(e, goldType)}
-                                    onDragOver={handleDragOver}
-                                    onDrop={(e) => handleDrop(e, goldType)}
-                                    className={`overflow-x-auto bg-card rounded-xl border border-border cursor-move transition-transform ${draggedType === goldType ? 'opacity-50 scale-[0.98]' : 'opacity-100 scale-100'}`}
-                                >
+                                    return (
+                                        <div
+                                            key={goldType}
+                                            draggable
+                                            onDragStart={(e) => handleDragStart(e, goldType)}
+                                            onDragOver={handleDragOver}
+                                            onDrop={(e) => handleDrop(e, goldType)}
+                                            className={`overflow-x-auto bg-card rounded-xl border border-border cursor-move transition-transform ${draggedType === goldType ? 'opacity-50 scale-[0.98]' : 'opacity-100 scale-100'}`}
+                                        >
                                     <div className="min-w-max">
                                         <div className="p-4 bg-secondary/50 border-b border-border flex items-center justify-between pointer-events-none">
                                             <h3 className="font-bold text-lg pointer-events-auto">{goldType}</h3>
                                             <div className="flex items-center gap-2">
                                                 <span className="text-sm text-muted-foreground">Toplam:</span>
-                                                <span className="text-lg font-mono font-bold text-primary">{totalGiris} {goldType}</span>
+                            <span className="text-lg font-mono font-bold text-green-600">{totalGiris} {goldType}</span>
                                             </div>
                                         </div>
                                         <table className="w-full text-left border-collapse">
@@ -423,13 +421,7 @@ export default function Vault() {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {displayRecords.length === 0 ? (
-                                                <tr>
-                                                    <td colSpan={6} className="py-4 text-center text-muted-foreground text-sm">
-                                                        Gösterilecek kayıt bulunamadı.
-                                                    </td>
-                                                </tr>
-                                            ) : displayRecords.map(record => {
+                                            {groupRecords.map(record => {
                                                 const isEditing = editingId === record.id;
                                                 const d = new Date(record.record_date);
                                                 const displayDate = !isNaN(d.getTime()) ? d.toLocaleDateString('tr-TR') : record.record_date;
@@ -458,17 +450,13 @@ export default function Vault() {
                                                                     <select
                                                                         value={editTransactionType}
                                                                         onChange={e => setEditTransactionType(e.target.value)}
-                                                                        className={`w-full px-2 py-1 rounded bg-background text-sm border border-border font-medium ${editTransactionType === 'Giriş' ? 'text-primary' : 'text-red-500'}`}
+                                                                        className={`w-full px-2 py-1 rounded bg-background text-sm border border-border font-medium ${editTransactionType === 'Birikim' ? 'text-green-600' : editTransactionType === 'Düğün Hediyesi' ? 'text-muted-foreground' : 'text-red-500'}`}
                                                                     >
-                                                                        <option value="Giriş">Giriş</option>
-                                                                        <option value="Çıkış">Çıkış</option>
+                                                                        <option value="Birikim">Birikim</option>
+                                                                        <option value="Düğün Hediyesi">Düğün Hediyesi</option>
+                                                                        <option value="Borç Verdim">Borç Verdim</option>
                                                                     </select>
                                                                 </td>
-                                                                {/* Edit Mode: The Cinsi column is hidden in display mode because tables are grouped by Cinsi,
-                                                                    but if the user needs to correct the Cinsi, we should probably allow it,
-                                                                    though currently it's not in the <tr> since grouping dictates it.
-                                                                    If they want to change Cinsi, they must delete and recreate.
-                                                                    I will leave this as is since we removed the Cinsi column from the loop earlier. */}
                                                                 <td className="py-3 px-4 text-right">
                                                                     <input
                                                                         type="number"
@@ -503,15 +491,15 @@ export default function Vault() {
                                                                 <td className="py-3 px-4 font-medium">{record.owner}</td>
                                                                 <td className="py-3 px-4">
                                                                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                                                                        (record.transaction_type || 'Giriş') === 'Giriş' ? 'bg-primary/10 text-primary' : 'bg-red-500/10 text-red-500'
+                                                    (record.transaction_type || 'Birikim') === 'Birikim' ? 'bg-green-500/10 text-green-600' : (record.transaction_type === 'Düğün Hediyesi') ? 'bg-muted text-muted-foreground' : 'bg-red-500/10 text-red-500'
                                                                     }`}>
-                                                                        {record.transaction_type || 'Giriş'}
+                                                    {record.transaction_type || 'Birikim'}
                                                                     </span>
                                                                 </td>
                                                                 <td className={`py-3 px-4 text-right font-mono font-bold ${
-                                                                    (record.transaction_type || 'Giriş') === 'Giriş' ? 'text-primary' : 'text-red-500'
+                                                (record.transaction_type || 'Birikim') === 'Birikim' ? 'text-green-600' : (record.transaction_type === 'Düğün Hediyesi') ? 'text-muted-foreground' : 'text-red-500'
                                                                 }`}>
-                                                                    {(record.transaction_type || 'Giriş') === 'Çıkış' ? '-' : ''}{Number(record.amount)}
+                                                {(record.transaction_type === 'Düğün Hediyesi' || record.transaction_type === 'Borç Verdim') ? '-' : ''}{Number(record.amount)}
                                                                 </td>
                                                                 <td className="py-3 px-4 text-sm text-muted-foreground break-words max-w-[200px]">{record.note || '-'}</td>
                                                                 <td className="py-3 px-4">
@@ -533,8 +521,148 @@ export default function Vault() {
                                     </table>
                                     </div>
                                 </div>
-                            );
-                        })}
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Lower Section: Düğün Hediyeleri */}
+                        {!hideOutflows && (
+                            <div>
+                                <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-muted-foreground border-b pb-2">
+                                    DÜĞÜN HEDİYELERİ
+                                </h2>
+                                <div className="space-y-6">
+                                    {Array.from(new Set(records.filter(r => r.transaction_type === 'Düğün Hediyesi').map(r => r.gold_type)))
+                                        .map(goldType => {
+                                        const groupRecords = records.filter(r => r.gold_type === goldType && r.transaction_type === 'Düğün Hediyesi').sort((a, b) => {
+                                            const dateA = new Date(a.record_date).getTime();
+                                            const dateB = new Date(b.record_date).getTime();
+                                            if (dateA !== dateB) return dateB - dateA;
+                                            return (b.id || 0) - (a.id || 0);
+                                        });
+
+                                        if (groupRecords.length === 0) return null;
+
+                                        return (
+                                            <div key={goldType} className="overflow-x-auto bg-card rounded-xl border border-border cursor-default">
+                                                <div className="min-w-max">
+                                                    <div className="p-4 bg-secondary/50 border-b border-border flex items-center justify-between">
+                                                        <h3 className="font-bold text-lg text-muted-foreground">{goldType}</h3>
+                                                    </div>
+                                                    <table className="w-full text-left border-collapse">
+                                                    <thead>
+                                                        <tr className="border-b border-border bg-muted/30">
+                                                            <th className="py-3 px-4 font-medium text-muted-foreground text-sm whitespace-nowrap w-[15%]">Tarih</th>
+                                                            <th className="py-3 px-4 font-medium text-muted-foreground text-sm w-[20%]">Kime Ait</th>
+                                                            <th className="py-3 px-4 font-medium text-muted-foreground text-sm w-[10%]">Tür</th>
+                                                            <th className="py-3 px-4 font-medium text-muted-foreground text-sm text-right w-[15%]">Miktar</th>
+                                                            <th className="py-3 px-4 font-medium text-muted-foreground text-sm w-[30%]">Not</th>
+                                                            <th className="py-3 px-4 font-medium text-muted-foreground text-sm text-center w-[10%]">İşlem</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {groupRecords.map(record => {
+                                                            const isEditing = editingId === record.id;
+                                                            const d = new Date(record.record_date);
+                                                            const displayDate = !isNaN(d.getTime()) ? d.toLocaleDateString('tr-TR') : record.record_date;
+
+                                                            return (
+                                                                <tr key={record.id} className="border-b border-border last:border-0 hover:bg-secondary/50 transition-colors">
+                                                                    {isEditing ? (
+                                                                        <>
+                                                                            <td className="py-3 px-4">
+                                                                                <input
+                                                                                    type="date"
+                                                                                    value={editDate}
+                                                                                    onChange={e => setEditDate(e.target.value)}
+                                                                                    className="w-full px-2 py-1 rounded bg-background text-sm border border-border"
+                                                                                />
+                                                                            </td>
+                                                                            <td className="py-3 px-4">
+                                                                                <input
+                                                                                    type="text"
+                                                                                    value={editOwner}
+                                                                                    onChange={e => setEditOwner(e.target.value)}
+                                                                                    className="w-full px-2 py-1 rounded bg-background text-sm border border-border"
+                                                                                />
+                                                                            </td>
+                                                                            <td className="py-3 px-4">
+                                                                                <select
+                                                                                    value={editTransactionType}
+                                                                                    onChange={e => setEditTransactionType(e.target.value)}
+                                                                                    className={`w-full px-2 py-1 rounded bg-background text-sm border border-border font-medium ${editTransactionType === 'Birikim' ? 'text-green-600' : editTransactionType === 'Düğün Hediyesi' ? 'text-muted-foreground' : 'text-red-500'}`}
+                                                                                >
+                                                                                    <option value="Birikim">Birikim</option>
+                                                                                    <option value="Düğün Hediyesi">Düğün Hediyesi</option>
+                                                                                    <option value="Borç Verdim">Borç Verdim</option>
+                                                                                </select>
+                                                                            </td>
+                                                                            <td className="py-3 px-4 text-right">
+                                                                                <input
+                                                                                    type="number"
+                                                                                    step="0.01"
+                                                                                    value={editAmount}
+                                                                                    onChange={e => setEditAmount(e.target.value)}
+                                                                                    className={`w-full px-2 py-1 rounded bg-background text-sm border border-border text-right font-mono font-bold ${editTransactionType === 'Birikim' ? 'text-green-600' : editTransactionType === 'Düğün Hediyesi' ? 'text-muted-foreground' : 'text-red-500'}`}
+                                                                                />
+                                                                            </td>
+                                                                            <td className="py-3 px-4">
+                                                                                <input
+                                                                                    type="text"
+                                                                                    value={editNote}
+                                                                                    onChange={e => setEditNote(e.target.value)}
+                                                                                    className="w-full min-w-[120px] px-2 py-1 rounded bg-background text-sm border border-border"
+                                                                                />
+                                                                            </td>
+                                                                            <td className="py-3 px-4">
+                                                                                <div className="flex justify-center gap-2">
+                                                                                    <button onClick={saveEdit} className="p-1.5 text-green-500 hover:bg-green-500/10 rounded-lg" title="Kaydet">
+                                                                                        <Check size={16} />
+                                                                                    </button>
+                                                                                    <button onClick={cancelEdit} className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-lg" title="İptal">
+                                                                                        <X size={16} />
+                                                                                    </button>
+                                                                                </div>
+                                                                            </td>
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            <td className="py-3 px-4 text-sm whitespace-nowrap">{displayDate}</td>
+                                                                            <td className="py-3 px-4 font-medium">{record.owner}</td>
+                                                                            <td className="py-3 px-4">
+                                                                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground`}>
+                                                                                    Düğün Hediyesi
+                                                                                </span>
+                                                                            </td>
+                                                                            <td className={`py-3 px-4 text-right font-mono font-bold text-muted-foreground`}>
+                                                                                -{Number(record.amount)}
+                                                                            </td>
+                                                                            <td className="py-3 px-4 text-sm text-muted-foreground break-words max-w-[200px]">{record.note || '-'}</td>
+                                                                            <td className="py-3 px-4">
+                                                                                <div className="flex justify-center gap-2">
+                                                                                    <button onClick={() => startEditing(record)} className="p-1.5 text-blue-500 hover:bg-blue-500/10 rounded-lg transition-colors" title="Düzenle">
+                                                                                        <Edit2 size={16} />
+                                                                                    </button>
+                                                                                    <button onClick={() => handleDelete(record.id as number)} className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors" title="Sil">
+                                                                                        <Trash2 size={16} />
+                                                                                    </button>
+                                                                                </div>
+                                                                            </td>
+                                                                        </>
+                                                                    )}
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </Card>

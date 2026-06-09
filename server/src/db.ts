@@ -106,9 +106,22 @@ export const getDb = async () => {
         if (!columnNames.includes('transaction_type')) {
             await connection.query(`
                 ALTER TABLE gold_records
-                ADD COLUMN transaction_type VARCHAR(50) DEFAULT 'Giriş';
+                ADD COLUMN transaction_type VARCHAR(50) DEFAULT 'Birikim';
             `);
         }
+
+        // Migrate old transaction types to new naming convention
+        await connection.query(`
+            UPDATE gold_records
+            SET transaction_type = 'Birikim'
+            WHERE transaction_type = 'Giriş' OR transaction_type IS NULL;
+        `);
+
+        await connection.query(`
+            UPDATE gold_records
+            SET transaction_type = 'Düğün Hediyesi'
+            WHERE transaction_type = 'Çıkış';
+        `);
 
     } finally {
         connection.release();
