@@ -23,8 +23,9 @@ export default function Vault() {
     const [error, setError] = useState('');
 
     const [draggedType, setDraggedType] = useState<string | null>(null);
-    const [hideOutflows, setHideOutflows] = useState<boolean>(() => {
-        return localStorage.getItem('vault_hideOutflows') === 'true';
+    const [showOutflows, setShowOutflows] = useState<boolean>(() => {
+        const stored = localStorage.getItem('vault_showOutflows');
+        return stored !== null ? stored === 'true' : true;
     });
 
     const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
@@ -121,8 +122,8 @@ export default function Vault() {
     };
 
     useEffect(() => {
-        localStorage.setItem('vault_hideOutflows', String(hideOutflows));
-    }, [hideOutflows]);
+        localStorage.setItem('vault_showOutflows', String(showOutflows));
+    }, [showOutflows]);
 
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -244,19 +245,19 @@ export default function Vault() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium cursor-pointer select-none" htmlFor="hideOutflows">
+                    <label className="text-sm font-medium cursor-pointer select-none" htmlFor="showOutflows">
                         Gizle/Göster
                     </label>
                     <div className="relative inline-block w-12 mr-2 align-middle select-none">
                         <input
                             type="checkbox"
-                            name="hideOutflows"
-                            id="hideOutflows"
-                            checked={hideOutflows}
-                            onChange={(e) => setHideOutflows(e.target.checked)}
+                            name="showOutflows"
+                            id="showOutflows"
+                            checked={showOutflows}
+                            onChange={(e) => setShowOutflows(e.target.checked)}
                             className="checked:bg-primary outline-none focus:outline-none right-4 checked:right-0 duration-200 ease-in absolute block w-6 h-6 rounded-full bg-white border-4 border-muted appearance-none cursor-pointer"
                         />
-                        <label htmlFor="hideOutflows" className="block overflow-hidden h-6 rounded-full bg-muted cursor-pointer"></label>
+                        <label htmlFor="showOutflows" className="block overflow-hidden h-6 rounded-full bg-muted cursor-pointer"></label>
                     </div>
                 </div>
             </header>
@@ -527,7 +528,7 @@ export default function Vault() {
                         </div>
 
                         {/* Lower Section: Düğün Hediyeleri */}
-                        {!hideOutflows && (
+                        {showOutflows && (
                             <div>
                                 <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-muted-foreground border-b pb-2">
                                     Dışarıdakiler
