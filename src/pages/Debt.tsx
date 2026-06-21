@@ -337,7 +337,7 @@ export default function Debt() {
                   <Pencil size={12} /> Düzenle
                 </button>
                 <button
-                  onClick={() => deleteCCDebt(debt.id)}
+                  onClick={async () => { if (await askConfirmation('Bu kredi kartı borç kaydını silmek istediğinize emin misiniz?')) { deleteCCDebt(debt.id); } }}
                   className="text-xs text-destructive hover:underline flex items-center gap-1"
                 >
                   <Trash2 size={12} /> Sil

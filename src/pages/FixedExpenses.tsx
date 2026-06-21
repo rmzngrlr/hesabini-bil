@@ -76,7 +76,8 @@ export default function FixedExpenses() {
     updateYkRollover,
     showMealCard,
     showVault,
-    vaultRecords
+    vaultRecords,
+    askConfirmation
   } = useBudget();
 
   const isGoldType = (type: string) => {
@@ -322,7 +323,7 @@ export default function FixedExpenses() {
                   +{income.amount.toLocaleString('tr-TR')} {income.type === 'NAKIT' || !income.type ? '₺' : income.type}
                 </span>
                 <button
-                  onClick={() => deleteCustomIncome(income.id)}
+                  onClick={async () => { if (await askConfirmation('Bu geliri silmek istediğinize emin misiniz?')) { deleteCustomIncome(income.id); } }}
                   className="p-1 text-muted-foreground hover:text-red-500 transition-colors rounded-lg hover:bg-red-500/10"
                 >
                   <Trash2 size={18} />
@@ -448,7 +449,7 @@ export default function FixedExpenses() {
                 <Pencil size={20} />
               </button>
               <button
-                onClick={(e) => { e.stopPropagation(); deleteFixedExpense(expense.id); }}
+                onClick={async (e) => { e.stopPropagation(); if (await askConfirmation('Bu sabit gideri silmek istediğinize emin misiniz?')) { deleteFixedExpense(expense.id); } }}
                 className="p-2 text-muted-foreground hover:text-destructive transition-colors"
               >
                 <Trash2 size={20} />
