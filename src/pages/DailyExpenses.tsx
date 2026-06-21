@@ -70,6 +70,7 @@ export default function DailyExpenses() {
 
   const [goldOwner, setGoldOwner] = useDraftState('daily_draft_gold_owner', '');
   const [goldNote, setGoldNote] = useDraftState('daily_draft_gold_note', '');
+  const [goldPriceTL, setGoldPriceTL] = useDraftState('daily_draft_gold_price_tl', '');
 
 
 
@@ -197,7 +198,7 @@ export default function DailyExpenses() {
               gold_type: type,
               amount: numAmount,
               note: goldNote,
-              transaction_type: transactionType === 'EXPENSE' ? 'Borç Verdim' : 'Birikim'
+              transaction_type: transactionType === 'EXPENSE' ? 'Bozdurma' : 'Birikim'
             });
           }
         }
@@ -211,12 +212,30 @@ export default function DailyExpenses() {
           gold_type: type,
           amount: numAmount,
           note: goldNote,
-          transaction_type: transactionType === 'EXPENSE' ? 'Borç Verdim' : 'Birikim'
+          transaction_type: transactionType === 'EXPENSE' ? 'Bozdurma' : 'Birikim'
         });
+
+        // 2. If purchase/sale price is provided, add corresponding TL daily expense
+        if (goldPriceTL) {
+          const tlAmount = parseFloat(goldPriceTL);
+          if (!isNaN(tlAmount) && tlAmount > 0) {
+            const isSale = transactionType === 'EXPENSE'; // Bozdurma is sale (gold EXPENSE, cash INCOME)
+            const tlFinalAmount = isSale ? tlAmount : -tlAmount;
+            const tlDesc = isSale ? `Altın Satışı: ${numAmount} ${type}` : `Altın Alımı: ${numAmount} ${type}`;
+            
+            addDailyExpense({
+              date,
+              description: tlDesc,
+              amount: tlFinalAmount,
+              type: 'NAKIT' // TL
+            });
+          }
+        }
       }
 
       setGoldOwner('');
       setGoldNote('');
+      setGoldPriceTL('');
     } else {
       const finalAmount = transactionType === 'EXPENSE' ? -Math.abs(numAmount) : Math.abs(numAmount);
 
@@ -327,25 +346,40 @@ export default function DailyExpenses() {
             </div>
 
             {isGoldType(type) ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Kime Ait</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Örn: Ahmet"
-                    value={goldOwner}
-                    onChange={(e) => setGoldOwner(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Kime Ait</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Örn: Ahmet"
+                      value={goldOwner}
+                      onChange={(e) => setGoldOwner(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Not</label>
+                    <input
+                      type="text"
+                      placeholder="İsteğe Bağlı"
+                      value={goldNote}
+                      onChange={(e) => setGoldNote(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Not</label>
+                  <label className="text-xs text-muted-foreground">
+                    {transactionType === 'EXPENSE' ? 'Satış Tutarı (TL) - İsteğe Bağlı' : 'Alış Tutarı (TL) - İsteğe Bağlı'}
+                  </label>
                   <input
-                    type="text"
-                    placeholder="İsteğe Bağlı"
-                    value={goldNote}
-                    onChange={(e) => setGoldNote(e.target.value)}
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={goldPriceTL}
+                    onChange={(e) => setGoldPriceTL(e.target.value)}
                     className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
@@ -375,14 +409,14 @@ export default function DailyExpenses() {
                 onClick={() => setTransactionType('INCOME')}
                 className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${transactionType === 'INCOME' ? 'bg-green-500/10 border-green-500 text-green-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
                 >
-                Gelir (+)
+                {isGoldType(type) ? 'Birikim' : 'Gelir (+)'}
                 </button>
                 <button
                 type="button"
                 onClick={() => setTransactionType('EXPENSE')}
                 className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${transactionType === 'EXPENSE' ? 'bg-red-500/10 border-red-500 text-red-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
                 >
-                Gider (-)
+                {isGoldType(type) ? 'Bozdurma' : 'Gider (-)'}
                 </button>
             </div>
 
