@@ -91,6 +91,44 @@ export default function DailyExpenses() {
     return mapping[lower] || fallback;
   };
 
+  const getAssetUnitLabel = (name: string): string => {
+    const lower = name.trim().toLowerCase();
+    
+    if (lower === 'nakit' || lower === 'tl') return '₺';
+    if (lower === 'yk') return '₺';
+    
+    const mapping: Record<string, string> = {
+      'dolar': 'Dolar',
+      'euro': 'Euro',
+      'bam': 'BAM',
+      'usd': 'USD',
+      'eur': 'EUR',
+      'gbp': 'GBP',
+      'chf': 'CHF',
+      'cad': 'CAD',
+      'aud': 'AUD',
+      'rub': 'RUB',
+      'jpy': 'JPY',
+      'sar': 'SAR',
+      'aed': 'AED',
+      'kwd': 'KWD',
+      'gram': 'Gram',
+      'çeyrek': 'Çeyrek',
+      'yarım': 'Yarım',
+      'tam': 'Tam',
+      'ata': 'Ata',
+      'lira': 'Lira',
+    };
+    
+    if (mapping[lower]) return mapping[lower];
+    
+    if (name.length >= 3 && name.length <= 4 && name === name.toUpperCase()) {
+      return name;
+    }
+    
+    return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+  };
+
   const allFormTypes = useMemo(() => {
     const defaultGolds = ["Gram", "Çeyrek", "Yarım", "Tam", "Ata Lira"];
     const recordsGolds = vaultRecords
@@ -614,12 +652,12 @@ export default function DailyExpenses() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Card title={`${isGoldType(activeTab) ? 'Toplam Birikim' : 'Bu Ay Harcanan'} (${getAssetFullTitle(activeTab)})`} className={`${isGoldType(activeTab) ? 'bg-yellow-500/5 border-yellow-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
               <div className={`text-2xl font-bold mt-2 ${isGoldType(activeTab) ? 'text-yellow-600 dark:text-yellow-500' : 'text-red-500'}`}>
-                 {isGoldType(activeTab) ? (currentMonthIncome - currentMonthSpent).toLocaleString('tr-TR') : currentMonthSpent.toLocaleString('tr-TR')} {activeTab === 'NAKIT' || activeTab === 'YK' ? '₺' : activeTab}
+                 {isGoldType(activeTab) ? (currentMonthIncome - currentMonthSpent).toLocaleString('tr-TR') : currentMonthSpent.toLocaleString('tr-TR')} {getAssetUnitLabel(activeTab)}
               </div>
             </Card>
             <Card title={`Bu Ayki Gelir / Giriş (${getAssetFullTitle(activeTab)})`} className="bg-green-500/5 border-green-500/20">
               <div className="text-2xl font-bold text-green-500 mt-2">
-                 {currentMonthIncome.toLocaleString('tr-TR')} {activeTab === 'NAKIT' || activeTab === 'YK' ? '₺' : activeTab}
+                 {currentMonthIncome.toLocaleString('tr-TR')} {getAssetUnitLabel(activeTab)}
               </div>
             </Card>
         </div>
@@ -671,7 +709,7 @@ export default function DailyExpenses() {
                 <div className="text-right">
                     <div className={`font-bold whitespace-nowrap ${expense.amount > 0 ? 'text-green-500' : 'text-red-500'}`}>
                       {expense.amount > 0 ? '+' : ''}
-                      {expense.amount.toLocaleString('tr-TR')} {expense.type === 'NAKIT' || expense.type === 'YK' ? '₺' : expense.type}
+                      {expense.amount.toLocaleString('tr-TR')} {getAssetUnitLabel(expense.type)}
                     </div>
                     <div className="flex justify-end gap-3 mt-1">
                       <button
@@ -697,7 +735,7 @@ export default function DailyExpenses() {
 
         {sortedDates.length === 0 && (
           <div className="text-center text-muted-foreground py-12 bg-secondary/30 rounded-xl border border-dashed">
-            {activeTab === 'NAKIT' ? 'TL' : activeTab === 'YK' ? 'Yemek Kartı' : activeTab} için kayıt bulunmuyor.
+            {getAssetFullTitle(activeTab)} için kayıt bulunmuyor.
           </div>
         )}
       </div>
