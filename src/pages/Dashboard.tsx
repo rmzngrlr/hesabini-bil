@@ -294,7 +294,7 @@ export default function Dashboard() {
 
       {/* Top Summary Cards */}
       <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
-        <Card title={isFuture ? "Tahmini Kalan TL" : "Kalan TL"} className="bg-gradient-to-br from-card to-secondary/10">
+        <Card title={isFuture ? "Tahmini Kalan Türk Lirası" : "Kalan Türk Lirası"} className="bg-gradient-to-br from-card to-secondary/10">
 
            <div className={`text-3xl font-bold mt-2 ${remainingCash < 0 ? 'text-red-500' : 'text-foreground'}`}>
              {remainingCash.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
