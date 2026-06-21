@@ -14,6 +14,12 @@ interface GoldRecord {
     transaction_type?: string;
 }
 
+const isGoldType = (type: string) => {
+    const lower = type.toLowerCase();
+    const goldKeywords = ['gram', 'çeyrek', 'yarım', 'tam', 'ata', 'reşat', 'ayar', 'bilezik', 'altın', 'has', 'külçe'];
+    return goldKeywords.some(kw => lower.includes(kw));
+};
+
 export function VaultSection() {
     const { isAdmin } = useAuth();
     const {
@@ -62,7 +68,7 @@ export function VaultSection() {
             return;
         }
 
-        const currentTypes = Array.from(new Set(vaultRecords.map(r => r.gold_type)));
+        const currentTypes = Array.from(new Set(vaultRecords.filter(r => isGoldType(r.gold_type)).map(r => r.gold_type)));
         let orderArray = [...vaultOrder];
         for (const type of currentTypes) {
             if (!orderArray.includes(type)) {
@@ -169,7 +175,7 @@ export function VaultSection() {
             )}
 
             <Card title="Kayıtlar">
-                {vaultRecords.length === 0 ? (
+                {vaultRecords.filter(r => isGoldType(r.gold_type)).length === 0 ? (
                     <div className="text-center text-muted-foreground py-8">Henüz kayıt eklenmemiş.</div>
                 ) : (
                     <div className="space-y-12">
@@ -179,7 +185,7 @@ export function VaultSection() {
                                 Birikimler
                             </h2>
                             <div className="space-y-6">
-                                {Array.from(new Set(vaultRecords.filter(r => (r.transaction_type || 'Birikim') !== 'Düğün Hediyesi / Takı').map(r => r.gold_type)))
+                                {Array.from(new Set(vaultRecords.filter(r => isGoldType(r.gold_type) && (r.transaction_type || 'Birikim') !== 'Düğün Hediyesi / Takı').map(r => r.gold_type)))
                                     .sort((a, b) => {
                                         const idxA = vaultOrder.indexOf(a);
                                         const idxB = vaultOrder.indexOf(b);
@@ -350,7 +356,7 @@ export function VaultSection() {
                                     Dışarıdakiler (Düğün Takı / Hediye)
                                 </h2>
                                 <div className="space-y-6">
-                                    {Array.from(new Set(vaultRecords.filter(r => r.transaction_type === 'Düğün Hediyesi / Takı').map(r => r.gold_type)))
+                                    {Array.from(new Set(vaultRecords.filter(r => isGoldType(r.gold_type) && r.transaction_type === 'Düğün Hediyesi / Takı').map(r => r.gold_type)))
                                         .map(goldType => {
                                         const groupRecords = vaultRecords.filter(r => r.gold_type === goldType && r.transaction_type === 'Düğün Hediyesi / Takı').sort((a, b) => {
                                             const dateA = new Date(a.record_date).getTime();
