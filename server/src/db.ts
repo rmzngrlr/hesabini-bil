@@ -18,7 +18,8 @@ export const getDb = async () => {
         database: process.env.DB_NAME || 'hesabini_bil',
         waitForConnections: true,
         connectionLimit: 10,
-        queueLimit: 0
+        queueLimit: 0,
+        dateStrings: true
     });
 
     // Initialize schema

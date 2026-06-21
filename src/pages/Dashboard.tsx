@@ -265,6 +265,8 @@ export default function Dashboard() {
                     return (r.transaction_type || 'Birikim') === 'Birikim' ? sum + amt : sum - amt;
                   }, 0);
 
+                  if (totalGold === 0) return null;
+
                   return (
                     <Card key={asset} title={asset} className="bg-yellow-500/5 border-yellow-500/20">
                       <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-500 mt-2">
@@ -305,6 +307,8 @@ export default function Dashboard() {
                   const finalResources = totalResources + (kasaChanges > 0 ? kasaChanges : 0);
                   const finalSpent = totalSpent + (kasaChanges < 0 ? Math.abs(kasaChanges) : 0);
                   const remaining = finalResources - finalSpent;
+
+                  if (remaining === 0) return null;
 
                   return (
                     <Card key={asset} title={asset} className="bg-emerald-500/5 border-emerald-500/20">
