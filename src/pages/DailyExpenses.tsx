@@ -91,6 +91,80 @@ export default function DailyExpenses() {
     return mapping[lower] || fallback;
   };
 
+  const detectCurrencyCode = (input: string): string => {
+    const clean = input.trim().toLowerCase();
+    
+    // 1. Symbol mappings
+    if (clean === '$') return 'USD';
+    if (clean === '€') return 'EUR';
+    if (clean === '£' || clean === '₤') return 'GBP';
+    if (clean === '₽') return 'RUB';
+    if (clean === '¥') return 'JPY';
+    if (clean === '﷼') return 'SAR';
+    if (clean === 'د.إ') return 'AED';
+    if (clean === 'د.ك') return 'KWD';
+    if (clean === '₣') return 'CHF';
+    if (clean === 'km') return 'BAM';
+
+    // 2. Name mappings (Turkish and English)
+    const lowerInput = clean
+      .replace(/i̇/g, 'i')
+      .replace(/ı/g, 'i')
+      .replace(/ş/g, 's')
+      .replace(/ç/g, 'c')
+      .replace(/ğ/g, 'g')
+      .replace(/ü/g, 'u')
+      .replace(/ö/g, 'o');
+    
+    if (lowerInput.includes('dolar') || lowerInput.includes('dollar') || lowerInput === 'usd') {
+      if (lowerInput.includes('kanada') || lowerInput.includes('cad')) return 'CAD';
+      if (lowerInput.includes('avustralya') || lowerInput.includes('aud')) return 'AUD';
+      return 'USD';
+    }
+    
+    if (lowerInput.includes('euro') || lowerInput === 'eur') {
+      return 'EUR';
+    }
+    
+    if (lowerInput.includes('bosna') || lowerInput.includes('hersek') || lowerInput.includes('marki') || lowerInput === 'bam' || lowerInput === 'km') {
+      return 'BAM';
+    }
+    
+    if (lowerInput.includes('sterlin') || lowerInput.includes('pound') || lowerInput === 'gbp') {
+      return 'GBP';
+    }
+    
+    if (lowerInput.includes('frank') || lowerInput.includes('isvicre') || lowerInput === 'chf') {
+      return 'CHF';
+    }
+    
+    if (lowerInput.includes('ruble') || lowerInput.includes('rublesi') || lowerInput === 'rub') {
+      return 'RUB';
+    }
+    
+    if (lowerInput.includes('yen') || lowerInput.includes('japon') || lowerInput === 'jpy') {
+      return 'JPY';
+    }
+    
+    if (lowerInput.includes('riyal') || lowerInput.includes('suudi') || lowerInput === 'sar') {
+      return 'SAR';
+    }
+    
+    if (lowerInput.includes('dirhem') || lowerInput.includes('emirlikleri') || lowerInput === 'aed') {
+      return 'AED';
+    }
+    
+    if (lowerInput.includes('dinar') || lowerInput.includes('kuveyt') || lowerInput === 'kwd') {
+      return 'KWD';
+    }
+
+    if (input.length >= 3 && input.length <= 4) {
+      return input.toUpperCase();
+    }
+
+    return input.toUpperCase().trim();
+  };
+
   const getAssetUnitLabel = (name: string): string => {
     const lower = name.trim().toLowerCase();
     
@@ -99,19 +173,26 @@ export default function DailyExpenses() {
     
     const mapping: Record<string, string> = {
       'dolar': 'Dolar',
+      'usd': 'Dolar',
       'euro': 'Euro',
+      'eur': 'Euro',
       'bam': 'BAM',
-      'usd': 'USD',
-      'eur': 'EUR',
-      'gbp': 'GBP',
-      'chf': 'CHF',
-      'cad': 'CAD',
-      'aud': 'AUD',
-      'rub': 'RUB',
-      'jpy': 'JPY',
-      'sar': 'SAR',
-      'aed': 'AED',
-      'kwd': 'KWD',
+      'gbp': 'Sterlin',
+      'sterlin': 'Sterlin',
+      'chf': 'Frank',
+      'frang': 'Frank',
+      'cad': 'Kanada Doları',
+      'aud': 'Avustralya Doları',
+      'rub': 'Ruble',
+      'ruble': 'Ruble',
+      'jpy': 'Yen',
+      'yen': 'Yen',
+      'sar': 'Riyal',
+      'riyali': 'Riyal',
+      'aed': 'Dirhem',
+      'dirhem': 'Dirhem',
+      'kwd': 'Dinar',
+      'dinar': 'Dinar',
       'gram': 'Gram',
       'çeyrek': 'Çeyrek',
       'yarım': 'Yarım',
@@ -128,6 +209,7 @@ export default function DailyExpenses() {
     
     return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
   };
+
 
   const allFormTypes = useMemo(() => {
     const defaultGolds = ["Gram", "Çeyrek", "Yarım", "Tam", "Ata Lira"];
@@ -350,7 +432,7 @@ export default function DailyExpenses() {
       let finalType = type;
       if (type === 'NEW_CURRENCY') {
         if (!customCurrencyCode) return;
-        finalType = customCurrencyCode;
+        finalType = detectCurrencyCode(customCurrencyCode);
       }
 
       if (editingId) {
@@ -611,13 +693,13 @@ export default function DailyExpenses() {
 
             {type === 'NEW_CURRENCY' && (
               <div className="space-y-1 mt-2">
-                <label className="text-xs text-muted-foreground">Yeni Para Birimi Kodu (Örn: USD, EUR, GBP)</label>
+                <label className="text-xs text-muted-foreground">Yeni Para Birimi Adı, Sembolü veya Kodu (Örn: Dolar, $, Euro, €)</label>
                 <input
                   type="text"
                   required
-                  placeholder="Döviz Kodu (Büyük Harf)"
+                  placeholder="Para Birimi Girin (Örn: Dolar, $, Euro)"
                   value={customCurrencyCode}
-                  onChange={(e) => setCustomCurrencyCode(e.target.value.toUpperCase().trim())}
+                  onChange={(e) => setCustomCurrencyCode(e.target.value)}
                   className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
                 />
               </div>
@@ -690,7 +772,7 @@ export default function DailyExpenses() {
                 {format(new Date(date), 'd MMMM yyyy, EEEE', { locale: tr })}
               </h3>
               <span className={`text-sm font-bold ${dailyTotal >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                 {dailyTotal > 0 ? '+' : ''}{dailyTotal.toLocaleString('tr-TR')} {activeTab === 'NAKIT' || activeTab === 'YK' ? '₺' : activeTab}
+                 {dailyTotal > 0 ? '+' : ''}{dailyTotal.toLocaleString('tr-TR')} {getAssetUnitLabel(activeTab)}
               </span>
             </div>
             {groupedExpenses[date].map((expense) => {
