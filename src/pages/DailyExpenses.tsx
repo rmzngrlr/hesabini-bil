@@ -109,6 +109,24 @@ export default function DailyExpenses() {
     }
   }, [availableTabs, allFormTypes, activeTab, type]);
 
+  // Reset date draft if it belongs to a past day
+  useEffect(() => {
+    const today = getLocalDate();
+    const cached = sessionStorage.getItem('daily_draft_date');
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (parsed !== today) {
+          sessionStorage.removeItem('daily_draft_date');
+          setDate(today);
+        }
+      } catch (e) {
+        sessionStorage.removeItem('daily_draft_date');
+        setDate(today);
+      }
+    }
+  }, []);
+
   const currentMonthSpent = useMemo(() => {
     return activeExpenses
       .filter(e => e.type === activeTab && e.amount < 0)
