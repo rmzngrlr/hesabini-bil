@@ -843,33 +843,6 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     runningProjYkRollover = (realState.ykIncome + realState.ykRollover + totalYkDailyIncome) - totalYkDaily;
     if (runningProjYkRollover < 0) runningProjYkRollover = 0;
 
-    // Calculate historical average daily cash/YK spent to make future projections realistic
-    let historicalCashDailyAvg = 0;
-    let historicalYkDailyAvg = 0;
-    const historyMonths = realState.history || [];
-    if (historyMonths.length > 0) {
-      let totalCashSpentInHistory = 0;
-      let totalYkSpentInHistory = 0;
-      historyMonths.forEach(h => {
-        totalCashSpentInHistory += Math.abs(h.dailyExpenses.filter(e => (e.type === 'NAKIT' || !e.type) && e.amount < 0).reduce((sum, e) => sum + e.amount, 0));
-        totalYkSpentInHistory += Math.abs(h.dailyExpenses.filter(e => e.type === 'YK' && e.amount < 0).reduce((sum, e) => sum + e.amount, 0));
-      });
-      historicalCashDailyAvg = totalCashSpentInHistory / historyMonths.length;
-      historicalYkDailyAvg = totalYkSpentInHistory / historyMonths.length;
-    }
-
-    const today = new Date();
-    const currentDay = today.getDate();
-    let projectedCashDaily = totalCashDaily;
-    let projectedYkDaily = totalYkDaily;
-
-    if (historicalCashDailyAvg > 0 && (currentDay < 15 || totalCashDaily < historicalCashDailyAvg * 0.5)) {
-      projectedCashDaily = historicalCashDailyAvg;
-    }
-    if (historicalYkDailyAvg > 0 && (currentDay < 15 || totalYkDaily < historicalYkDailyAvg * 0.5)) {
-      projectedYkDaily = historicalYkDailyAvg;
-    }
-
     const activeCurrencies = Array.from(new Set(
       globalVaultRecords
         .map(r => r.gold_type)
@@ -1020,9 +993,10 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             const finalAssetBudgets: Record<string, { income: number; rollover: number }> = {};
             activeCurrencies.forEach(curr => {
                 const futAsset = future.assetBudgets?.[curr];
+                const startRollover = monthsAway === 1 ? (runningProjAssetBudgets[curr]?.rollover || 0) : 0;
                 finalAssetBudgets[curr] = {
-                    income: futAsset?.income !== undefined ? futAsset.income : (runningProjAssetBudgets[curr]?.income || 0),
-                    rollover: runningProjAssetBudgets[curr]?.rollover || 0
+                    income: futAsset?.income !== undefined ? futAsset.income : (realState.assetBudgets?.[curr]?.income || 0),
+                    rollover: startRollover
                 };
             });
 
@@ -1031,8 +1005,8 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 currentMonth: viewDate,
                 income: monthIncome,
                 ykIncome: monthYkIncome,
-                rollover: runningProjRollover,
-                ykRollover: runningProjYkRollover,
+                rollover: monthsAway === 1 ? runningProjRollover : 0,
+                ykRollover: monthsAway === 1 ? runningProjYkRollover : 0,
                 fixedExpenses: monthFixedExpenses,
                 customIncomes: monthCustomIncomes,
                 dailyExpenses: [],
@@ -1042,40 +1016,6 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 assetBudgets: finalAssetBudgets
             };
         }
-
-        // 3. For intervening months, simulate cash & currency flows to carry ending balance to next iteration
-        const projFixedTotal = monthFixedExpenses.filter(e => (e.type === 'NAKIT' || !e.type)).reduce((sum, e) => sum + e.amount, 0);
-        const projCustomIncomes = monthCustomIncomes.filter(i => i.type === 'NAKIT' || !i.type).reduce((sum, i) => sum + i.amount, 0);
-        const projTotalCashResources = monthIncome + runningProjRollover + projCustomIncomes;
-
-        runningProjRollover = projTotalCashResources - projFixedTotal - projectedCashDaily;
-        if (runningProjRollover < 0) runningProjRollover = 0;
-
-        runningProjYkRollover = monthYkIncome + runningProjYkRollover - projectedYkDaily;
-        if (runningProjYkRollover < 0) runningProjYkRollover = 0;
-
-        activeCurrencies.forEach(curr => {
-            const futAsset = future.assetBudgets?.[curr];
-            const monthInc = futAsset?.income !== undefined ? futAsset.income : (runningProjAssetBudgets[curr]?.income || 0);
-            const startRollover = runningProjAssetBudgets[curr]?.rollover || 0;
-
-            const kasaChanges = getKasaSum(globalVaultRecords, curr, d => d >= `${iterMonth}-01` && d < `${addMonths(iterMonth, 1)}-01`);
-
-            const assetCustomIncome = monthCustomIncomes
-              .filter(i => i.type === curr)
-              .reduce((sum, i) => sum + i.amount, 0);
-            const assetFixedSpent = monthFixedExpenses
-              .filter(e => e.type === curr)
-              .reduce((sum, e) => sum + e.amount, 0);
-
-            const totalAsset = startRollover + kasaChanges + monthInc + assetCustomIncome;
-            const remainingAsset = totalAsset - assetFixedSpent;
-
-            runningProjAssetBudgets[curr] = {
-                income: monthInc,
-                rollover: remainingAsset > 0 ? remainingAsset : 0
-            };
-        });
 
         iterMonth = addMonths(iterMonth, 1);
     }
