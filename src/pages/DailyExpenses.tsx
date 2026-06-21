@@ -4,7 +4,7 @@ import type { DailyExpense } from '../types';
 import { Card } from '../components/ui/Card';
 import { Trash2, Banknote, CreditCard, Pencil, X, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { tr } from 'date-fns/locale';
 import { cn } from '../lib/utils';
 
@@ -19,7 +19,8 @@ export default function DailyExpenses() {
     vaultRecords,
     addVaultRecord,
     updateVaultRecord,
-    deleteVaultRecord
+    deleteVaultRecord,
+    activeCurrencies
   } = useBudget();
 
   const isGoldType = (type: string) => {
@@ -27,17 +28,6 @@ export default function DailyExpenses() {
     const goldKeywords = ['gram', 'çeyrek', 'yarım', 'tam', 'ata', 'reşat', 'ayar', 'bilezik', 'altın', 'has', 'külçe'];
     return goldKeywords.some(kw => lower.includes(kw));
   };
-
-
-  const activeCurrencies = useMemo(() => {
-    return Array.from(new Set(
-      vaultRecords
-        .map(r => r.gold_type)
-        .filter(t => !isGoldType(t))
-    ));
-  }, [vaultRecords]);
-
-
 
   const allFormTypes = useMemo(() => {
     const defaultGolds = ["Gram", "Çeyrek", "Yarım", "Tam", "Ata Lira"];
@@ -67,6 +57,7 @@ export default function DailyExpenses() {
   const [transactionType, setTransactionType] = useDraftState<'INCOME' | 'EXPENSE'>('daily_draft_tx_type', 'EXPENSE');
   const [activeTab, setActiveTab] = useDraftState<string>('daily_draft_tab', 'NAKIT');
   const [editingId, setEditingId] = useDraftState<string | null>('daily_draft_editing_id', null);
+  const [customCurrencyCode, setCustomCurrencyCode] = useState('');
 
   const [goldOwner, setGoldOwner] = useDraftState('daily_draft_gold_owner', '');
   const [goldNote, setGoldNote] = useDraftState('daily_draft_gold_note', '');
@@ -233,12 +224,16 @@ export default function DailyExpenses() {
           }
         }
       }
-
       setGoldOwner('');
       setGoldNote('');
       setGoldPriceTL('');
     } else {
       const finalAmount = transactionType === 'EXPENSE' ? -Math.abs(numAmount) : Math.abs(numAmount);
+      let finalType = type;
+      if (type === 'NEW_CURRENCY') {
+        if (!customCurrencyCode) return;
+        finalType = customCurrencyCode;
+      }
 
       if (editingId) {
         if (editingId.startsWith('vault-curr-')) {
@@ -250,7 +245,7 @@ export default function DailyExpenses() {
               amount: Math.abs(finalAmount),
               note: description,
               transaction_type: isExpense ? 'Borç Verdim' : 'Birikim',
-              gold_type: type
+              gold_type: finalType
             });
           }
         } else {
@@ -258,7 +253,7 @@ export default function DailyExpenses() {
             date,
             description,
             amount: finalAmount,
-            type
+            type: finalType
           });
         }
         setEditingId(null);
@@ -267,8 +262,11 @@ export default function DailyExpenses() {
           date,
           description,
           amount: finalAmount,
-          type
+          type: finalType
         });
+        setType(finalType);
+        setActiveTab(finalType);
+        setCustomCurrencyCode('');
       }
       setDescription('');
     }
@@ -473,7 +471,7 @@ export default function DailyExpenses() {
                 <label className="text-xs text-muted-foreground">Varlık / Para Birimi</label>
                 <select
                   value={type}
-                  onChange={(e) => { setType(e.target.value); setActiveTab(e.target.value); }}
+                  onChange={(e) => { setType(e.target.value); if (e.target.value !== 'NEW_CURRENCY') setActiveTab(e.target.value); }}
                   className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
                 >
                   <optgroup label="Para Birimleri">
@@ -482,6 +480,7 @@ export default function DailyExpenses() {
                     {activeCurrencies.map(curr => (
                       <option key={curr} value={curr}>{curr === 'Bosna-Hersek Markı' ? 'BAM' : curr}</option>
                     ))}
+                    <option value="NEW_CURRENCY">+ Diğer Para Birimi Ekle...</option>
                   </optgroup>
                   <optgroup label="Altın Türleri (Kasa)">
                     {allFormTypes.golds.map(gold => (
@@ -490,6 +489,20 @@ export default function DailyExpenses() {
                   </optgroup>
                 </select>
             </div>
+
+            {type === 'NEW_CURRENCY' && (
+              <div className="space-y-1 mt-2">
+                <label className="text-xs text-muted-foreground">Yeni Para Birimi Kodu (Örn: USD, EUR, GBP)</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Döviz Kodu (Büyük Harf)"
+                  value={customCurrencyCode}
+                  onChange={(e) => setCustomCurrencyCode(e.target.value.toUpperCase().trim())}
+                  className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+                />
+              </div>
+            )}
 
             <div className="flex gap-2 mt-2">
                 {editingId && (

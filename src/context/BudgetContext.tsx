@@ -66,6 +66,7 @@ interface BudgetContextType {
   updateVaultOrder: (order: string[]) => Promise<void>;
   updateAssetIncome: (assetType: string, amount: number) => void;
   updateAssetRollover: (assetType: string, amount: number) => void;
+  activeCurrencies: string[];
 }
 
 const BudgetContext = createContext<BudgetContextType | undefined>(undefined);
@@ -142,6 +143,80 @@ const getCurrencyVaultExpenses = (records: GoldRecord[]): DailyExpense[] => {
     });
 };
 
+const getActiveCurrencies = (state: BudgetState, vaultRecs: GoldRecord[]) => {
+  const found = new Set<string>();
+  
+  // Scan vault records
+  (vaultRecs || []).forEach(r => {
+    if (!isGoldType(r.gold_type)) found.add(r.gold_type);
+  });
+
+  if (state) {
+    // Scan current daily expenses
+    (state.dailyExpenses || []).forEach(e => {
+      if (e.type !== 'NAKIT' && e.type !== 'YK' && !isGoldType(e.type)) {
+        found.add(e.type);
+      }
+    });
+
+    // Scan history
+    (state.history || []).forEach(h => {
+      (h.dailyExpenses || []).forEach(e => {
+        if (e.type !== 'NAKIT' && e.type !== 'YK' && !isGoldType(e.type)) {
+          found.add(e.type);
+        }
+      });
+      (h.fixedExpenses || []).forEach(e => {
+        if (e.type && e.type !== 'NAKIT' && e.type !== 'YK' && !isGoldType(e.type)) {
+          found.add(e.type);
+        }
+      });
+      (h.customIncomes || []).forEach(i => {
+        if (i.type && i.type !== 'NAKIT' && i.type !== 'YK' && !isGoldType(i.type)) {
+          found.add(i.type);
+        }
+      });
+    });
+
+    // Scan current month fixed expenses and custom incomes
+    (state.fixedExpenses || []).forEach(e => {
+      if (e.type && e.type !== 'NAKIT' && e.type !== 'YK' && !isGoldType(e.type)) {
+        found.add(e.type);
+      }
+    });
+    (state.customIncomes || []).forEach(i => {
+      if (i.type && i.type !== 'NAKIT' && i.type !== 'YK' && !isGoldType(i.type)) {
+        found.add(i.type);
+      }
+    });
+
+    // Scan future data
+    Object.values(state.futureData || {}).forEach((f: any) => {
+      if (f.fixedExpenses) {
+        f.fixedExpenses.forEach((e: any) => {
+          if (e.type && e.type !== 'NAKIT' && e.type !== 'YK' && !isGoldType(e.type)) {
+            found.add(e.type);
+          }
+        });
+      }
+      if (f.customIncomes) {
+        f.customIncomes.forEach((i: any) => {
+          if (i.type && i.type !== 'NAKIT' && i.type !== 'YK' && !isGoldType(i.type)) {
+            found.add(i.type);
+          }
+        });
+      }
+      if (f.assetBudgets) {
+        Object.keys(f.assetBudgets).forEach(curr => {
+          if (!isGoldType(curr)) found.add(curr);
+        });
+      }
+    });
+  }
+
+  return Array.from(found);
+};
+
 // Helper: Recalculate all subsequent months (Ripple Effect)
 function recalculateHistoryAndCurrent(state: BudgetState): BudgetState {
     const vaultExpenses = getCurrencyVaultExpenses(globalVaultRecords);
@@ -169,11 +244,7 @@ function recalculateHistoryAndCurrent(state: BudgetState): BudgetState {
     let runningCCDebt = 0;
 
     // Track running rollovers for other currencies
-    const activeCurrencies = Array.from(new Set(
-      globalVaultRecords
-        .map(r => r.gold_type)
-        .filter(t => !isGoldType(t))
-    ));
+    const activeCurrencies = getActiveCurrencies(newState, globalVaultRecords);
 
     let runningAssetRollovers: Record<string, number> = {};
 
@@ -874,11 +945,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     runningProjYkRollover = (realState.ykIncome + realState.ykRollover + totalYkDailyIncome) - totalYkDaily;
     if (runningProjYkRollover < 0) runningProjYkRollover = 0;
 
-    const activeCurrencies = Array.from(new Set(
-      globalVaultRecords
-        .map(r => r.gold_type)
-        .filter(t => !isGoldType(t))
-    ));
+    const activeCurrencies = getActiveCurrencies(realState, globalVaultRecords);
 
     activeCurrencies.forEach(curr => {
         const assetBudget = realState.assetBudgets?.[curr];
@@ -1803,8 +1870,12 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const loadState = (newState: BudgetState) => {
     const migrated = migrateState(newState);
-    setRealState(migrated);
+    setRealState(recalculateHistoryAndCurrent(migrated));
   };
+
+  const activeCurrencies = useMemo(() => {
+    return getActiveCurrencies(realState, vaultRecords);
+  }, [realState, vaultRecords]);
 
   if (loadError) {
     return (
@@ -1865,7 +1936,8 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             updateVaultRecord,
             updateVaultOrder,
             updateAssetIncome,
-            updateAssetRollover
+            updateAssetRollover,
+            activeCurrencies
         }}
     >
         {children}
