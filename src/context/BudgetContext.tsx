@@ -126,9 +126,40 @@ const getKasaSum = (records: GoldRecord[], type: string, filterFn: (date: string
     }, 0);
 };
 
+const getCurrencyVaultExpenses = (records: GoldRecord[]): DailyExpense[] => {
+  return records
+    .filter(r => !isGoldType(r.gold_type))
+    .map(r => {
+      const isExpense = r.transaction_type === 'Borç Verdim' || r.transaction_type === 'Bozdurma' || r.transaction_type === 'Çıkış';
+      const amt = Number(r.amount);
+      return {
+        id: `vault-curr-${r.id}`,
+        date: r.record_date,
+        description: r.note ? `${r.owner}: ${r.note}` : r.owner || 'Kasa Kaydı',
+        amount: isExpense ? -Math.abs(amt) : Math.abs(amt),
+        type: r.gold_type
+      };
+    });
+};
+
 // Helper: Recalculate all subsequent months (Ripple Effect)
 function recalculateHistoryAndCurrent(state: BudgetState): BudgetState {
-    const newState = { ...state, history: [...state.history] };
+    const vaultExpenses = getCurrencyVaultExpenses(globalVaultRecords);
+
+    const newState: BudgetState = { 
+        ...state, 
+        dailyExpenses: [
+            ...state.dailyExpenses.filter(e => !e.id.startsWith('vault-curr-')),
+            ...vaultExpenses.filter(e => e.date.startsWith(state.currentMonth))
+        ],
+        history: (state.history || []).map(hist => ({
+            ...hist,
+            dailyExpenses: [
+                ...hist.dailyExpenses.filter(e => !e.id.startsWith('vault-curr-')),
+                ...vaultExpenses.filter(e => e.date.startsWith(hist.month))
+            ]
+        }))
+    };
 
     // Sort history chronologically just in case
     newState.history.sort((a, b) => a.month.localeCompare(b.month));
@@ -228,7 +259,7 @@ function recalculateHistoryAndCurrent(state: BudgetState): BudgetState {
             const startRollover = assetBudget?.rollover || 0;
             const monthIncome = assetBudget?.income || 0;
 
-            const kasaChanges = getKasaSum(globalVaultRecords, curr, d => d >= `${hist.month}-01` && d < `${addMonths(hist.month, 1)}-01`);
+            const kasaChanges = 0; // Vault currency records are merged into dailyExpenses
 
             const assetCustomIncome = (hist.customIncomes || [])
               .filter(i => i.type === curr)
@@ -565,7 +596,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                }
              }
              const migrated = migrateState(data);
-             setRealState(migrated);
+             setRealState(recalculateHistoryAndCurrent(migrated));
              setViewDate(migrated.currentMonth || getCurrentMonth());
           }
           setIsLoading(false);
@@ -854,7 +885,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const startRollover = assetBudget?.rollover || 0;
         const monthInc = assetBudget?.income || 0;
 
-        const kasaChanges = getKasaSum(globalVaultRecords, curr, d => d >= `${realState.currentMonth}-01` && d < `${addMonths(realState.currentMonth, 1)}-01`);
+        const kasaChanges = 0; // Vault currency records are merged into dailyExpenses
 
         const assetCustomIncome = realState.customIncomes
           .filter(i => i.type === curr)
@@ -1022,7 +1053,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             const monthInc = futAsset?.income !== undefined ? futAsset.income : (realState.assetBudgets?.[curr]?.income || 0);
             const startRollover = runningProjAssetBudgets[curr]?.rollover || 0;
 
-            const kasaChanges = getKasaSum(globalVaultRecords, curr, d => d >= `${iterMonth}-01` && d < `${addMonths(iterMonth, 1)}-01`);
+            const kasaChanges = 0; // Vault currency records are merged into dailyExpenses
 
             const assetCustomIncome = monthCustomIncomes
               .filter(i => i.type === curr)

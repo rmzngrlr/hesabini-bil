@@ -241,12 +241,26 @@ export default function DailyExpenses() {
       const finalAmount = transactionType === 'EXPENSE' ? -Math.abs(numAmount) : Math.abs(numAmount);
 
       if (editingId) {
-        updateDailyExpense(editingId, {
-          date,
-          description,
-          amount: finalAmount,
-          type
-        });
+        if (editingId.startsWith('vault-curr-')) {
+          const vaultId = parseInt(editingId.replace('vault-curr-', ''));
+          if (!isNaN(vaultId)) {
+            const isExpense = finalAmount < 0;
+            await updateVaultRecord(vaultId, {
+              record_date: date,
+              amount: Math.abs(finalAmount),
+              note: description,
+              transaction_type: isExpense ? 'Borç Verdim' : 'Birikim',
+              gold_type: type
+            });
+          }
+        } else {
+          updateDailyExpense(editingId, {
+            date,
+            description,
+            amount: finalAmount,
+            type
+          });
+        }
         setEditingId(null);
       } else {
         addDailyExpense({
@@ -269,19 +283,25 @@ export default function DailyExpenses() {
   const handleDeleteClick = async (expense: DailyExpense) => {
     if (!confirm('Bu işlemi silmek istediğinize emin misiniz?')) return;
 
-    if (isGoldType(expense.type)) {
-      // Find and delete from vault records
-      const match = vaultRecords.find(r => 
-        r.gold_type === expense.type && 
-        Number(r.amount) === Number(Math.abs(expense.amount)) && 
-        r.record_date === expense.date
-      );
-      if (match && match.id) {
-        await deleteVaultRecord(match.id);
+    if (expense.id.startsWith('vault-curr-')) {
+      const vaultId = parseInt(expense.id.replace('vault-curr-', ''));
+      if (!isNaN(vaultId)) {
+        await deleteVaultRecord(vaultId);
       }
+    } else {
+      if (isGoldType(expense.type)) {
+        // Find and delete from vault records
+        const match = vaultRecords.find(r => 
+          r.gold_type === expense.type && 
+          Number(r.amount) === Number(Math.abs(expense.amount)) && 
+          r.record_date === expense.date
+        );
+        if (match && match.id) {
+          await deleteVaultRecord(match.id);
+        }
+      }
+      deleteDailyExpense(expense.id);
     }
-
-    deleteDailyExpense(expense.id);
   };
 
   const filteredExpenses = activeExpenses.filter(e => e.type === activeTab);
