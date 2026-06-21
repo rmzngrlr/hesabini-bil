@@ -128,8 +128,8 @@ const getKasaSum = (records: GoldRecord[], type: string, filterFn: (date: string
 };
 
 const getCurrencyVaultExpenses = (records: GoldRecord[]): DailyExpense[] => {
-  return records
-    .filter(r => !isGoldType(r.gold_type))
+  return (records || [])
+    .filter(r => r && r.gold_type && !isGoldType(r.gold_type) && r.record_date && typeof r.record_date === 'string')
     .map(r => {
       const isExpense = r.transaction_type === 'Borç Verdim' || r.transaction_type === 'Bozdurma' || r.transaction_type === 'Çıkış';
       const amt = Number(r.amount);
@@ -224,14 +224,16 @@ function recalculateHistoryAndCurrent(state: BudgetState): BudgetState {
     const newState: BudgetState = { 
         ...state, 
         dailyExpenses: [
-            ...state.dailyExpenses.filter(e => !e.id.startsWith('vault-curr-')),
-            ...vaultExpenses.filter(e => e.date.startsWith(state.currentMonth))
+            ...(state.dailyExpenses || [])
+                .filter(e => e && e.id && typeof e.id === 'string' && !e.id.startsWith('vault-curr-')),
+            ...vaultExpenses.filter(e => e && e.date && typeof e.date === 'string' && e.date.startsWith(state.currentMonth))
         ],
         history: (state.history || []).map(hist => ({
             ...hist,
             dailyExpenses: [
-                ...hist.dailyExpenses.filter(e => !e.id.startsWith('vault-curr-')),
-                ...vaultExpenses.filter(e => e.date.startsWith(hist.month))
+                ...(hist.dailyExpenses || [])
+                    .filter(e => e && e.id && typeof e.id === 'string' && !e.id.startsWith('vault-curr-')),
+                ...vaultExpenses.filter(e => e && e.date && typeof e.date === 'string' && e.date.startsWith(hist.month))
             ]
         }))
     };

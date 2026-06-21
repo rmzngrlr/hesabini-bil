@@ -410,6 +410,7 @@ export default function DailyExpenses() {
                 <label className="text-xs text-muted-foreground">Açıklama</label>
                 <input
                   type="text"
+                  required
                   list="daily-expense-suggestions"
                   placeholder="Bu para nereden geldi/nereye gitti?"
                   value={description}
