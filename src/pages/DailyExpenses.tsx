@@ -85,6 +85,30 @@ export default function DailyExpenses() {
       'kwd': 'Kuveyt Dinarı',
       'dinar': 'Kuveyt Dinarı',
       'kuveyt dinarı': 'Kuveyt Dinarı',
+      'syp': 'Suriye Lirası',
+      'suriye lirası': 'Suriye Lirası',
+      'cny': 'Çin Yuanı',
+      'çin yuanı': 'Çin Yuanı',
+      'sek': 'İsveç Kronu',
+      'isveç kronu': 'İsveç Kronu',
+      'nok': 'Norveç Kronu',
+      'norveç kronu': 'Norveç Kronu',
+      'dkk': 'Danimarka Kronu',
+      'danimarka kronu': 'Danimarka Kronu',
+      'azn': 'Azerbaycan Manatı',
+      'azerbaycan manatı': 'Azerbaycan Manatı',
+      'qar': 'Katar Riyali',
+      'katar riyali': 'Katar Riyali',
+      'iqd': 'Irak Dinarı',
+      'irak dinarı': 'Irak Dinarı',
+      'uah': 'Ukrayna Grivnası',
+      'ukrayna grivnası': 'Ukrayna Grivnası',
+      'inr': 'Hindistan Rupisi',
+      'hindistan rupisi': 'Hindistan Rupisi',
+      'egp': 'Mısır Lirası',
+      'mısır lirası': 'Mısır Lirası',
+      'krw': 'Güney Kore Wonu',
+      'güney kore wonu': 'Güney Kore Wonu',
     };
     
     const fallback = name.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
@@ -102,9 +126,14 @@ export default function DailyExpenses() {
     if (clean === '¥') return 'JPY';
     if (clean === '﷼') return 'SAR';
     if (clean === 'د.إ') return 'AED';
-    if (clean === 'د.ك') return 'KWD';
+    if (clean === 'د.k' || clean === 'د.k') return 'KWD';
     if (clean === '₣') return 'CHF';
     if (clean === 'km') return 'BAM';
+    if (clean === '₼') return 'AZN';
+    if (clean === '₴') return 'UAH';
+    if (clean === '₹') return 'INR';
+    if (clean === '₩') return 'KRW';
+    if (clean === 'ل.س') return 'SYP';
 
     // 2. Name mappings (Turkish and English)
     const lowerInput = clean
@@ -147,7 +176,12 @@ export default function DailyExpenses() {
     }
     
     if (lowerInput.includes('riyal') || lowerInput.includes('suudi') || lowerInput === 'sar') {
+      if (lowerInput.includes('katar') || lowerInput === 'qar') return 'QAR';
       return 'SAR';
+    }
+
+    if (lowerInput.includes('suriye') || lowerInput === 'syp' || lowerInput.includes('syrian')) {
+      return 'SYP';
     }
     
     if (lowerInput.includes('dirhem') || lowerInput.includes('emirlikleri') || lowerInput === 'aed') {
@@ -155,7 +189,48 @@ export default function DailyExpenses() {
     }
     
     if (lowerInput.includes('dinar') || lowerInput.includes('kuveyt') || lowerInput === 'kwd') {
+      if (lowerInput.includes('irak') || lowerInput === 'iqd') return 'IQD';
       return 'KWD';
+    }
+
+    if (lowerInput.includes('yuan') || lowerInput.includes('cin') || lowerInput === 'cny') {
+      return 'CNY';
+    }
+
+    if (lowerInput.includes('isvec') || lowerInput === 'sek') {
+      return 'SEK';
+    }
+
+    if (lowerInput.includes('norvec') || lowerInput === 'nok') {
+      return 'NOK';
+    }
+
+    if (lowerInput.includes('danimarka') || lowerInput === 'dkk') {
+      return 'DKK';
+    }
+
+    if (lowerInput.includes('manat') || lowerInput.includes('azerbaycan') || lowerInput === 'azn') {
+      return 'AZN';
+    }
+
+    if (lowerInput.includes('katar') || lowerInput === 'qar') {
+      return 'QAR';
+    }
+
+    if (lowerInput.includes('grivna') || lowerInput.includes('ukrayna') || lowerInput === 'uah') {
+      return 'UAH';
+    }
+
+    if (lowerInput.includes('rupi') || lowerInput.includes('hindistan') || lowerInput === 'inr') {
+      return 'INR';
+    }
+
+    if (lowerInput.includes('misir') || lowerInput === 'egp') {
+      return 'EGP';
+    }
+
+    if (lowerInput.includes('won') || lowerInput.includes('kore') || lowerInput === 'krw') {
+      return 'KRW';
     }
 
     if (input.length >= 3 && input.length <= 4) {
@@ -172,27 +247,62 @@ export default function DailyExpenses() {
     if (lower === 'yk') return '₺';
     
     const mapping: Record<string, string> = {
-      'dolar': 'Dolar',
-      'usd': 'Dolar',
-      'euro': 'Euro',
-      'eur': 'Euro',
-      'bam': 'BAM',
-      'gbp': 'Sterlin',
-      'sterlin': 'Sterlin',
-      'chf': 'Frank',
-      'frang': 'Frank',
-      'cad': 'Kanada Doları',
-      'aud': 'Avustralya Doları',
-      'rub': 'Ruble',
-      'ruble': 'Ruble',
-      'jpy': 'Yen',
-      'yen': 'Yen',
-      'sar': 'Riyal',
-      'riyali': 'Riyal',
-      'aed': 'Dirhem',
-      'dirhem': 'Dirhem',
-      'kwd': 'Dinar',
-      'dinar': 'Dinar',
+      // Dolar
+      'dolar': '$',
+      'usd': '$',
+      'cad': 'C$',
+      'aud': 'A$',
+      // Euro
+      'euro': '€',
+      'eur': '€',
+      // Pound / Sterlin
+      'gbp': '£',
+      'sterlin': '£',
+      // Riyal
+      'sar': '﷼',
+      'riyali': '﷼',
+      'riyal': '﷼',
+      'qar': '﷼',
+      // Syrian Pound
+      'syp': 'ل.س',
+      'suriye lirası': 'ل.س',
+      // BAM / KM
+      'bam': 'KM',
+      // Franc
+      'chf': '₣',
+      'frank': '₣',
+      // Ruble
+      'rub': '₽',
+      'ruble': '₽',
+      // Yen / Yuan
+      'jpy': '¥',
+      'yen': '¥',
+      'cny': '¥',
+      'yuan': '¥',
+      // Dirham
+      'aed': 'د.إ',
+      'dirhem': 'د.إ',
+      // Dinar
+      'kwd': 'د.k',
+      'dinar': 'د.k',
+      'iqd': 'د.ع',
+      // Kron
+      'sek': 'kr',
+      'nok': 'kr',
+      'dkk': 'kr',
+      // Manat
+      'azn': '₼',
+      'manat': '₼',
+      // Grivna
+      'uah': '₴',
+      // Rupi
+      'inr': '₹',
+      // EGP
+      'egp': 'E£',
+      // Won
+      'krw': '₩',
+      
+      // Gold types
       'gram': 'Gram',
       'çeyrek': 'Çeyrek',
       'yarım': 'Yarım',
