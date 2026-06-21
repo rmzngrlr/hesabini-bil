@@ -73,12 +73,6 @@ export default function DailyExpenses() {
 
 
 
-  // Auto-set transaction type to INCOME for gold
-  useEffect(() => {
-    if (isGoldType(type)) {
-      setTransactionType('INCOME');
-    }
-  }, [type]);
 
   const uniqueDescriptions = useMemo(() => {
     const descriptions = new Set<string>();
@@ -203,7 +197,7 @@ export default function DailyExpenses() {
               gold_type: type,
               amount: numAmount,
               note: goldNote,
-              transaction_type: 'Birikim'
+              transaction_type: transactionType === 'EXPENSE' ? 'Borç Verdim' : 'Birikim'
             });
           }
         }
@@ -217,7 +211,7 @@ export default function DailyExpenses() {
           gold_type: type,
           amount: numAmount,
           note: goldNote,
-          transaction_type: 'Birikim'
+          transaction_type: transactionType === 'EXPENSE' ? 'Borç Verdim' : 'Birikim'
         });
       }
 
@@ -375,24 +369,22 @@ export default function DailyExpenses() {
               </div>
             )}
 
-            {!isGoldType(type) && (
-              <div className="flex gap-2 pt-1">
-                  <button
-                  type="button"
-                  onClick={() => setTransactionType('INCOME')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${transactionType === 'INCOME' ? 'bg-green-500/10 border-green-500 text-green-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
-                  >
-                  Gelir (+)
-                  </button>
-                  <button
-                  type="button"
-                  onClick={() => setTransactionType('EXPENSE')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${transactionType === 'EXPENSE' ? 'bg-red-500/10 border-red-500 text-red-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
-                  >
-                  Gider (-)
-                  </button>
-              </div>
-            )}
+            <div className="flex gap-2 pt-1">
+                <button
+                type="button"
+                onClick={() => setTransactionType('INCOME')}
+                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${transactionType === 'INCOME' ? 'bg-green-500/10 border-green-500 text-green-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
+                >
+                Gelir (+)
+                </button>
+                <button
+                type="button"
+                onClick={() => setTransactionType('EXPENSE')}
+                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${transactionType === 'EXPENSE' ? 'bg-red-500/10 border-red-500 text-red-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
+                >
+                Gider (-)
+                </button>
+            </div>
 
             <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">Varlık / Para Birimi</label>
