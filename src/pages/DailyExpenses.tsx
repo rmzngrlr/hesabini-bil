@@ -104,7 +104,7 @@ export default function DailyExpenses() {
     if (!availableTabs.includes(activeTab)) {
       setActiveTab('NAKIT');
     }
-    if (!allFormTypes.currencies.includes(type) && !allFormTypes.golds.includes(type)) {
+    if (type !== 'NEW_CURRENCY' && !allFormTypes.currencies.includes(type) && !allFormTypes.golds.includes(type)) {
       setType('NAKIT');
     }
   }, [availableTabs, allFormTypes, activeTab, type]);
