@@ -1,11 +1,37 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Settings as SettingsIcon, Sun, Moon, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { Settings as SettingsIcon, Sun, Moon, ChevronLeft, ChevronRight, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
 import { useBudget } from '../context/BudgetContext';
 import { Card } from '../components/ui/Card';
 import { ProgressBar } from '../components/ui/ProgressBar';
 
 export default function Dashboard() {
   const { state, viewDate, earliestAllowedMonth, setViewDate, theme, toggleTheme, showMealCard, vaultRecords, vaultOrder } = useBudget();
+  const [isVaultExpanded, setIsVaultExpanded] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem('dashboard_vault_expanded');
+      return stored !== 'false';
+    } catch {
+      return true;
+    }
+  });
+
+  const getAssetShortName = (name: string): string => {
+    const mapping: Record<string, string> = {
+      'Bosna-Hersek Markı': 'BAM',
+      'Amerikan Doları': 'USD',
+      'İngiliz Sterlini': 'GBP',
+      'İsviçre Frangı': 'CHF',
+      'Kanada Doları': 'CAD',
+      'Avustralya Doları': 'AUD',
+      'Rus Rublesi': 'RUB',
+      'Japon Yeni': 'JPY',
+      'Suudi Arabistan Riyali': 'SAR',
+      'Birleşik Arap Emirlikleri Dirhemi': 'AED',
+      'Kuveyt Dinarı': 'KWD',
+    };
+    return mapping[name] || name;
+  };
 
   // Helper to format month
   const formatMonth = (dateStr: string) => {
@@ -206,11 +232,26 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Kasa ve Birikim Varlıkları */}
+      {/* Diğer Varlıklar */}
       {vaultRecords.length > 0 && (
         <div className="space-y-3 mt-6">
-          <h2 className="text-lg font-bold tracking-tight text-muted-foreground">Kasa & Varlık Hesapları</h2>
-          <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+          <div
+            onClick={() => {
+              const newVal = !isVaultExpanded;
+              setIsVaultExpanded(newVal);
+              localStorage.setItem('dashboard_vault_expanded', String(newVal));
+            }}
+            className="flex justify-between items-center cursor-pointer select-none group py-1"
+          >
+            <h2 className="text-lg font-bold tracking-tight text-muted-foreground group-hover:text-foreground transition-colors flex items-center gap-2">
+              Diğer Varlıklar
+            </h2>
+            <div className="text-muted-foreground group-hover:text-foreground transition-colors p-1 rounded-lg hover:bg-secondary/50">
+              {isVaultExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            </div>
+          </div>
+          {isVaultExpanded && (
+            <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
             {(() => {
               const isGoldType = (type: string) => {
                 const lower = type.toLowerCase();
@@ -269,11 +310,10 @@ export default function Dashboard() {
                   if (totalGold === 0) return null;
 
                   return (
-                    <Card key={asset} title={asset} className="bg-yellow-500/5 border-yellow-500/20">
+                    <Card key={asset} title={getAssetShortName(asset)} className="bg-yellow-500/5 border-yellow-500/20">
                       <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-500 mt-2">
-                        {totalGold} {asset}
+                        {totalGold} {getAssetShortName(asset)}
                       </div>
-                      <div className="text-xs text-muted-foreground mt-1">Fiziksel Birikim</div>
                     </Card>
                   );
                 } else {
@@ -312,19 +352,17 @@ export default function Dashboard() {
                   if (remaining === 0) return null;
 
                   return (
-                    <Card key={asset} title={asset} className="bg-emerald-500/5 border-emerald-500/20">
+                    <Card key={asset} title={getAssetShortName(asset)} className="bg-emerald-500/5 border-emerald-500/20">
                       <div className={`text-2xl font-bold mt-2 ${remaining < 0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-500'}`}>
-                        {remaining.toLocaleString('tr-TR')} {asset}
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        Kalan (Kasa + Bütçe)
+                        {remaining.toLocaleString('tr-TR')} {getAssetShortName(asset)}
                       </div>
                     </Card>
                   );
                 }
               });
             })()}
-          </div>
+            </div>
+          )}
         </div>
       )}
 

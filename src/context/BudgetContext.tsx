@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useMemo, useRef,
 import type { BudgetState, FixedExpense, CustomIncome, DailyExpense, CCDebt, Installment, MonthlyHistory, GoldRecord } from '../types';
 import { fetchWithAuth } from '../services/api';
 import { useAuth } from './AuthContext';
+import { ConfirmationModal } from '../components/ConfirmationModal';
 
 const getCurrentMonth = () => {
   const d = new Date();
@@ -67,6 +68,7 @@ interface BudgetContextType {
   updateAssetIncome: (assetType: string, amount: number) => void;
   updateAssetRollover: (assetType: string, amount: number) => void;
   activeCurrencies: string[];
+  askConfirmation: (message: string, title?: string) => Promise<boolean>;
 }
 
 const BudgetContext = createContext<BudgetContextType | undefined>(undefined);
@@ -480,6 +482,38 @@ function migrateState(parsed: any): BudgetState {
 export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const isInitialMount = useRef(true);
   const [isLoading, setIsLoading] = useState(true);
+
+  const [confirmState, setConfirmState] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    resolve: ((value: boolean) => void) | null;
+  } | null>(null);
+
+  const askConfirmation = (message: string, title = 'Emin misiniz?'): Promise<boolean> => {
+    return new Promise<boolean>((resolve) => {
+      setConfirmState({
+        isOpen: true,
+        title,
+        message,
+        resolve,
+      });
+    });
+  };
+
+  const handleConfirm = () => {
+    if (confirmState?.resolve) {
+      confirmState.resolve(true);
+    }
+    setConfirmState(null);
+  };
+
+  const handleCancel = () => {
+    if (confirmState?.resolve) {
+      confirmState.resolve(false);
+    }
+    setConfirmState(null);
+  };
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     try {
@@ -1939,10 +1973,20 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             updateVaultOrder,
             updateAssetIncome,
             updateAssetRollover,
-            activeCurrencies
+            activeCurrencies,
+            askConfirmation
         }}
     >
         {children}
+        {confirmState && (
+          <ConfirmationModal
+            isOpen={confirmState.isOpen}
+            title={confirmState.title}
+            message={confirmState.message}
+            onConfirm={handleConfirm}
+            onCancel={handleCancel}
+          />
+        )}
     </BudgetContext.Provider>
   );
 };

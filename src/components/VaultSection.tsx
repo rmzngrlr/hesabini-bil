@@ -27,7 +27,8 @@ export function VaultSection() {
         vaultOrder,
         deleteVaultRecord,
         updateVaultRecord,
-        updateVaultOrder
+        updateVaultOrder,
+        askConfirmation
     } = useBudget();
 
     const [draggedType, setDraggedType] = useState<string | null>(null);
@@ -93,7 +94,7 @@ export function VaultSection() {
     };
 
     const handleDelete = async (id: number) => {
-        if (!confirm('Bu kaydı silmek istediğinize emin misiniz?')) return;
+        if (!await askConfirmation('Bu kaydı silmek istediğinize emin misiniz?')) return;
         try {
             await deleteVaultRecord(id);
         } catch (err) {

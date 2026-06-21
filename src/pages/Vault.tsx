@@ -4,6 +4,7 @@ import { fetchWithAuth } from '../services/api';
 import { Plus, Trash2, Edit2, Check, X, Coins } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
+import { useBudget } from '../context/BudgetContext';
 
 interface GoldRecord {
     id?: number;
@@ -17,6 +18,7 @@ interface GoldRecord {
 
 export default function Vault() {
     const { isAdmin } = useAuth();
+    const { askConfirmation } = useBudget();
     const [records, setRecords] = useState<GoldRecord[]>([]);
     const [vaultOrder, setVaultOrder] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -161,7 +163,7 @@ export default function Vault() {
     };
 
     const handleDelete = async (id: number) => {
-        if (!confirm('Bu kaydı silmek istediğinize emin misiniz?')) return;
+        if (!await askConfirmation('Bu kaydı silmek istediğinize emin misiniz?')) return;
 
         try {
             const res = await fetchWithAuth(`/vault/${id}`, {

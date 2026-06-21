@@ -20,7 +20,8 @@ export default function DailyExpenses() {
     addVaultRecord,
     updateVaultRecord,
     deleteVaultRecord,
-    activeCurrencies
+    activeCurrencies,
+    askConfirmation
   } = useBudget();
 
   const isGoldType = (type: string) => {
@@ -279,7 +280,7 @@ export default function DailyExpenses() {
   };
 
   const handleDeleteClick = async (expense: DailyExpense) => {
-    if (!confirm('Bu işlemi silmek istediğinize emin misiniz?')) return;
+    if (!await askConfirmation('Bu işlemi silmek istediğinize emin misiniz?')) return;
 
     if (expense.id.startsWith('vault-curr-')) {
       const vaultId = parseInt(expense.id.replace('vault-curr-', ''));
