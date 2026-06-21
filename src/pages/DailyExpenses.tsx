@@ -30,6 +30,67 @@ export default function DailyExpenses() {
     return goldKeywords.some(kw => lower.includes(kw));
   };
 
+  const getAssetFullTitle = (name: string): string => {
+    const lower = name.trim().toLowerCase();
+    
+    // Gold types
+    if (isGoldType(name)) {
+      if (lower.includes('altın') || lower.includes('lira')) return name; // e.g. "Has Altın", "Ata Lira"
+      if (lower === 'gram') return 'Gram Altın';
+      if (lower === 'çeyrek') return 'Çeyrek Altın';
+      if (lower === 'yarım') return 'Yarım Altın';
+      if (lower === 'tam') return 'Tam Altın';
+      if (lower === 'ata') return 'Ata Altın';
+      if (lower === 'reşat') return 'Reşat Altın';
+      if (lower === 'bilezik') return 'Bilezik Altın';
+      if (lower === 'külçe') return 'Külçe Altın';
+      return `${name} Altın`;
+    }
+
+    // Currency types
+    const mapping: Record<string, string> = {
+      'nakit': 'Türk Lirası',
+      'tl': 'Türk Lirası',
+      'yk': 'Yemek Kartı',
+      'yemek kartı': 'Yemek Kartı',
+      'bam': 'Bosna-Hersek Markı',
+      'bosna-hersek markı': 'Bosna-Hersek Markı',
+      'usd': 'Amerikan Doları',
+      'dolar': 'Amerikan Doları',
+      'amerikan doları': 'Amerikan Doları',
+      'eur': 'Euro',
+      'euro': 'Euro',
+      'gbp': 'İngiliz Sterlini',
+      'sterlin': 'İngiliz Sterlini',
+      'ingiliz sterlini': 'İngiliz Sterlini',
+      'chf': 'İsviçre Frangı',
+      'frang': 'İsviçre Frangı',
+      'isviçre frangı': 'İsviçre Frangı',
+      'cad': 'Kanada Doları',
+      'kanada doları': 'Kanada Doları',
+      'aud': 'Avustralya Doları',
+      'avustralya doları': 'Avustralya Doları',
+      'rub': 'Rus Rublesi',
+      'ruble': 'Rus Rublesi',
+      'rus rublesi': 'Rus Rublesi',
+      'jpy': 'Japon Yeni',
+      'yen': 'Japon Yeni',
+      'japon yeni': 'Japon Yeni',
+      'sar': 'Suudi Arabistan Riyali',
+      'riyali': 'Suudi Arabistan Riyali',
+      'suudi arabistan riyali': 'Suudi Arabistan Riyali',
+      'aed': 'Birleşik Arap Emirlikleri Dirhemi',
+      'dirhem': 'Birleşik Arap Emirlikleri Dirhemi',
+      'birleşik arap emirlikleri dirhemi': 'Birleşik Arap Emirlikleri Dirhemi',
+      'kwd': 'Kuveyt Dinarı',
+      'dinar': 'Kuveyt Dinarı',
+      'kuveyt dinarı': 'Kuveyt Dinarı',
+    };
+    
+    const fallback = name.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+    return mapping[lower] || fallback;
+  };
+
   const allFormTypes = useMemo(() => {
     const defaultGolds = ["Gram", "Çeyrek", "Yarım", "Tam", "Ata Lira"];
     const recordsGolds = vaultRecords
@@ -495,16 +556,16 @@ export default function DailyExpenses() {
                   className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
                 >
                   <optgroup label="Para Birimleri">
-                    <option value="NAKIT">TL</option>
+                    <option value="NAKIT">Türk Lirası</option>
                     {showMealCard && <option value="YK">Yemek Kartı</option>}
                     {activeCurrencies.map(curr => (
-                      <option key={curr} value={curr}>{curr === 'Bosna-Hersek Markı' ? 'BAM' : curr}</option>
+                      <option key={curr} value={curr}>{getAssetFullTitle(curr)}</option>
                     ))}
                     <option value="NEW_CURRENCY">+ Diğer Para Birimi Ekle...</option>
                   </optgroup>
                   <optgroup label="Altın Türleri (Kasa)">
                     {allFormTypes.golds.map(gold => (
-                      <option key={gold} value={gold}>{gold}</option>
+                      <option key={gold} value={gold}>{getAssetFullTitle(gold)}</option>
                     ))}
                   </optgroup>
                 </select>
@@ -551,12 +612,12 @@ export default function DailyExpenses() {
 
       {viewDate <= state.currentMonth && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Card title={`${isGoldType(activeTab) ? 'Toplam Birikim' : 'Bu Ay Harcanan'} (${activeTab === 'NAKIT' ? 'TL' : activeTab === 'YK' ? 'Yemek Kartı' : activeTab})`} className={`${isGoldType(activeTab) ? 'bg-yellow-500/5 border-yellow-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
+            <Card title={`${isGoldType(activeTab) ? 'Toplam Birikim' : 'Bu Ay Harcanan'} (${getAssetFullTitle(activeTab)})`} className={`${isGoldType(activeTab) ? 'bg-yellow-500/5 border-yellow-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
               <div className={`text-2xl font-bold mt-2 ${isGoldType(activeTab) ? 'text-yellow-600 dark:text-yellow-500' : 'text-red-500'}`}>
                  {isGoldType(activeTab) ? (currentMonthIncome - currentMonthSpent).toLocaleString('tr-TR') : currentMonthSpent.toLocaleString('tr-TR')} {activeTab === 'NAKIT' || activeTab === 'YK' ? '₺' : activeTab}
               </div>
             </Card>
-            <Card title={`Bu Ayki Gelir / Giriş (${activeTab === 'NAKIT' ? 'TL' : activeTab === 'YK' ? 'Yemek Kartı' : activeTab})`} className="bg-green-500/5 border-green-500/20">
+            <Card title={`Bu Ayki Gelir / Giriş (${getAssetFullTitle(activeTab)})`} className="bg-green-500/5 border-green-500/20">
               <div className="text-2xl font-bold text-green-500 mt-2">
                  {currentMonthIncome.toLocaleString('tr-TR')} {activeTab === 'NAKIT' || activeTab === 'YK' ? '₺' : activeTab}
               </div>
@@ -575,7 +636,7 @@ export default function DailyExpenses() {
                     activeTab === tab ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                {tab === 'NAKIT' ? 'TL' : tab === 'YK' ? 'Yemek Kartı' : tab === 'Bosna-Hersek Markı' ? 'BAM' : tab}
+                {getAssetFullTitle(tab)}
               </button>
             ))}
         </div>
