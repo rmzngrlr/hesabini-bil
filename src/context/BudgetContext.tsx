@@ -843,6 +843,33 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     runningProjYkRollover = (realState.ykIncome + realState.ykRollover + totalYkDailyIncome) - totalYkDaily;
     if (runningProjYkRollover < 0) runningProjYkRollover = 0;
 
+    // Calculate historical average daily cash/YK spent to make future projections realistic
+    let historicalCashDailyAvg = 0;
+    let historicalYkDailyAvg = 0;
+    const historyMonths = realState.history || [];
+    if (historyMonths.length > 0) {
+      let totalCashSpentInHistory = 0;
+      let totalYkSpentInHistory = 0;
+      historyMonths.forEach(h => {
+        totalCashSpentInHistory += Math.abs(h.dailyExpenses.filter(e => (e.type === 'NAKIT' || !e.type) && e.amount < 0).reduce((sum, e) => sum + e.amount, 0));
+        totalYkSpentInHistory += Math.abs(h.dailyExpenses.filter(e => e.type === 'YK' && e.amount < 0).reduce((sum, e) => sum + e.amount, 0));
+      });
+      historicalCashDailyAvg = totalCashSpentInHistory / historyMonths.length;
+      historicalYkDailyAvg = totalYkSpentInHistory / historyMonths.length;
+    }
+
+    const today = new Date();
+    const currentDay = today.getDate();
+    let projectedCashDaily = totalCashDaily;
+    let projectedYkDaily = totalYkDaily;
+
+    if (historicalCashDailyAvg > 0 && (currentDay < 15 || totalCashDaily < historicalCashDailyAvg * 0.5)) {
+      projectedCashDaily = historicalCashDailyAvg;
+    }
+    if (historicalYkDailyAvg > 0 && (currentDay < 15 || totalYkDaily < historicalYkDailyAvg * 0.5)) {
+      projectedYkDaily = historicalYkDailyAvg;
+    }
+
     const activeCurrencies = Array.from(new Set(
       globalVaultRecords
         .map(r => r.gold_type)
@@ -1021,10 +1048,10 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const projCustomIncomes = monthCustomIncomes.filter(i => i.type === 'NAKIT' || !i.type).reduce((sum, i) => sum + i.amount, 0);
         const projTotalCashResources = monthIncome + runningProjRollover + projCustomIncomes;
 
-        runningProjRollover = projTotalCashResources - projFixedTotal;
+        runningProjRollover = projTotalCashResources - projFixedTotal - projectedCashDaily;
         if (runningProjRollover < 0) runningProjRollover = 0;
 
-        runningProjYkRollover = monthYkIncome + runningProjYkRollover;
+        runningProjYkRollover = monthYkIncome + runningProjYkRollover - projectedYkDaily;
         if (runningProjYkRollover < 0) runningProjYkRollover = 0;
 
         activeCurrencies.forEach(curr => {
