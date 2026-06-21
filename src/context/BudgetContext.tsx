@@ -993,10 +993,9 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             const finalAssetBudgets: Record<string, { income: number; rollover: number }> = {};
             activeCurrencies.forEach(curr => {
                 const futAsset = future.assetBudgets?.[curr];
-                const startRollover = monthsAway === 1 ? (runningProjAssetBudgets[curr]?.rollover || 0) : 0;
                 finalAssetBudgets[curr] = {
                     income: futAsset?.income !== undefined ? futAsset.income : (realState.assetBudgets?.[curr]?.income || 0),
-                    rollover: startRollover
+                    rollover: runningProjAssetBudgets[curr]?.rollover || 0
                 };
             });
 
@@ -1016,6 +1015,30 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 assetBudgets: finalAssetBudgets
             };
         }
+
+        // For intervening months, cascade asset currency budgets
+        activeCurrencies.forEach(curr => {
+            const futAsset = future.assetBudgets?.[curr];
+            const monthInc = futAsset?.income !== undefined ? futAsset.income : (realState.assetBudgets?.[curr]?.income || 0);
+            const startRollover = runningProjAssetBudgets[curr]?.rollover || 0;
+
+            const kasaChanges = getKasaSum(globalVaultRecords, curr, d => d >= `${iterMonth}-01` && d < `${addMonths(iterMonth, 1)}-01`);
+
+            const assetCustomIncome = monthCustomIncomes
+              .filter(i => i.type === curr)
+              .reduce((sum, i) => sum + i.amount, 0);
+            const assetFixedSpent = monthFixedExpenses
+              .filter(e => e.type === curr)
+              .reduce((sum, e) => sum + e.amount, 0);
+
+            const totalAsset = startRollover + kasaChanges + monthInc + assetCustomIncome;
+            const remainingAsset = totalAsset - assetFixedSpent;
+
+            runningProjAssetBudgets[curr] = {
+                income: monthInc,
+                rollover: remainingAsset > 0 ? remainingAsset : 0
+            };
+        });
 
         iterMonth = addMonths(iterMonth, 1);
     }
