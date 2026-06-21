@@ -71,6 +71,7 @@ export default function DailyExpenses() {
   const [goldOwner, setGoldOwner] = useDraftState('daily_draft_gold_owner', '');
   const [goldNote, setGoldNote] = useDraftState('daily_draft_gold_note', '');
   const [goldPriceTL, setGoldPriceTL] = useDraftState('daily_draft_gold_price_tl', '');
+  const [goldTransactionType, setGoldTransactionType] = useDraftState<'Birikim' | 'Bozdurma' | 'Borç Verdim'>('daily_draft_gold_tx_type', 'Birikim');
 
 
 
@@ -198,7 +199,7 @@ export default function DailyExpenses() {
               gold_type: type,
               amount: numAmount,
               note: goldNote,
-              transaction_type: transactionType === 'EXPENSE' ? 'Bozdurma' : 'Birikim'
+              transaction_type: goldTransactionType
             });
           }
         }
@@ -212,14 +213,14 @@ export default function DailyExpenses() {
           gold_type: type,
           amount: numAmount,
           note: goldNote,
-          transaction_type: transactionType === 'EXPENSE' ? 'Bozdurma' : 'Birikim'
+          transaction_type: goldTransactionType
         });
 
         // 2. If purchase/sale price is provided, add corresponding TL daily expense
-        if (goldPriceTL) {
+        if (goldPriceTL && (goldTransactionType === 'Birikim' || goldTransactionType === 'Bozdurma')) {
           const tlAmount = parseFloat(goldPriceTL);
           if (!isNaN(tlAmount) && tlAmount > 0) {
-            const isSale = transactionType === 'EXPENSE'; // Bozdurma is sale (gold EXPENSE, cash INCOME)
+            const isSale = goldTransactionType === 'Bozdurma'; // Bozdurma is sale (gold EXPENSE, cash INCOME)
             const tlFinalAmount = isSale ? tlAmount : -tlAmount;
             const tlDesc = isSale ? `Altın Satışı: ${numAmount} ${type}` : `Altın Alımı: ${numAmount} ${type}`;
             
@@ -370,19 +371,21 @@ export default function DailyExpenses() {
                     />
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">
-                    {transactionType === 'EXPENSE' ? 'Satış Tutarı (TL) - İsteğe Bağlı' : 'Alış Tutarı (TL) - İsteğe Bağlı'}
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={goldPriceTL}
-                    onChange={(e) => setGoldPriceTL(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
+                {goldTransactionType !== 'Borç Verdim' && (
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">
+                      {goldTransactionType === 'Bozdurma' ? 'Satış Tutarı (TL) - İsteğe Bağlı' : 'Alış Tutarı (TL) - İsteğe Bağlı'}
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={goldPriceTL}
+                      onChange={(e) => setGoldPriceTL(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-1">
@@ -403,22 +406,48 @@ export default function DailyExpenses() {
               </div>
             )}
 
-            <div className="flex gap-2 pt-1">
-                <button
-                type="button"
-                onClick={() => setTransactionType('INCOME')}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${transactionType === 'INCOME' ? 'bg-green-500/10 border-green-500 text-green-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
-                >
-                {isGoldType(type) ? 'Birikim' : 'Gelir (+)'}
-                </button>
-                <button
-                type="button"
-                onClick={() => setTransactionType('EXPENSE')}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${transactionType === 'EXPENSE' ? 'bg-red-500/10 border-red-500 text-red-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
-                >
-                {isGoldType(type) ? 'Bozdurma' : 'Gider (-)'}
-                </button>
-            </div>
+            {isGoldType(type) ? (
+              <div className="flex gap-2 pt-1">
+                  <button
+                  type="button"
+                  onClick={() => { setGoldTransactionType('Birikim'); setTransactionType('INCOME'); }}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${goldTransactionType === 'Birikim' ? 'bg-green-500/10 border-green-500 text-green-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
+                  >
+                  Birikim
+                  </button>
+                  <button
+                  type="button"
+                  onClick={() => { setGoldTransactionType('Bozdurma'); setTransactionType('EXPENSE'); }}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${goldTransactionType === 'Bozdurma' ? 'bg-red-500/10 border-red-500 text-red-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
+                  >
+                  Bozdurma
+                  </button>
+                  <button
+                  type="button"
+                  onClick={() => { setGoldTransactionType('Borç Verdim'); setTransactionType('EXPENSE'); }}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${goldTransactionType === 'Borç Verdim' ? 'bg-red-500/10 border-red-500 text-red-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
+                  >
+                  Borç Verdim
+                  </button>
+              </div>
+            ) : (
+              <div className="flex gap-2 pt-1">
+                  <button
+                  type="button"
+                  onClick={() => setTransactionType('INCOME')}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${transactionType === 'INCOME' ? 'bg-green-500/10 border-green-500 text-green-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
+                  >
+                  Gelir (+)
+                  </button>
+                  <button
+                  type="button"
+                  onClick={() => setTransactionType('EXPENSE')}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${transactionType === 'EXPENSE' ? 'bg-red-500/10 border-red-500 text-red-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
+                  >
+                  Gider (-)
+                  </button>
+              </div>
+            )}
 
             <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">Varlık / Para Birimi</label>
