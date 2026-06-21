@@ -12,7 +12,7 @@ const isGoldType = (type: string) => {
 };
 
 export default function Dashboard() {
-  const { state, viewDate, earliestAllowedMonth, setViewDate, theme, toggleTheme, showMealCard, vaultRecords, vaultOrder } = useBudget();
+  const { state, viewDate, earliestAllowedMonth, setViewDate, theme, toggleTheme, showMealCard, vaultRecords, vaultOrder, activeCurrencies } = useBudget();
   const [isVaultExpanded, setIsVaultExpanded] = useState<boolean>(() => {
     try {
       const stored = localStorage.getItem('dashboard_vault_expanded');
@@ -324,7 +324,7 @@ export default function Dashboard() {
       </div>
 
       {/* Diğer Varlıklar */}
-      {vaultRecords.length > 0 && (
+      {(vaultRecords.length > 0 || activeCurrencies.length > 0) && (
         <div className="space-y-3 mt-6">
           <div
             onClick={() => {
@@ -372,7 +372,9 @@ export default function Dashboard() {
                   }, 0);
               };
 
-              const uniqueAssetTypes = Array.from(new Set(vaultRecords.map(r => r.gold_type)));
+              // Merge vault asset types (gold + foreign currency) with daily-only currencies
+              const vaultAssetTypes = vaultRecords.map(r => r.gold_type);
+              const uniqueAssetTypes = Array.from(new Set([...vaultAssetTypes, ...activeCurrencies]));
               const sortedAssetTypes = uniqueAssetTypes.sort((a, b) => {
                 const idxA = vaultOrder?.indexOf(a) ?? -1;
                 const idxB = vaultOrder?.indexOf(b) ?? -1;
