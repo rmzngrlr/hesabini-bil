@@ -22,58 +22,75 @@ export default function Dashboard() {
     }
   });
 
-  const getAssetShortName = (name: string): string => {
+  // Returns the symbol or short code to display next to numbers
+  const getAssetSymbol = (name: string): string => {
     const lower = name.trim().toLowerCase();
-    
+
+    // Gold types: keep short name (Gram, Çeyrek…)
     if (isGoldType(name)) {
-      if (lower.endsWith(' altın')) {
-        return name.substring(0, name.length - 6);
-      }
+      if (lower.endsWith(' altın')) return name.substring(0, name.length - 6);
       return name;
     }
 
     const mapping: Record<string, string> = {
-      'bosna-hersek markı': 'BAM',
-      'bam': 'BAM',
-      'amerikan doları': 'USD',
-      'dolar': 'USD',
-      'usd': 'USD',
-      'euro': 'EUR',
-      'eur': 'EUR',
-      'ingiliz sterlini': 'GBP',
-      'sterlin': 'GBP',
-      'gbp': 'GBP',
-      'isviçre frangı': 'CHF',
-      'frang': 'CHF',
-      'chf': 'CHF',
-      'kanada doları': 'CAD',
-      'cad': 'CAD',
-      'avustralya doları': 'AUD',
-      'aud': 'AUD',
-      'rus rublesi': 'RUB',
-      'ruble': 'RUB',
-      'rub': 'RUB',
-      'japon yeni': 'JPY',
-      'yen': 'JPY',
-      'jpy': 'JPY',
-      'suudi arabistan riyali': 'SAR',
-      'riyali': 'SAR',
-      'sar': 'SAR',
-      'birleşik arap emirlikleri dirhemi': 'AED',
-      'dirhem': 'AED',
-      'aed': 'AED',
-      'kuveyt dinarı': 'KWD',
-      'dinar': 'KWD',
-      'kwd': 'KWD',
+      // TL
+      'nakit': '₺', 'tl': '₺',
+      // USD
+      'usd': '$', 'dolar': '$', 'amerikan doları': '$',
+      // EUR
+      'eur': '€', 'euro': '€',
+      // GBP
+      'gbp': '£', 'sterlin': '£', 'ingiliz sterlini': '£',
+      // CHF
+      'chf': '₣', 'frang': '₣', 'isviçre frangı': '₣',
+      // CAD
+      'cad': 'C$', 'kanada doları': 'C$',
+      // AUD
+      'aud': 'A$', 'avustralya doları': 'A$',
+      // RUB
+      'rub': '₽', 'ruble': '₽', 'rus rublesi': '₽',
+      // JPY
+      'jpy': '¥', 'yen': '¥', 'japon yeni': '¥',
+      // CNY
+      'cny': '¥', 'yuan': '¥', 'çin yuanı': '¥',
+      // SAR
+      'sar': '﷼', 'riyali': '﷼', 'suudi arabistan riyali': '﷼',
+      // QAR
+      'qar': '﷼', 'katar riyali': '﷼',
+      // AED
+      'aed': 'د.إ', 'dirhem': 'د.إ', 'birleşik arap emirlikleri dirhemi': 'د.إ',
+      // KWD
+      'kwd': 'د.k', 'dinar': 'د.k', 'kuveyt dinarı': 'د.k',
+      // IQD
+      'iqd': 'د.ع', 'irak dinarı': 'د.ع',
+      // BAM
+      'bam': 'KM', 'bosna-hersek markı': 'KM',
+      // SYP
+      'syp': 'ل.س', 'suriye lirası': 'ل.س',
+      // AZN
+      'azn': '₼', 'azerbaycan manatı': '₼', 'manat': '₼',
+      // UAH
+      'uah': '₴', 'ukrayna grivnası': '₴',
+      // INR
+      'inr': '₹', 'hindistan rupisi': '₹',
+      // EGP
+      'egp': 'E£', 'mısır lirası': 'E£',
+      // KRW
+      'krw': '₩', 'güney kore wonu': '₩',
+      // SEK / NOK / DKK
+      'sek': 'kr', 'nok': 'kr', 'dkk': 'kr',
+      'isveç kronu': 'kr', 'norveç kronu': 'kr', 'danimarka kronu': 'kr',
     };
+
     return mapping[lower] || name.toUpperCase();
   };
 
   const getAssetFullTitle = (name: string): string => {
     const lower = name.trim().toLowerCase();
-    
+
+    // Gold types
     if (isGoldType(name)) {
-      if (lower.includes('altın')) return name;
+      if (lower.includes('altın') || lower.includes('lira')) return name;
       if (lower === 'gram') return 'Gram Altın';
       if (lower === 'çeyrek') return 'Çeyrek Altın';
       if (lower === 'yarım') return 'Yarım Altın';
@@ -86,43 +103,37 @@ export default function Dashboard() {
     }
 
     const mapping: Record<string, string> = {
-      'bam': 'Bosna-Hersek Markı',
-      'bosna-hersek markı': 'Bosna-Hersek Markı',
-      'usd': 'Amerikan Doları',
-      'dolar': 'Amerikan Doları',
-      'amerikan doları': 'Amerikan Doları',
-      'eur': 'Euro',
-      'euro': 'Euro',
-      'gbp': 'İngiliz Sterlini',
-      'sterlin': 'İngiliz Sterlini',
-      'ingiliz sterlini': 'İngiliz Sterlini',
-      'chf': 'İsviçre Frangı',
-      'frang': 'İsviçre Frangı',
-      'isviçre frangı': 'İsviçre Frangı',
-      'cad': 'Kanada Doları',
-      'kanada doları': 'Kanada Doları',
-      'aud': 'Avustralya Doları',
-      'avustralya doları': 'Avustralya Doları',
-      'rub': 'Rus Rublesi',
-      'ruble': 'Rus Rublesi',
-      'rus rublesi': 'Rus Rublesi',
-      'jpy': 'Japon Yeni',
-      'yen': 'Japon Yeni',
-      'japon yeni': 'Japon Yeni',
-      'sar': 'Suudi Arabistan Riyali',
-      'riyali': 'Suudi Arabistan Riyali',
-      'suudi arabistan riyali': 'Suudi Arabistan Riyali',
-      'aed': 'Birleşik Arap Emirlikleri Dirhemi',
-      'dirhem': 'Birleşik Arap Emirlikleri Dirhemi',
-      'birleşik arap emirlikleri dirhemi': 'Birleşik Arap Emirlikleri Dirhemi',
-      'kwd': 'Kuveyt Dinarı',
-      'dinar': 'Kuveyt Dinarı',
-      'kuveyt dinarı': 'Kuveyt Dinarı',
+      'nakit': 'Türk Lirası', 'tl': 'Türk Lirası',
+      'bam': 'Bosna-Hersek Markı', 'bosna-hersek markı': 'Bosna-Hersek Markı',
+      'usd': 'Amerikan Doları', 'dolar': 'Amerikan Doları', 'amerikan doları': 'Amerikan Doları',
+      'eur': 'Euro', 'euro': 'Euro',
+      'gbp': 'İngiliz Sterlini', 'sterlin': 'İngiliz Sterlini', 'ingiliz sterlini': 'İngiliz Sterlini',
+      'chf': 'İsviçre Frangı', 'frang': 'İsviçre Frangı', 'isviçre frangı': 'İsviçre Frangı',
+      'cad': 'Kanada Doları', 'kanada doları': 'Kanada Doları',
+      'aud': 'Avustralya Doları', 'avustralya doları': 'Avustralya Doları',
+      'rub': 'Rus Rublesi', 'ruble': 'Rus Rublesi', 'rus rublesi': 'Rus Rublesi',
+      'jpy': 'Japon Yeni', 'yen': 'Japon Yeni', 'japon yeni': 'Japon Yeni',
+      'cny': 'Çin Yuanı', 'yuan': 'Çin Yuanı', 'çin yuanı': 'Çin Yuanı',
+      'sar': 'Suudi Arabistan Riyali', 'riyali': 'Suudi Arabistan Riyali', 'suudi arabistan riyali': 'Suudi Arabistan Riyali',
+      'qar': 'Katar Riyali', 'katar riyali': 'Katar Riyali',
+      'aed': 'Birleşik Arap Emirlikleri Dirhemi', 'dirhem': 'Birleşik Arap Emirlikleri Dirhemi', 'birleşik arap emirlikleri dirhemi': 'Birleşik Arap Emirlikleri Dirhemi',
+      'kwd': 'Kuveyt Dinarı', 'dinar': 'Kuveyt Dinarı', 'kuveyt dinarı': 'Kuveyt Dinarı',
+      'iqd': 'Irak Dinarı', 'irak dinarı': 'Irak Dinarı',
+      'syp': 'Suriye Lirası', 'suriye lirası': 'Suriye Lirası',
+      'azn': 'Azerbaycan Manatı', 'manat': 'Azerbaycan Manatı', 'azerbaycan manatı': 'Azerbaycan Manatı',
+      'uah': 'Ukrayna Grivnası', 'ukrayna grivnası': 'Ukrayna Grivnası',
+      'inr': 'Hindistan Rupisi', 'hindistan rupisi': 'Hindistan Rupisi',
+      'egp': 'Mısır Lirası', 'mısır lirası': 'Mısır Lirası',
+      'krw': 'Güney Kore Wonu', 'güney kore wonu': 'Güney Kore Wonu',
+      'sek': 'İsveç Kronu', 'isveç kronu': 'İsveç Kronu',
+      'nok': 'Norveç Kronu', 'norveç kronu': 'Norveç Kronu',
+      'dkk': 'Danimarka Kronu', 'danimarka kronu': 'Danimarka Kronu',
     };
-    
+
     const fallback = name.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
     return mapping[lower] || fallback;
   };
+
 
   // Helper to format month
   const formatMonth = (dateStr: string) => {
@@ -399,7 +410,7 @@ export default function Dashboard() {
                   return (
                     <Card key={asset} title={getAssetFullTitle(asset)} className="bg-yellow-500/5 border-yellow-500/20">
                       <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-500 mt-2">
-                        {totalGold} {getAssetShortName(asset)}
+                        {totalGold} {getAssetSymbol(asset)}
                       </div>
                     </Card>
                   );
@@ -441,7 +452,7 @@ export default function Dashboard() {
                   return (
                     <Card key={asset} title={getAssetFullTitle(asset)} className="bg-emerald-500/5 border-emerald-500/20">
                       <div className={`text-2xl font-bold mt-2 ${remaining < 0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-500'}`}>
-                        {remaining.toLocaleString('tr-TR')} {getAssetShortName(asset)}
+                        {remaining.toLocaleString('tr-TR')} {getAssetSymbol(asset)}
                       </div>
                     </Card>
                   );
