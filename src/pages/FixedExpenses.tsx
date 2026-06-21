@@ -8,56 +8,6 @@ import { cn } from '../lib/utils';
 import type { FixedExpense } from '../types';
 import { VaultSection } from '../components/VaultSection';
 
-function AssetBudgetCard({ asset }: { asset: string }) {
-  const { state, updateAssetIncome, updateAssetRollover, viewDate } = useBudget();
-  const getLocalDate = () => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-  };
-  const isFuture = viewDate > getLocalDate();
-  
-  const assetBudget = state.assetBudgets?.[asset] || { income: 0, rollover: 0 };
-  const [localIncome, setLocalIncome] = useState(assetBudget.income.toString());
-  const [localRollover, setLocalRollover] = useState(assetBudget.rollover.toString());
-
-  useEffect(() => {
-    setLocalIncome(assetBudget.income.toString());
-    setLocalRollover(assetBudget.rollover.toString());
-  }, [assetBudget.income, assetBudget.rollover, viewDate]);
-
-  return (
-    <>
-      <Card title={`Aylık Gelir (${asset})`}>
-        <div className="mt-2">
-          <input
-            type="number"
-            value={localIncome}
-            onChange={(e) => setLocalIncome(e.target.value)}
-            onBlur={() => updateAssetIncome(asset, parseFloat(localIncome) || 0)}
-            className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-          />
-        </div>
-      </Card>
-      <Card title={`Devreden (${asset})`}>
-        <div className="mt-2">
-           <input
-             type="number"
-             value={localRollover}
-             onChange={(e) => setLocalRollover(e.target.value)}
-             onBlur={() => updateAssetRollover(asset, parseFloat(localRollover) || 0)}
-             disabled={isFuture || viewDate < getLocalDate()}
-             className={cn(
-               "w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary",
-               (isFuture || viewDate < getLocalDate()) && "opacity-50 cursor-not-allowed bg-secondary/30"
-             )}
-           />
-           {isFuture && <div className="text-xs text-muted-foreground mt-1">Önceki aydan tahmini devir</div>}
-           {viewDate < getLocalDate() && <div className="text-xs text-muted-foreground mt-1">Geçmiş devir otomatik hesaplanır</div>}
-        </div>
-      </Card>
-    </>
-  );
-}
 
 export default function FixedExpenses() {
   const { isAdmin } = useAuth();
@@ -272,9 +222,6 @@ export default function FixedExpenses() {
             </>
         )}
 
-        {activeCurrencies.map(curr => (
-          <AssetBudgetCard key={curr} asset={curr} />
-        ))}
       </div>
 
       <div className="mt-6 mb-8 space-y-4">
