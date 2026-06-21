@@ -1,17 +1,29 @@
+export interface GoldRecord {
+  id?: number;
+  record_date: string;
+  owner: string;
+  gold_type: string;
+  amount: number;
+  note?: string;
+  transaction_type?: string;
+}
+
 export interface FixedExpense {
   id: string;
   title: string;
   amount: number;
   isPaid: boolean;
+  type?: string; // e.g. 'NAKIT', 'YK', 'Dolar', 'Euro'
 }
 
 export interface CustomIncome {
   id: string;
   title: string;
   amount: number;
+  type?: string; // e.g. 'NAKIT', 'Dolar'
 }
 
-export type ExpenseType = 'NAKIT' | 'YK';
+export type ExpenseType = 'NAKIT' | 'YK' | string;
 
 export interface DailyExpense {
   id: string;
@@ -50,6 +62,7 @@ export interface MonthlyHistory {
   customIncomes?: CustomIncome[];
   dailyExpenses: DailyExpense[];
   ccDebts: CCDebt[];
+  assetBudgets?: Record<string, { income: number; rollover: number }>;
 }
 
 export interface FutureMonthData {
@@ -63,6 +76,7 @@ export interface FutureMonthData {
   installmentOverrides?: Record<string, number>;
   // For manually added CC Debts in future
   ccDebts?: CCDebt[];
+  assetBudgets?: Record<string, { income: number; rollover: number }>;
 }
 
 export interface BudgetState {
@@ -79,4 +93,5 @@ export interface BudgetState {
   installments: Installment[];
   history: MonthlyHistory[];
   futureData: Record<string, FutureMonthData>;
+  assetBudgets?: Record<string, { income: number; rollover: number }>;
 }

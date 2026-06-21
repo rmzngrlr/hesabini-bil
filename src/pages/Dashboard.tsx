@@ -5,7 +5,7 @@ import { Card } from '../components/ui/Card';
 import { ProgressBar } from '../components/ui/ProgressBar';
 
 export default function Dashboard() {
-  const { state, viewDate, earliestAllowedMonth, setViewDate, theme, toggleTheme, showMealCard } = useBudget();
+  const { state, viewDate, earliestAllowedMonth, setViewDate, theme, toggleTheme, showMealCard, vaultRecords, vaultOrder } = useBudget();
 
   // Helper to format month
   const formatMonth = (dateStr: string) => {
@@ -204,6 +204,124 @@ export default function Dashboard() {
            {isFuture && <div className="text-xs text-muted-foreground mt-1">Bu ay ödenecek taksitler</div>}
         </Card>
       </div>
+
+      {/* Kasa ve Birikim Varlıkları */}
+      {vaultRecords.length > 0 && (
+        <div className="space-y-3 mt-6">
+          <h2 className="text-lg font-bold tracking-tight text-muted-foreground">Kasa & Varlık Hesapları</h2>
+          <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+            {(() => {
+              const isGoldType = (type: string) => {
+                const lower = type.toLowerCase();
+                const goldKeywords = ['gram', 'çeyrek', 'yarım', 'tam', 'ata', 'reşat', 'ayar', 'bilezik', 'altın', 'has', 'külçe'];
+                return goldKeywords.some(kw => lower.includes(kw));
+              };
+
+              const addMonths = (dateStr: string, months: number): string => {
+                let [y, m] = dateStr.split('-').map(Number);
+                m += months;
+                while (m > 12) {
+                  m -= 12;
+                  y++;
+                }
+                while (m < 1) {
+                  m += 12;
+                  y--;
+                }
+                return `${y}-${String(m).padStart(2, '0')}`;
+              };
+
+              const getKasaSum = (records: any[], type: string, filterFn: (date: string) => boolean) => {
+                return records
+                  .filter(r => r.gold_type === type && filterFn(r.record_date))
+                  .reduce((sum, r) => {
+                    const amt = Number(r.amount);
+                    const tType = r.transaction_type || 'Birikim';
+                    if (tType === 'Birikim' || tType === 'Giriş' || tType === 'Bütçe Geliri') {
+                      return sum + amt;
+                    } else {
+                      return sum - amt;
+                    }
+                  }, 0);
+              };
+
+              const uniqueAssetTypes = Array.from(new Set(vaultRecords.map(r => r.gold_type)));
+              const sortedAssetTypes = uniqueAssetTypes.sort((a, b) => {
+                const idxA = vaultOrder?.indexOf(a) ?? -1;
+                const idxB = vaultOrder?.indexOf(b) ?? -1;
+                if (idxA === -1 && idxB === -1) return 0;
+                if (idxA === -1) return 1;
+                if (idxB === -1) return -1;
+                return idxA - idxB;
+              });
+
+              return sortedAssetTypes.map(asset => {
+                const isGold = isGoldType(asset);
+                
+                if (isGold) {
+                  const groupRecords = vaultRecords.filter(r => r.gold_type === asset && (r.transaction_type || 'Birikim') !== 'Düğün Hediyesi / Takı');
+                  const totalGold = groupRecords.reduce((sum, r) => {
+                    const amt = Number(r.amount);
+                    return (r.transaction_type || 'Birikim') === 'Birikim' ? sum + amt : sum - amt;
+                  }, 0);
+
+                  return (
+                    <Card key={asset} title={asset} className="bg-yellow-500/5 border-yellow-500/20">
+                      <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-500 mt-2">
+                        {totalGold} {asset}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">Fiziksel Birikim</div>
+                    </Card>
+                  );
+                } else {
+                  const assetBudget = state.assetBudgets?.[asset] || { income: 0, rollover: 0 };
+                  
+                  const customIncomeTotal = (state.customIncomes || [])
+                    .filter(i => i.type === asset)
+                    .reduce((sum, i) => sum + i.amount, 0);
+
+                  const dailyIncomeTotal = state.dailyExpenses
+                    .filter(e => e.type === asset && e.amount > 0)
+                    .reduce((sum, e) => sum + e.amount, 0);
+
+                  const totalResources = assetBudget.rollover + assetBudget.income + customIncomeTotal + dailyIncomeTotal;
+
+                  let totalSpent = 0;
+                  if (isFuture) {
+                    totalSpent = state.fixedExpenses
+                      .filter(e => e.type === asset)
+                      .reduce((sum, e) => sum + e.amount, 0);
+                  } else {
+                    const paidFixed = state.fixedExpenses
+                      .filter(e => e.type === asset && e.isPaid)
+                      .reduce((sum, e) => sum + e.amount, 0);
+                    const dailySpent = state.dailyExpenses
+                      .filter(e => e.type === asset && e.amount < 0)
+                      .reduce((sum, e) => sum + Math.abs(e.amount), 0);
+                    totalSpent = paidFixed + dailySpent;
+                  }
+
+                  const kasaChanges = getKasaSum(vaultRecords, asset, d => d >= `${state.currentMonth}-01` && d < `${addMonths(state.currentMonth, 1)}-01`);
+                  const finalResources = totalResources + (kasaChanges > 0 ? kasaChanges : 0);
+                  const finalSpent = totalSpent + (kasaChanges < 0 ? Math.abs(kasaChanges) : 0);
+                  const remaining = finalResources - finalSpent;
+
+                  return (
+                    <Card key={asset} title={asset} className="bg-emerald-500/5 border-emerald-500/20">
+                      <div className={`text-2xl font-bold mt-2 ${remaining < 0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-500'}`}>
+                        {remaining.toLocaleString('tr-TR')} {asset}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Kalan (Kasa + Bütçe)
+                      </div>
+                    </Card>
+                  );
+                }
+              });
+            })()}
+          </div>
+        </div>
+      )}
 
       {/* Main Budget Progress */}
       <Card title={isFuture ? "Bütçe Planı" : "Aylık Nakit Bütçe Durumu"} className="space-y-4">

@@ -2,14 +2,40 @@ import { useDraftState } from '../hooks/useDraftState';
 import { useBudget } from '../context/BudgetContext';
 import type { DailyExpense } from '../types';
 import { Card } from '../components/ui/Card';
-import { Trash2, Banknote, Wallet, CreditCard, Pencil, X, Calendar } from 'lucide-react';
+import { Trash2, Banknote, CreditCard, Pencil, X, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { tr } from 'date-fns/locale';
 import { cn } from '../lib/utils';
 
 export default function DailyExpenses() {
-  const { state, viewDate, addDailyExpense, updateDailyExpense, deleteDailyExpense, showMealCard } = useBudget();
+  const {
+    state,
+    viewDate,
+    addDailyExpense,
+    updateDailyExpense,
+    deleteDailyExpense,
+    showMealCard,
+    vaultRecords
+  } = useBudget();
+
+  const isGoldType = (type: string) => {
+    const lower = type.toLowerCase();
+    const goldKeywords = ['gram', 'çeyrek', 'yarım', 'tam', 'ata', 'reşat', 'ayar', 'bilezik', 'altın', 'has', 'külçe'];
+    return goldKeywords.some(kw => lower.includes(kw));
+  };
+
+  const activeCurrencies = useMemo(() => {
+    return Array.from(new Set(
+      vaultRecords
+        .map(r => r.gold_type)
+        .filter(t => !isGoldType(t))
+    ));
+  }, [vaultRecords]);
+
+  const availableTabs = useMemo(() => {
+    return ['NAKIT', ...(showMealCard ? ['YK'] : []), ...activeCurrencies];
+  }, [showMealCard, activeCurrencies]);
 
   // Get local date YYYY-MM-DD
   const getLocalDate = () => {
@@ -23,10 +49,20 @@ export default function DailyExpenses() {
   const [date, setDate] = useDraftState('daily_draft_date', getLocalDate());
   const [description, setDescription] = useDraftState('daily_draft_desc', '');
   const [amount, setAmount] = useDraftState('daily_draft_amount', '');
-  const [type, setType] = useDraftState<'NAKIT' | 'YK'>('daily_draft_type', 'NAKIT');
+  const [type, setType] = useDraftState<string>('daily_draft_type', 'NAKIT');
   const [transactionType, setTransactionType] = useDraftState<'INCOME' | 'EXPENSE'>('daily_draft_tx_type', 'EXPENSE');
-  const [activeTab, setActiveTab] = useDraftState<'NAKIT' | 'YK'>('daily_draft_tab', 'NAKIT');
+  const [activeTab, setActiveTab] = useDraftState<string>('daily_draft_tab', 'NAKIT');
   const [editingId, setEditingId] = useDraftState<string | null>('daily_draft_editing_id', null);
+
+  // Fallback if active tab disappears (e.g. settings changed)
+  useEffect(() => {
+    if (!availableTabs.includes(activeTab)) {
+      setActiveTab('NAKIT');
+    }
+    if (!availableTabs.includes(type)) {
+      setType('NAKIT');
+    }
+  }, [availableTabs, activeTab, type]);
 
   const uniqueDescriptions = useMemo(() => {
     const descriptions = new Set<string>();
@@ -49,17 +85,17 @@ export default function DailyExpenses() {
     return state.dailyExpenses;
   }, [viewDate, state.currentMonth, state.history, state.dailyExpenses]);
 
-  const currentMonthSpentCash = useMemo(() => {
+  const currentMonthSpent = useMemo(() => {
     return activeExpenses
-      .filter(e => e.type === 'NAKIT' && e.amount < 0)
+      .filter(e => e.type === activeTab && e.amount < 0)
       .reduce((sum, e) => sum + Math.abs(e.amount), 0);
-  }, [activeExpenses]);
+  }, [activeExpenses, activeTab]);
 
-  const currentMonthSpentYK = useMemo(() => {
+  const currentMonthIncome = useMemo(() => {
     return activeExpenses
-      .filter(e => e.type === 'YK' && e.amount < 0)
-      .reduce((sum, e) => sum + Math.abs(e.amount), 0);
-  }, [activeExpenses]);
+      .filter(e => e.type === activeTab && e.amount > 0)
+      .reduce((sum, e) => sum + e.amount, 0);
+  }, [activeExpenses, activeTab]);
 
   const handleEdit = (expense: DailyExpense) => {
     setEditingId(expense.id);
@@ -115,7 +151,7 @@ export default function DailyExpenses() {
     sessionStorage.removeItem('daily_draft_editing_id');
   };
 
-  const filteredExpenses = state.dailyExpenses.filter(e => e.type === activeTab);
+  const filteredExpenses = activeExpenses.filter(e => e.type === activeTab);
 
   const groupedExpenses = filteredExpenses.reduce((groups, expense) => {
     const date = expense.date;
@@ -210,24 +246,20 @@ export default function DailyExpenses() {
                 </button>
             </div>
 
-            {showMealCard && (
-                <div className="flex gap-2">
-                    <button
-                    type="button"
-                    onClick={() => { setType('NAKIT'); setActiveTab('NAKIT'); }}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${type === 'NAKIT' ? 'bg-primary/10 border-primary text-primary' : 'bg-secondary border-transparent text-muted-foreground'}`}
-                    >
-                    <Wallet size={16} /> Nakit
-                    </button>
-                    <button
-                    type="button"
-                    onClick={() => { setType('YK'); setActiveTab('YK'); }}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${type === 'YK' ? 'bg-primary/10 border-primary text-primary' : 'bg-secondary border-transparent text-muted-foreground'}`}
-                    >
-                    <CreditCard size={16} /> Yemek Kartı
-                    </button>
-                </div>
-            )}
+            <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Ödeme Türü / Para Birimi</label>
+                <select
+                  value={type}
+                  onChange={(e) => { setType(e.target.value); setActiveTab(e.target.value); }}
+                  className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+                >
+                  <option value="NAKIT">TL (Nakit)</option>
+                  {showMealCard && <option value="YK">Yemek Kartı</option>}
+                  {activeCurrencies.map(curr => (
+                    <option key={curr} value={curr}>{curr}</option>
+                  ))}
+                </select>
+            </div>
 
             <div className="flex gap-2 mt-2">
                 {editingId && (
@@ -256,41 +288,33 @@ export default function DailyExpenses() {
 
       {viewDate <= state.currentMonth && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Card title="Bu Ay Harcanan Nakit" className="bg-red-500/5 border-red-500/20">
+            <Card title={`Bu Ay Harcanan (${activeTab === 'NAKIT' ? 'Nakit' : activeTab === 'YK' ? 'Yemek Kartı' : activeTab})`} className="bg-red-500/5 border-red-500/20">
               <div className="text-2xl font-bold text-red-500 mt-2">
-                 {currentMonthSpentCash.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+                 {currentMonthSpent.toLocaleString('tr-TR')} {activeTab === 'NAKIT' || activeTab === 'YK' ? '₺' : activeTab}
               </div>
             </Card>
-            {showMealCard && (
-                <Card title="Bu Ay Harcanan Yemek Kartı" className="bg-orange-500/5 border-orange-500/20">
-                  <div className="text-2xl font-bold text-orange-500 mt-2">
-                     {currentMonthSpentYK.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
-                  </div>
-                </Card>
-            )}
+            <Card title={`Bu Ayki Gelir (${activeTab === 'NAKIT' ? 'Nakit' : activeTab === 'YK' ? 'Yemek Kartı' : activeTab})`} className="bg-green-500/5 border-green-500/20">
+              <div className="text-2xl font-bold text-green-500 mt-2">
+                 {currentMonthIncome.toLocaleString('tr-TR')} {activeTab === 'NAKIT' || activeTab === 'YK' ? '₺' : activeTab}
+              </div>
+            </Card>
         </div>
       )}
 
-      {showMealCard && (
-        <div className="flex p-1 bg-secondary rounded-xl">
-            <button
-            onClick={() => setActiveTab('NAKIT')}
-            className={cn(
-                "flex-1 py-2 text-sm font-medium rounded-lg transition-all",
-                activeTab === 'NAKIT' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
-            )}
-            >
-            Nakit Harcamalar
-            </button>
-            <button
-            onClick={() => setActiveTab('YK')}
-            className={cn(
-                "flex-1 py-2 text-sm font-medium rounded-lg transition-all",
-                activeTab === 'YK' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
-            )}
-            >
-            Yemek Kartı Harcamaları
-            </button>
+      {availableTabs.length > 1 && (
+        <div className="flex p-1 bg-secondary rounded-xl overflow-x-auto whitespace-nowrap scrollbar-none gap-1">
+            {availableTabs.map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={cn(
+                    "flex-1 min-w-[100px] py-2 text-sm font-medium rounded-lg transition-all",
+                    activeTab === tab ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {tab === 'NAKIT' ? 'Nakit' : tab === 'YK' ? 'Yemek Kartı' : tab}
+              </button>
+            ))}
         </div>
       )}
 
@@ -304,7 +328,7 @@ export default function DailyExpenses() {
                 {format(new Date(date), 'd MMMM yyyy, EEEE', { locale: tr })}
               </h3>
               <span className={`text-sm font-bold ${dailyTotal >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                 {dailyTotal > 0 ? '+' : ''}{dailyTotal.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+                 {dailyTotal > 0 ? '+' : ''}{dailyTotal.toLocaleString('tr-TR')} {activeTab === 'NAKIT' || activeTab === 'YK' ? '₺' : activeTab}
               </span>
             </div>
             {groupedExpenses[date].map((expense) => (
@@ -321,7 +345,7 @@ export default function DailyExpenses() {
                 <div className="text-right">
                     <div className={`font-bold whitespace-nowrap ${expense.amount > 0 ? 'text-green-500' : 'text-red-500'}`}>
                       {expense.amount > 0 ? '+' : ''}
-                      {expense.amount.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+                      {expense.amount.toLocaleString('tr-TR')} {expense.type === 'NAKIT' || expense.type === 'YK' ? '₺' : expense.type}
                     </div>
                     <div className="flex justify-end gap-3 mt-1">
                       <button
@@ -346,7 +370,7 @@ export default function DailyExpenses() {
 
         {sortedDates.length === 0 && (
           <div className="text-center text-muted-foreground py-12 bg-secondary/30 rounded-xl border border-dashed">
-            {activeTab === 'NAKIT' ? 'Nakit' : 'Yemek Kartı'} için kayıt bulunmuyor.
+            {activeTab === 'NAKIT' ? 'Nakit' : activeTab === 'YK' ? 'Yemek Kartı' : activeTab} için kayıt bulunmuyor.
           </div>
         )}
       </div>
