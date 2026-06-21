@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card } from './ui/Card';
 import { useBudget } from '../context/BudgetContext';
 import { useAuth } from '../context/AuthContext';
-import { Plus, Trash2, Edit2, Check, X, Coins } from 'lucide-react';
+import { Trash2, Edit2, Check, X, Coins } from 'lucide-react';
 
 interface GoldRecord {
     id?: number;
@@ -19,7 +19,6 @@ export function VaultSection() {
     const {
         vaultRecords,
         vaultOrder,
-        addVaultRecord,
         deleteVaultRecord,
         updateVaultRecord,
         updateVaultOrder
@@ -30,13 +29,6 @@ export function VaultSection() {
         const stored = localStorage.getItem('vault_showOutflows');
         return stored !== null ? stored === 'true' : true;
     });
-
-    const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
-    const [formOwner, setFormOwner] = useState('');
-    const [formGoldType, setFormGoldType] = useState('');
-    const [formAmount, setFormAmount] = useState('');
-    const [formNote, setFormNote] = useState('');
-    const [formTransactionType, setFormTransactionType] = useState('Birikim');
 
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editDate, setEditDate] = useState('');
@@ -94,35 +86,6 @@ export function VaultSection() {
         setDraggedType(null);
     };
 
-    const handleAdd = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError('');
-
-        if (!formDate || !formOwner || !formGoldType || !formAmount) {
-            setError('Tüm alanları doldurunuz.');
-            return;
-        }
-
-        try {
-            await addVaultRecord({
-                record_date: formDate,
-                owner: formOwner,
-                gold_type: formGoldType,
-                amount: parseFloat(formAmount),
-                note: formNote,
-                transaction_type: formTransactionType
-            });
-
-            // Reset form
-            setFormOwner('');
-            setFormGoldType('');
-            setFormAmount('');
-            setFormNote('');
-        } catch (err) {
-            setError(err instanceof Error ? err.message : String(err));
-        }
-    };
-
     const handleDelete = async (id: number) => {
         if (!confirm('Bu kaydı silmek istediğinize emin misiniz?')) return;
         try {
@@ -166,17 +129,10 @@ export function VaultSection() {
 
     if (!isAdmin) return null;
 
-    const defaultGoldTypes = ["Gram", "Çeyrek", "Yarım", "Tam", "Ata Lira", "Dolar", "Euro"];
-    const uniqueGoldTypes = Array.from(new Set([...defaultGoldTypes, ...vaultRecords.map(r => r.gold_type)]));
+
 
     return (
         <div className="space-y-6 border-t border-border pt-10 mt-10">
-            <datalist id="goldTypeSuggestions">
-                {uniqueGoldTypes.map(type => (
-                    <option key={type} value={type} />
-                ))}
-            </datalist>
-
             <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                     <div className="p-3 bg-yellow-500/20 text-yellow-500 rounded-xl">
@@ -211,90 +167,6 @@ export function VaultSection() {
                     {error}
                 </div>
             )}
-
-            <Card title="Yeni Kayıt Ekle">
-                <form onSubmit={handleAdd} className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="space-y-1.5">
-                            <label className="text-sm font-medium text-muted-foreground">Tarih</label>
-                            <input
-                                type="date"
-                                required
-                                value={formDate}
-                                onChange={(e) => setFormDate(e.target.value)}
-                                className="w-full px-4 py-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                            />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-sm font-medium text-muted-foreground">Kime Ait</label>
-                            <input
-                                type="text"
-                                required
-                                placeholder="Örn: Ahmet"
-                                value={formOwner}
-                                onChange={(e) => setFormOwner(e.target.value)}
-                                className="w-full px-4 py-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                            />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-sm font-medium text-muted-foreground">Cinsi</label>
-                            <input
-                                type="text"
-                                required
-                                placeholder="Örn: Gram veya Dolar"
-                                list="goldTypeSuggestions"
-                                value={formGoldType}
-                                onChange={(e) => setFormGoldType(e.target.value)}
-                                className="w-full px-4 py-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                            />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-sm font-medium text-muted-foreground">Miktar</label>
-                            <input
-                                type="number"
-                                required
-                                min="0"
-                                step="0.01"
-                                placeholder="Örn: 1.5"
-                                value={formAmount}
-                                onChange={(e) => setFormAmount(e.target.value)}
-                                className="w-full px-4 py-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                            />
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                            <label className="text-sm font-medium text-muted-foreground">İşlem Türü</label>
-                            <select
-                                required
-                                value={formTransactionType}
-                                onChange={(e) => setFormTransactionType(e.target.value)}
-                                className={`w-full px-4 py-3 rounded-xl bg-secondary focus:outline-none focus:ring-2 focus:ring-primary appearance-none font-medium ${formTransactionType === 'Birikim' ? 'text-green-600' : formTransactionType === 'Düğün Hediyesi / Takı' ? 'text-muted-foreground' : 'text-red-500'}`}
-                            >
-                                <option value="Birikim" className="text-green-600">Birikim</option>
-                                <option value="Düğün Hediyesi / Takı" className="text-muted-foreground">Düğün Hediyesi / Takı</option>
-                                <option value="Borç Verdim" className="text-red-500">Borç Verdim</option>
-                            </select>
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-sm font-medium text-muted-foreground">Not</label>
-                            <input
-                                type="text"
-                                placeholder="İsteğe Bağlı"
-                                value={formNote}
-                                onChange={(e) => setFormNote(e.target.value)}
-                                className="w-full px-4 py-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                            />
-                        </div>
-                    </div>
-                    <button
-                        type="submit"
-                        className="w-full py-3 bg-primary text-primary-foreground font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-primary/90 transition-all"
-                    >
-                        <Plus size={20} /> Kayıt Ekle
-                    </button>
-                </form>
-            </Card>
 
             <Card title="Kayıtlar">
                 {vaultRecords.length === 0 ? (

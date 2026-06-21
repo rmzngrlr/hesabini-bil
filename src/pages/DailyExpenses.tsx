@@ -16,7 +16,10 @@ export default function DailyExpenses() {
     updateDailyExpense,
     deleteDailyExpense,
     showMealCard,
-    vaultRecords
+    vaultRecords,
+    addVaultRecord,
+    updateVaultRecord,
+    deleteVaultRecord
   } = useBudget();
 
   const isGoldType = (type: string) => {
@@ -33,9 +36,30 @@ export default function DailyExpenses() {
     ));
   }, [vaultRecords]);
 
+  const activeGolds = useMemo(() => {
+    // Only show gold types in tabs that have records, to keep it clean
+    return Array.from(new Set(
+      vaultRecords
+        .map(r => r.gold_type)
+        .filter(t => isGoldType(t))
+    ));
+  }, [vaultRecords]);
+
+  const allFormTypes = useMemo(() => {
+    const defaultGolds = ["Gram", "Çeyrek", "Yarım", "Tam", "Ata Lira"];
+    const recordsGolds = vaultRecords
+      .map(r => r.gold_type)
+      .filter(t => isGoldType(t));
+    const allGolds = Array.from(new Set([...defaultGolds, ...recordsGolds]));
+    return {
+      currencies: ['NAKIT', ...(showMealCard ? ['YK'] : []), ...activeCurrencies],
+      golds: allGolds
+    };
+  }, [showMealCard, activeCurrencies, vaultRecords]);
+
   const availableTabs = useMemo(() => {
-    return ['NAKIT', ...(showMealCard ? ['YK'] : []), ...activeCurrencies];
-  }, [showMealCard, activeCurrencies]);
+    return ['NAKIT', ...(showMealCard ? ['YK'] : []), ...activeCurrencies, ...activeGolds];
+  }, [showMealCard, activeCurrencies, activeGolds]);
 
   // Get local date YYYY-MM-DD
   const getLocalDate = () => {
@@ -54,15 +78,25 @@ export default function DailyExpenses() {
   const [activeTab, setActiveTab] = useDraftState<string>('daily_draft_tab', 'NAKIT');
   const [editingId, setEditingId] = useDraftState<string | null>('daily_draft_editing_id', null);
 
+  const [goldOwner, setGoldOwner] = useDraftState('daily_draft_gold_owner', '');
+  const [goldNote, setGoldNote] = useDraftState('daily_draft_gold_note', '');
+
   // Fallback if active tab disappears (e.g. settings changed)
   useEffect(() => {
     if (!availableTabs.includes(activeTab)) {
       setActiveTab('NAKIT');
     }
-    if (!availableTabs.includes(type)) {
+    if (!allFormTypes.currencies.includes(type) && !allFormTypes.golds.includes(type)) {
       setType('NAKIT');
     }
-  }, [availableTabs, activeTab, type]);
+  }, [availableTabs, allFormTypes, activeTab, type]);
+
+  // Auto-set transaction type to INCOME for gold
+  useEffect(() => {
+    if (isGoldType(type)) {
+      setTransactionType('INCOME');
+    }
+  }, [type]);
 
   const uniqueDescriptions = useMemo(() => {
     const descriptions = new Set<string>();
@@ -100,11 +134,23 @@ export default function DailyExpenses() {
   const handleEdit = (expense: DailyExpense) => {
     setEditingId(expense.id);
     setDate(expense.date);
-    setDescription(expense.description);
     setAmount(Math.abs(expense.amount).toString());
     setType(expense.type);
     setTransactionType(expense.amount >= 0 ? 'INCOME' : 'EXPENSE');
     setActiveTab(expense.type);
+
+    if (isGoldType(expense.type)) {
+      const ownerMatch = expense.description.match(/Kime Ait:\s*([^|]+)/);
+      const noteMatch = expense.description.match(/Not:\s*(.+)/);
+      setGoldOwner(ownerMatch ? ownerMatch[1].trim() : '');
+      setGoldNote(noteMatch ? noteMatch[1].trim() : '');
+      setDescription('');
+    } else {
+      setDescription(expense.description);
+      setGoldOwner('');
+      setGoldNote('');
+    }
+    
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -113,42 +159,120 @@ export default function DailyExpenses() {
     setDescription('');
     setAmount('');
     setTransactionType('EXPENSE');
+    setGoldOwner('');
+    setGoldNote('');
 
     sessionStorage.removeItem('daily_draft_desc');
     sessionStorage.removeItem('daily_draft_amount');
     sessionStorage.removeItem('daily_draft_editing_id');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!description || !amount) return;
+    if (!amount) return;
+    if (isGoldType(type) && !goldOwner) return;
+    if (!isGoldType(type) && !description) return;
 
     const numAmount = parseFloat(amount);
-    const finalAmount = transactionType === 'EXPENSE' ? -Math.abs(numAmount) : Math.abs(numAmount);
 
-    if (editingId) {
-      updateDailyExpense(editingId, {
-        date,
-        description,
-        amount: finalAmount,
-        type
-      });
-      setEditingId(null);
+    if (isGoldType(type)) {
+      const finalDesc = `Kime Ait: ${goldOwner}${goldNote ? ' | Not: ' + goldNote : ''}`;
+      
+      if (editingId) {
+        const originalExpense = activeExpenses.find(ex => ex.id === editingId);
+        if (originalExpense) {
+          updateDailyExpense(editingId, {
+            date,
+            description: finalDesc,
+            amount: numAmount,
+            type
+          });
+
+          // Sync to Vault (Kasa) records
+          const match = vaultRecords.find(r => 
+            r.gold_type === originalExpense.type && 
+            Number(r.amount) === Number(Math.abs(originalExpense.amount)) && 
+            r.record_date === originalExpense.date
+          );
+          if (match && match.id) {
+            await updateVaultRecord(match.id, {
+              record_date: date,
+              owner: goldOwner,
+              gold_type: type,
+              amount: numAmount,
+              note: goldNote,
+              transaction_type: 'Birikim'
+            });
+          }
+        }
+        setEditingId(null);
+      } else {
+        // Add flow
+        // 1. Add to Vault
+        await addVaultRecord({
+          record_date: date,
+          owner: goldOwner,
+          gold_type: type,
+          amount: numAmount,
+          note: goldNote,
+          transaction_type: 'Birikim'
+        });
+        // 2. Add to Daily Expenses
+        addDailyExpense({
+          date,
+          description: finalDesc,
+          amount: numAmount,
+          type
+        });
+      }
+
+      setGoldOwner('');
+      setGoldNote('');
     } else {
-      addDailyExpense({
-        date,
-        description,
-        amount: finalAmount,
-        type
-      });
+      const finalAmount = transactionType === 'EXPENSE' ? -Math.abs(numAmount) : Math.abs(numAmount);
+
+      if (editingId) {
+        updateDailyExpense(editingId, {
+          date,
+          description,
+          amount: finalAmount,
+          type
+        });
+        setEditingId(null);
+      } else {
+        addDailyExpense({
+          date,
+          description,
+          amount: finalAmount,
+          type
+        });
+      }
+      setDescription('');
     }
     
-    setDescription('');
     setAmount('');
 
     sessionStorage.removeItem('daily_draft_desc');
     sessionStorage.removeItem('daily_draft_amount');
     sessionStorage.removeItem('daily_draft_editing_id');
+  };
+
+  const handleDeleteClick = async (expense: DailyExpense) => {
+    if (!confirm('Bu işlemi silmek istediğinize emin misiniz?')) return;
+
+    if (isGoldType(expense.type)) {
+      // Find and delete from vault records
+      const match = vaultRecords.find(r => 
+        r.gold_type === expense.type && 
+        Number(r.amount) === Number(Math.abs(expense.amount)) && 
+        r.record_date === expense.date
+      );
+      if (match && match.id) {
+        await deleteVaultRecord(match.id);
+      }
+    }
+
+    deleteDailyExpense(expense.id);
   };
 
   const filteredExpenses = activeExpenses.filter(e => e.type === activeTab);
@@ -188,7 +312,7 @@ export default function DailyExpenses() {
       </header>
       
       {!isFuture ? (
-        <Card title={editingId ? "Harcamayı Düzenle" : "Yeni Kazanç/Harcama Ekle"}>
+        <Card title={editingId ? "Kayıt Düzenle" : "Yeni Kazanç/Harcama Ekle"}>
             <form onSubmit={handleSubmit} className="space-y-3 mt-2">
             <div className="flex gap-2">
                 <div className="flex-1 space-y-1">
@@ -201,9 +325,10 @@ export default function DailyExpenses() {
                 />
                 </div>
                 <div className="flex-1 space-y-1">
-                <label className="text-xs text-muted-foreground">Tutar</label>
+                <label className="text-xs text-muted-foreground">{isGoldType(type) ? 'Miktar' : 'Tutar'}</label>
                 <input
                     type="number"
+                    step="0.01"
                     placeholder="0.00"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
@@ -212,52 +337,87 @@ export default function DailyExpenses() {
                 </div>
             </div>
 
-            <div className="space-y-1">
+            {isGoldType(type) ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">Kime Ait</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Örn: Ahmet"
+                    value={goldOwner}
+                    onChange={(e) => setGoldOwner(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">Not</label>
+                  <input
+                    type="text"
+                    placeholder="İsteğe Bağlı"
+                    value={goldNote}
+                    onChange={(e) => setGoldNote(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">Açıklama</label>
                 <input
-                type="text"
-                list="daily-expense-suggestions"
-                placeholder="Bu para nereden geldi/nereye gitti?"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  type="text"
+                  list="daily-expense-suggestions"
+                  placeholder="Bu para nereden geldi/nereye gitti?"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 />
                 <datalist id="daily-expense-suggestions">
                   {uniqueDescriptions.map((desc, idx) => (
                     <option key={idx} value={desc} />
                   ))}
                 </datalist>
-            </div>
+              </div>
+            )}
 
-            <div className="flex gap-2 pt-1">
-                <button
-                type="button"
-                onClick={() => setTransactionType('INCOME')}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${transactionType === 'INCOME' ? 'bg-green-500/10 border-green-500 text-green-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
-                >
-                Gelir (+)
-                </button>
-                <button
-                type="button"
-                onClick={() => setTransactionType('EXPENSE')}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${transactionType === 'EXPENSE' ? 'bg-red-500/10 border-red-500 text-red-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
-                >
-                Gider (-)
-                </button>
-            </div>
+            {!isGoldType(type) && (
+              <div className="flex gap-2 pt-1">
+                  <button
+                  type="button"
+                  onClick={() => setTransactionType('INCOME')}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${transactionType === 'INCOME' ? 'bg-green-500/10 border-green-500 text-green-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
+                  >
+                  Gelir (+)
+                  </button>
+                  <button
+                  type="button"
+                  onClick={() => setTransactionType('EXPENSE')}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${transactionType === 'EXPENSE' ? 'bg-red-500/10 border-red-500 text-red-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
+                  >
+                  Gider (-)
+                  </button>
+              </div>
+            )}
 
             <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">Ödeme Türü / Para Birimi</label>
+                <label className="text-xs text-muted-foreground">Varlık / Para Birimi</label>
                 <select
                   value={type}
                   onChange={(e) => { setType(e.target.value); setActiveTab(e.target.value); }}
                   className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
                 >
-                  <option value="NAKIT">TL (Nakit)</option>
-                  {showMealCard && <option value="YK">Yemek Kartı</option>}
-                  {activeCurrencies.map(curr => (
-                    <option key={curr} value={curr}>{curr}</option>
-                  ))}
+                  <optgroup label="Para Birimleri">
+                    <option value="NAKIT">TL (Nakit)</option>
+                    {showMealCard && <option value="YK">Yemek Kartı</option>}
+                    {activeCurrencies.map(curr => (
+                      <option key={curr} value={curr}>{curr}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Altın Türleri (Kasa)">
+                    {allFormTypes.golds.map(gold => (
+                      <option key={gold} value={gold}>{gold}</option>
+                    ))}
+                  </optgroup>
                 </select>
             </div>
 
@@ -288,12 +448,12 @@ export default function DailyExpenses() {
 
       {viewDate <= state.currentMonth && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Card title={`Bu Ay Harcanan (${activeTab === 'NAKIT' ? 'Nakit' : activeTab === 'YK' ? 'Yemek Kartı' : activeTab})`} className="bg-red-500/5 border-red-500/20">
-              <div className="text-2xl font-bold text-red-500 mt-2">
-                 {currentMonthSpent.toLocaleString('tr-TR')} {activeTab === 'NAKIT' || activeTab === 'YK' ? '₺' : activeTab}
+            <Card title={`${isGoldType(activeTab) ? 'Toplam Birikim' : 'Bu Ay Harcanan'} (${activeTab === 'NAKIT' ? 'Nakit' : activeTab === 'YK' ? 'Yemek Kartı' : activeTab})`} className={`${isGoldType(activeTab) ? 'bg-yellow-500/5 border-yellow-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
+              <div className={`text-2xl font-bold mt-2 ${isGoldType(activeTab) ? 'text-yellow-600 dark:text-yellow-500' : 'text-red-500'}`}>
+                 {isGoldType(activeTab) ? (currentMonthIncome - currentMonthSpent).toLocaleString('tr-TR') : currentMonthSpent.toLocaleString('tr-TR')} {activeTab === 'NAKIT' || activeTab === 'YK' ? '₺' : activeTab}
               </div>
             </Card>
-            <Card title={`Bu Ayki Gelir (${activeTab === 'NAKIT' ? 'Nakit' : activeTab === 'YK' ? 'Yemek Kartı' : activeTab})`} className="bg-green-500/5 border-green-500/20">
+            <Card title={`Bu Ayki Gelir / Giriş (${activeTab === 'NAKIT' ? 'Nakit' : activeTab === 'YK' ? 'Yemek Kartı' : activeTab})`} className="bg-green-500/5 border-green-500/20">
               <div className="text-2xl font-bold text-green-500 mt-2">
                  {currentMonthIncome.toLocaleString('tr-TR')} {activeTab === 'NAKIT' || activeTab === 'YK' ? '₺' : activeTab}
               </div>
@@ -331,10 +491,12 @@ export default function DailyExpenses() {
                  {dailyTotal > 0 ? '+' : ''}{dailyTotal.toLocaleString('tr-TR')} {activeTab === 'NAKIT' || activeTab === 'YK' ? '₺' : activeTab}
               </span>
             </div>
-            {groupedExpenses[date].map((expense) => (
+            {groupedExpenses[date].map((expense) => {
+              const isGold = isGoldType(expense.type);
+              return (
               <div key={expense.id} className="flex items-center justify-between p-4 rounded-xl bg-card border border-border">
                 <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-full ${expense.type === 'NAKIT' ? 'bg-green-500/10 text-green-500' : 'bg-blue-500/10 text-blue-500'}`}>
+                    <div className={`p-2 rounded-full ${expense.type === 'NAKIT' ? 'bg-green-500/10 text-green-500' : isGold ? 'bg-yellow-500/10 text-yellow-500' : 'bg-blue-500/10 text-blue-500'}`}>
                       {expense.type === 'NAKIT' ? <Banknote size={20} /> : <CreditCard size={20} />}
                     </div>
                     <div>
@@ -355,7 +517,7 @@ export default function DailyExpenses() {
                         <Pencil size={12} /> Düzenle
                       </button>
                       <button
-                        onClick={() => deleteDailyExpense(expense.id)}
+                        onClick={() => handleDeleteClick(expense)}
                         className="text-xs text-destructive hover:underline flex items-center gap-1"
                       >
                         <Trash2 size={12} /> Sil
@@ -363,7 +525,8 @@ export default function DailyExpenses() {
                     </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
           );
         })}
