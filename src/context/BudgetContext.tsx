@@ -819,7 +819,65 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     // Future Projection
 
-    // Initial CC Debt (from current month)
+    // 1. Calculate running rollovers starting from the current month's actual ending balances
+    let runningProjRollover = 0;
+    let runningProjYkRollover = 0;
+    const runningProjAssetBudgets: Record<string, { income: number; rollover: number }> = {};
+
+    const currentFixedTotal = realState.fixedExpenses.filter(e => e.isPaid && (e.type === 'NAKIT' || !e.type)).reduce((sum, e) => sum + e.amount, 0);
+    const currentCustomIncomes = realState.customIncomes.filter(i => i.type === 'NAKIT' || !i.type).reduce((sum, i) => sum + i.amount, 0);
+    const totalCashResources = realState.income + realState.rollover + currentCustomIncomes;
+
+    const cashExpenses = realState.dailyExpenses.filter(e => e.type === 'NAKIT' || !e.type);
+    const ykExpenses = realState.dailyExpenses.filter(e => e.type === 'YK');
+
+    const totalCashDaily = Math.abs(cashExpenses.filter(e => e.amount < 0).reduce((sum, e) => sum + e.amount, 0));
+    const totalCashDailyIncome = cashExpenses.filter(e => e.amount > 0).reduce((sum, e) => sum + e.amount, 0);
+
+    const totalYkDaily = Math.abs(ykExpenses.filter(e => e.amount < 0).reduce((sum, e) => sum + e.amount, 0));
+    const totalYkDailyIncome = ykExpenses.filter(e => e.amount > 0).reduce((sum, e) => sum + e.amount, 0);
+
+    runningProjRollover = totalCashResources + totalCashDailyIncome - currentFixedTotal - totalCashDaily;
+    if (runningProjRollover < 0) runningProjRollover = 0;
+
+    runningProjYkRollover = (realState.ykIncome + realState.ykRollover + totalYkDailyIncome) - totalYkDaily;
+    if (runningProjYkRollover < 0) runningProjYkRollover = 0;
+
+    const activeCurrencies = Array.from(new Set(
+      globalVaultRecords
+        .map(r => r.gold_type)
+        .filter(t => !isGoldType(t))
+    ));
+
+    activeCurrencies.forEach(curr => {
+        const assetBudget = realState.assetBudgets?.[curr];
+        const startRollover = assetBudget?.rollover || 0;
+        const monthInc = assetBudget?.income || 0;
+
+        const kasaChanges = getKasaSum(globalVaultRecords, curr, d => d >= `${realState.currentMonth}-01` && d < `${addMonths(realState.currentMonth, 1)}-01`);
+
+        const assetCustomIncome = realState.customIncomes
+          .filter(i => i.type === curr)
+          .reduce((sum, i) => sum + i.amount, 0);
+        const assetDailyIncome = realState.dailyExpenses
+          .filter(e => e.type === curr && e.amount > 0)
+          .reduce((sum, e) => sum + e.amount, 0);
+        const assetDailySpent = realState.dailyExpenses
+          .filter(e => e.type === curr && e.amount < 0)
+          .reduce((sum, e) => sum + Math.abs(e.amount), 0);
+        const assetFixedSpent = realState.fixedExpenses
+          .filter(e => e.isPaid && e.type === curr)
+          .reduce((sum, e) => sum + e.amount, 0);
+
+        const totalAsset = startRollover + kasaChanges + monthInc + assetCustomIncome + assetDailyIncome;
+        const remainingAsset = totalAsset - (assetFixedSpent + assetDailySpent);
+        runningProjAssetBudgets[curr] = {
+            income: realState.assetBudgets?.[curr]?.income || 0,
+            rollover: remainingAsset > 0 ? remainingAsset : 0
+        };
+    });
+
+    // 2. Initial CC Debt (from current month)
     let lastMonthCCDebt = Math.abs(realState.ccDebts.reduce((sum, d) => sum + d.amount, 0));
 
     // Iterate intervening months
@@ -867,11 +925,6 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const adjustedCCDebt = lastMonthCCDebt + ccDebtAdjustment;
 
         // Ensure "Kredi Kartı Borcu (Geçen Ay)" is present with adjusted value
-        // Note: If user previously edited it, it might be in `monthFixedExpenses` via `future.fixedExpenses`.
-        // However, we want "Smart Update" where we apply adjustment to CURRENT calculated base.
-        // So we should find the item (or create it) and set amount to `adjustedCCDebt`.
-
-        // Filter out any stale entry first (to replace with fresh calculation + adjustment)
         monthFixedExpenses = monthFixedExpenses.filter(e => e.title !== 'Kredi Kartı Borcu (Geçen Ay)');
 
         if (adjustedCCDebt > 0 || ccDebtAdjustment !== 0) {
@@ -922,12 +975,9 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         });
 
         // Combine Manual + Projected for Total Calculation and Display
-        // User requested "Newest Last". Projected installments are "old/automatic". Manual additions are "new".
-        // So Projected first, then Manual.
         allCCDebts = [...projectedCCDebts, ...allCCDebts];
 
         // Calculate total CC Debt for THIS month (to become Fixed Expense in NEXT month)
-        // Includes Projected Installments AND Manual Future Debts
         lastMonthCCDebt = Math.abs(allCCDebts.reduce((sum, d) => sum + d.amount, 0));
 
         if (isTarget) {
@@ -939,96 +989,71 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 }))
                 .filter(inst => inst.remainingInstallments > 0);
 
-            // Dynamic Rollover Logic (Only from current month to immediately next month)
-            let dynamicRollover = 0;
-            let dynamicYkRollover = 0;
-            const dynamicAssetBudgets: Record<string, { income: number; rollover: number }> = {};
-
-            if (realState.assetBudgets) {
-              Object.keys(realState.assetBudgets).forEach(curr => {
-                dynamicAssetBudgets[curr] = {
-                  income: realState.assetBudgets![curr]?.income || 0,
-                  rollover: realState.assetBudgets![curr]?.rollover || 0
+            // Construct final dynamicAssetBudgets for target month
+            const finalAssetBudgets: Record<string, { income: number; rollover: number }> = {};
+            activeCurrencies.forEach(curr => {
+                const futAsset = future.assetBudgets?.[curr];
+                finalAssetBudgets[curr] = {
+                    income: futAsset?.income !== undefined ? futAsset.income : (runningProjAssetBudgets[curr]?.income || 0),
+                    rollover: runningProjAssetBudgets[curr]?.rollover || 0
                 };
-              });
-            }
-
-            if (monthsAway === 1) {
-                // Calculate current month's net cash and YK to pass as dynamic rollover
-                const currentFixedTotal = realState.fixedExpenses.filter(e => e.isPaid && (e.type === 'NAKIT' || !e.type)).reduce((sum, e) => sum + e.amount, 0);
-                const currentCustomIncomes = realState.customIncomes.filter(i => i.type === 'NAKIT' || !i.type).reduce((sum, i) => sum + i.amount, 0);
-                const totalCashResources = realState.income + realState.rollover + currentCustomIncomes;
-
-                const cashExpenses = realState.dailyExpenses.filter(e => e.type === 'NAKIT' || !e.type);
-                const ykExpenses = realState.dailyExpenses.filter(e => e.type === 'YK');
-
-                const totalCashDaily = Math.abs(cashExpenses.filter(e => e.amount < 0).reduce((sum, e) => sum + e.amount, 0));
-                const totalCashDailyIncome = cashExpenses.filter(e => e.amount > 0).reduce((sum, e) => sum + e.amount, 0);
-
-                const totalYkDaily = Math.abs(ykExpenses.filter(e => e.amount < 0).reduce((sum, e) => sum + e.amount, 0));
-                const totalYkDailyIncome = ykExpenses.filter(e => e.amount > 0).reduce((sum, e) => sum + e.amount, 0);
-
-                const currentNetCash = totalCashResources + totalCashDailyIncome - currentFixedTotal - totalCashDaily;
-                const currentNetYk = (realState.ykIncome + realState.ykRollover + totalYkDailyIncome) - totalYkDaily;
-
-                dynamicRollover = currentNetCash;
-                dynamicYkRollover = currentNetYk;
-
-                // Also calculate net balance for active currencies
-                const activeCurrencies = Array.from(new Set(
-                  globalVaultRecords
-                    .map(r => r.gold_type)
-                    .filter(t => !isGoldType(t))
-                ));
-                activeCurrencies.forEach(curr => {
-                    const assetBudget = realState.assetBudgets?.[curr];
-                    const startRollover = assetBudget?.rollover || 0;
-                    const monthInc = assetBudget?.income || 0;
-
-                    const kasaChanges = getKasaSum(globalVaultRecords, curr, d => d >= `${realState.currentMonth}-01` && d < `${addMonths(realState.currentMonth, 1)}-01`);
-
-                    const assetCustomIncome = realState.customIncomes
-                      .filter(i => i.type === curr)
-                      .reduce((sum, i) => sum + i.amount, 0);
-                    const assetDailyIncome = realState.dailyExpenses
-                      .filter(e => e.type === curr && e.amount > 0)
-                      .reduce((sum, e) => sum + e.amount, 0);
-                    const assetDailySpent = realState.dailyExpenses
-                      .filter(e => e.type === curr && e.amount < 0)
-                      .reduce((sum, e) => sum + Math.abs(e.amount), 0);
-                    const assetFixedSpent = realState.fixedExpenses
-                      .filter(e => e.isPaid && e.type === curr)
-                      .reduce((sum, e) => sum + e.amount, 0);
-
-                    const totalAsset = startRollover + kasaChanges + monthInc + assetCustomIncome + assetDailyIncome;
-                    const remainingAsset = totalAsset - (assetFixedSpent + assetDailySpent);
-                    dynamicAssetBudgets[curr] = {
-                        income: realState.assetBudgets?.[curr]?.income || 0,
-                        rollover: remainingAsset > 0 ? remainingAsset : 0
-                    };
-                });
-            }
+            });
 
             return {
                 ...realState,
                 currentMonth: viewDate,
                 income: monthIncome,
                 ykIncome: monthYkIncome,
-                rollover: dynamicRollover,
-                ykRollover: dynamicYkRollover,
+                rollover: runningProjRollover,
+                ykRollover: runningProjYkRollover,
                 fixedExpenses: monthFixedExpenses,
                 customIncomes: monthCustomIncomes,
                 dailyExpenses: [],
                 ccDebts: allCCDebts, // Show merged list
                 installments: projectedInstallments,
                 futureData: realState.futureData,
-                assetBudgets: dynamicAssetBudgets
+                assetBudgets: finalAssetBudgets
             };
         }
+
+        // 3. For intervening months, simulate cash & currency flows to carry ending balance to next iteration
+        const projFixedTotal = monthFixedExpenses.filter(e => (e.type === 'NAKIT' || !e.type)).reduce((sum, e) => sum + e.amount, 0);
+        const projCustomIncomes = monthCustomIncomes.filter(i => i.type === 'NAKIT' || !i.type).reduce((sum, i) => sum + i.amount, 0);
+        const projTotalCashResources = monthIncome + runningProjRollover + projCustomIncomes;
+
+        runningProjRollover = projTotalCashResources - projFixedTotal;
+        if (runningProjRollover < 0) runningProjRollover = 0;
+
+        runningProjYkRollover = monthYkIncome + runningProjYkRollover;
+        if (runningProjYkRollover < 0) runningProjYkRollover = 0;
+
+        activeCurrencies.forEach(curr => {
+            const futAsset = future.assetBudgets?.[curr];
+            const monthInc = futAsset?.income !== undefined ? futAsset.income : (runningProjAssetBudgets[curr]?.income || 0);
+            const startRollover = runningProjAssetBudgets[curr]?.rollover || 0;
+
+            const kasaChanges = getKasaSum(globalVaultRecords, curr, d => d >= `${iterMonth}-01` && d < `${addMonths(iterMonth, 1)}-01`);
+
+            const assetCustomIncome = monthCustomIncomes
+              .filter(i => i.type === curr)
+              .reduce((sum, i) => sum + i.amount, 0);
+            const assetFixedSpent = monthFixedExpenses
+              .filter(e => e.type === curr)
+              .reduce((sum, e) => sum + e.amount, 0);
+
+            const totalAsset = startRollover + kasaChanges + monthInc + assetCustomIncome;
+            const remainingAsset = totalAsset - assetFixedSpent;
+
+            runningProjAssetBudgets[curr] = {
+                income: monthInc,
+                rollover: remainingAsset > 0 ? remainingAsset : 0
+            };
+        });
 
         iterMonth = addMonths(iterMonth, 1);
     }
     return realState;
+
 
   }, [realState, viewDate]);
 
