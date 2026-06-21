@@ -28,6 +28,19 @@ export default function DailyExpenses() {
     return goldKeywords.some(kw => lower.includes(kw));
   };
 
+  const formatTabLabel = (tab: string) => {
+    if (tab === 'NAKIT') return 'TL';
+    if (tab === 'YK') return 'Yemek Kartı';
+    if (tab === 'Bosna-Hersek Markı') return 'BAM';
+    return tab;
+  };
+
+  const formatCurrencySuffix = (type: string) => {
+    if (type === 'NAKIT' || type === 'YK') return '₺';
+    if (type === 'Bosna-Hersek Markı') return 'BAM';
+    return type;
+  };
+
   const activeCurrencies = useMemo(() => {
     return Array.from(new Set(
       vaultRecords
@@ -36,14 +49,64 @@ export default function DailyExpenses() {
     ));
   }, [vaultRecords]);
 
-  const activeGolds = useMemo(() => {
-    // Only show gold types in tabs that have records, to keep it clean
-    return Array.from(new Set(
-      vaultRecords
-        .map(r => r.gold_type)
-        .filter(t => isGoldType(t))
-    ));
-  }, [vaultRecords]);
+  const getKasaSum = (records: any[], type: string, filterFn: (date: string) => boolean) => {
+    return records
+      .filter(r => r.gold_type === type && filterFn(r.record_date))
+      .reduce((sum, r) => {
+        const amt = Number(r.amount);
+        const tType = r.transaction_type || 'Birikim';
+        if (tType === 'Birikim' || tType === 'Giriş' || tType === 'Bütçe Geliri') {
+          return sum + amt;
+        } else {
+          return sum - amt;
+        }
+      }, 0);
+  };
+
+  const addMonths = (dateStr: string, months: number): string => {
+    let [y, m] = dateStr.split('-').map(Number);
+    m += months;
+    while (m > 12) {
+      m -= 12;
+      y++;
+    }
+    while (m < 1) {
+      m += 12;
+      y--;
+    }
+    return `${y}-${String(m).padStart(2, '0')}`;
+  };
+
+  const getCurrencyBalance = (curr: string) => {
+    const assetBudget = state.assetBudgets?.[curr] || { income: 0, rollover: 0 };
+    const customIncomeTotal = (state.customIncomes || [])
+      .filter(i => i.type === curr)
+      .reduce((sum, i) => sum + i.amount, 0);
+    const dailyIncomeTotal = state.dailyExpenses
+      .filter(e => e.type === curr && e.amount > 0)
+      .reduce((sum, e) => sum + e.amount, 0);
+    const totalResources = assetBudget.rollover + assetBudget.income + customIncomeTotal + dailyIncomeTotal;
+
+    const paidFixed = state.fixedExpenses
+      .filter(e => e.type === curr && e.isPaid)
+      .reduce((sum, e) => sum + e.amount, 0);
+    const dailySpent = state.dailyExpenses
+      .filter(e => e.type === curr && e.amount < 0)
+      .reduce((sum, e) => sum + Math.abs(e.amount), 0);
+    const totalSpent = paidFixed + dailySpent;
+
+    const kasaChanges = getKasaSum(vaultRecords, curr, d => d >= `${state.currentMonth}-01` && d < `${addMonths(state.currentMonth, 1)}-01`);
+    const finalResources = totalResources + (kasaChanges > 0 ? kasaChanges : 0);
+    const finalSpent = totalSpent + (kasaChanges < 0 ? Math.abs(kasaChanges) : 0);
+    return finalResources - finalSpent;
+  };
+
+  const activeCurrenciesFiltered = useMemo(() => {
+    return activeCurrencies.filter(curr => {
+      const balance = getCurrencyBalance(curr);
+      return balance > 0;
+    });
+  }, [activeCurrencies, state.assetBudgets, state.customIncomes, state.dailyExpenses, state.fixedExpenses, vaultRecords, state.currentMonth]);
 
   const allFormTypes = useMemo(() => {
     const defaultGolds = ["Gram", "Çeyrek", "Yarım", "Tam", "Ata Lira"];
@@ -58,8 +121,8 @@ export default function DailyExpenses() {
   }, [showMealCard, activeCurrencies, vaultRecords]);
 
   const availableTabs = useMemo(() => {
-    return ['NAKIT', ...(showMealCard ? ['YK'] : []), ...activeCurrencies, ...activeGolds];
-  }, [showMealCard, activeCurrencies, activeGolds]);
+    return ['NAKIT', ...(showMealCard ? ['YK'] : []), ...activeCurrenciesFiltered];
+  }, [showMealCard, activeCurrenciesFiltered]);
 
   // Get local date YYYY-MM-DD
   const getLocalDate = () => {
@@ -208,7 +271,7 @@ export default function DailyExpenses() {
         setEditingId(null);
       } else {
         // Add flow
-        // 1. Add to Vault
+        // 1. Add to Vault only! (As requested: "Giriş olarak ekleyeyim ama Kasa kısmına eklese yeter.")
         await addVaultRecord({
           record_date: date,
           owner: goldOwner,
@@ -216,13 +279,6 @@ export default function DailyExpenses() {
           amount: numAmount,
           note: goldNote,
           transaction_type: 'Birikim'
-        });
-        // 2. Add to Daily Expenses
-        addDailyExpense({
-          date,
-          description: finalDesc,
-          amount: numAmount,
-          type
         });
       }
 
@@ -407,10 +463,10 @@ export default function DailyExpenses() {
                   className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
                 >
                   <optgroup label="Para Birimleri">
-                    <option value="NAKIT">TL (Nakit)</option>
+                    <option value="NAKIT">TL</option>
                     {showMealCard && <option value="YK">Yemek Kartı</option>}
                     {activeCurrencies.map(curr => (
-                      <option key={curr} value={curr}>{curr}</option>
+                      <option key={curr} value={curr}>{curr === 'Bosna-Hersek Markı' ? 'BAM' : curr}</option>
                     ))}
                   </optgroup>
                   <optgroup label="Altın Türleri (Kasa)">
@@ -448,14 +504,14 @@ export default function DailyExpenses() {
 
       {viewDate <= state.currentMonth && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Card title={`${isGoldType(activeTab) ? 'Toplam Birikim' : 'Bu Ay Harcanan'} (${activeTab === 'NAKIT' ? 'Nakit' : activeTab === 'YK' ? 'Yemek Kartı' : activeTab})`} className={`${isGoldType(activeTab) ? 'bg-yellow-500/5 border-yellow-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
+            <Card title={`${isGoldType(activeTab) ? 'Toplam Birikim' : 'Bu Ay Harcanan'} (${formatTabLabel(activeTab)})`} className={`${isGoldType(activeTab) ? 'bg-yellow-500/5 border-yellow-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
               <div className={`text-2xl font-bold mt-2 ${isGoldType(activeTab) ? 'text-yellow-600 dark:text-yellow-500' : 'text-red-500'}`}>
-                 {isGoldType(activeTab) ? (currentMonthIncome - currentMonthSpent).toLocaleString('tr-TR') : currentMonthSpent.toLocaleString('tr-TR')} {activeTab === 'NAKIT' || activeTab === 'YK' ? '₺' : activeTab}
+                 {isGoldType(activeTab) ? (currentMonthIncome - currentMonthSpent).toLocaleString('tr-TR') : currentMonthSpent.toLocaleString('tr-TR')} {formatCurrencySuffix(activeTab)}
               </div>
             </Card>
-            <Card title={`Bu Ayki Gelir / Giriş (${activeTab === 'NAKIT' ? 'Nakit' : activeTab === 'YK' ? 'Yemek Kartı' : activeTab})`} className="bg-green-500/5 border-green-500/20">
+            <Card title={`Bu Ayki Gelir / Giriş (${formatTabLabel(activeTab)})`} className="bg-green-500/5 border-green-500/20">
               <div className="text-2xl font-bold text-green-500 mt-2">
-                 {currentMonthIncome.toLocaleString('tr-TR')} {activeTab === 'NAKIT' || activeTab === 'YK' ? '₺' : activeTab}
+                 {currentMonthIncome.toLocaleString('tr-TR')} {formatCurrencySuffix(activeTab)}
               </div>
             </Card>
         </div>
@@ -472,7 +528,7 @@ export default function DailyExpenses() {
                     activeTab === tab ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                {tab === 'NAKIT' ? 'Nakit' : tab === 'YK' ? 'Yemek Kartı' : tab}
+                {formatTabLabel(tab)}
               </button>
             ))}
         </div>
@@ -488,7 +544,7 @@ export default function DailyExpenses() {
                 {format(new Date(date), 'd MMMM yyyy, EEEE', { locale: tr })}
               </h3>
               <span className={`text-sm font-bold ${dailyTotal >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                 {dailyTotal > 0 ? '+' : ''}{dailyTotal.toLocaleString('tr-TR')} {activeTab === 'NAKIT' || activeTab === 'YK' ? '₺' : activeTab}
+                 {dailyTotal > 0 ? '+' : ''}{dailyTotal.toLocaleString('tr-TR')} {formatCurrencySuffix(activeTab)}
               </span>
             </div>
             {groupedExpenses[date].map((expense) => {
@@ -507,7 +563,7 @@ export default function DailyExpenses() {
                 <div className="text-right">
                     <div className={`font-bold whitespace-nowrap ${expense.amount > 0 ? 'text-green-500' : 'text-red-500'}`}>
                       {expense.amount > 0 ? '+' : ''}
-                      {expense.amount.toLocaleString('tr-TR')} {expense.type === 'NAKIT' || expense.type === 'YK' ? '₺' : expense.type}
+                      {expense.amount.toLocaleString('tr-TR')} {formatCurrencySuffix(expense.type)}
                     </div>
                     <div className="flex justify-end gap-3 mt-1">
                       <button
@@ -533,7 +589,7 @@ export default function DailyExpenses() {
 
         {sortedDates.length === 0 && (
           <div className="text-center text-muted-foreground py-12 bg-secondary/30 rounded-xl border border-dashed">
-            {activeTab === 'NAKIT' ? 'Nakit' : activeTab === 'YK' ? 'Yemek Kartı' : activeTab} için kayıt bulunmuyor.
+            {formatTabLabel(activeTab)} için kayıt bulunmuyor.
           </div>
         )}
       </div>

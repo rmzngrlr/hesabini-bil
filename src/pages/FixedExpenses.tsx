@@ -207,7 +207,7 @@ export default function FixedExpenses() {
       </header>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Card title="Aylık Gelir (Nakit)">
+        <Card title="Aylık Gelir (TL)">
           <div className="mt-2">
             <input
               type="number"
@@ -219,7 +219,7 @@ export default function FixedExpenses() {
           </div>
         </Card>
 
-        <Card title="Devreden (Nakit)">
+        <Card title="Devreden (TL)">
           <div className="mt-2">
              <input
                type="number"
@@ -299,7 +299,7 @@ export default function FixedExpenses() {
               onChange={(e) => setIncomeType(e.target.value)}
               className="flex-1 sm:flex-none sm:w-28 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
             >
-              <option value="NAKIT">TL (Nakit)</option>
+              <option value="NAKIT">TL</option>
               {activeCurrencies.map(curr => (
                 <option key={curr} value={curr}>{curr}</option>
               ))}
@@ -389,7 +389,7 @@ export default function FixedExpenses() {
             onChange={(e) => setExpenseType(e.target.value)}
             className="flex-1 sm:flex-none sm:w-28 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
           >
-            <option value="NAKIT">TL (Nakit)</option>
+            <option value="NAKIT">TL</option>
             {activeCurrencies.map(curr => (
               <option key={curr} value={curr}>{curr}</option>
             ))}
