@@ -5,6 +5,12 @@ import { useBudget } from '../context/BudgetContext';
 import { Card } from '../components/ui/Card';
 import { ProgressBar } from '../components/ui/ProgressBar';
 
+const isGoldType = (type: string) => {
+  const lower = type.toLowerCase();
+  const goldKeywords = ['gram', 'çeyrek', 'yarım', 'tam', 'ata', 'reşat', 'ayar', 'bilezik', 'altın', 'has', 'külçe'];
+  return goldKeywords.some(kw => lower.includes(kw));
+};
+
 export default function Dashboard() {
   const { state, viewDate, earliestAllowedMonth, setViewDate, theme, toggleTheme, showMealCard, vaultRecords, vaultOrder } = useBudget();
   const [isVaultExpanded, setIsVaultExpanded] = useState<boolean>(() => {
@@ -17,20 +23,105 @@ export default function Dashboard() {
   });
 
   const getAssetShortName = (name: string): string => {
+    const lower = name.trim().toLowerCase();
+    
+    if (isGoldType(name)) {
+      if (lower.endsWith(' altın')) {
+        return name.substring(0, name.length - 6);
+      }
+      return name;
+    }
+
     const mapping: Record<string, string> = {
-      'Bosna-Hersek Markı': 'BAM',
-      'Amerikan Doları': 'USD',
-      'İngiliz Sterlini': 'GBP',
-      'İsviçre Frangı': 'CHF',
-      'Kanada Doları': 'CAD',
-      'Avustralya Doları': 'AUD',
-      'Rus Rublesi': 'RUB',
-      'Japon Yeni': 'JPY',
-      'Suudi Arabistan Riyali': 'SAR',
-      'Birleşik Arap Emirlikleri Dirhemi': 'AED',
-      'Kuveyt Dinarı': 'KWD',
+      'bosna-hersek markı': 'BAM',
+      'bam': 'BAM',
+      'amerikan doları': 'USD',
+      'dolar': 'USD',
+      'usd': 'USD',
+      'euro': 'EUR',
+      'eur': 'EUR',
+      'ingiliz sterlini': 'GBP',
+      'sterlin': 'GBP',
+      'gbp': 'GBP',
+      'isviçre frangı': 'CHF',
+      'frang': 'CHF',
+      'chf': 'CHF',
+      'kanada doları': 'CAD',
+      'cad': 'CAD',
+      'avustralya doları': 'AUD',
+      'aud': 'AUD',
+      'rus rublesi': 'RUB',
+      'ruble': 'RUB',
+      'rub': 'RUB',
+      'japon yeni': 'JPY',
+      'yen': 'JPY',
+      'jpy': 'JPY',
+      'suudi arabistan riyali': 'SAR',
+      'riyali': 'SAR',
+      'sar': 'SAR',
+      'birleşik arap emirlikleri dirhemi': 'AED',
+      'dirhem': 'AED',
+      'aed': 'AED',
+      'kuveyt dinarı': 'KWD',
+      'dinar': 'KWD',
+      'kwd': 'KWD',
     };
-    return mapping[name] || name;
+    return mapping[lower] || name.toUpperCase();
+  };
+
+  const getAssetFullTitle = (name: string): string => {
+    const lower = name.trim().toLowerCase();
+    
+    if (isGoldType(name)) {
+      if (lower.includes('altın')) return name;
+      if (lower === 'gram') return 'Gram Altın';
+      if (lower === 'çeyrek') return 'Çeyrek Altın';
+      if (lower === 'yarım') return 'Yarım Altın';
+      if (lower === 'tam') return 'Tam Altın';
+      if (lower === 'ata') return 'Ata Altın';
+      if (lower === 'reşat') return 'Reşat Altın';
+      if (lower === 'bilezik') return 'Bilezik Altın';
+      if (lower === 'külçe') return 'Külçe Altın';
+      return `${name} Altın`;
+    }
+
+    const mapping: Record<string, string> = {
+      'bam': 'Bosna-Hersek Markı',
+      'bosna-hersek markı': 'Bosna-Hersek Markı',
+      'usd': 'Amerikan Doları',
+      'dolar': 'Amerikan Doları',
+      'amerikan doları': 'Amerikan Doları',
+      'eur': 'Euro',
+      'euro': 'Euro',
+      'gbp': 'İngiliz Sterlini',
+      'sterlin': 'İngiliz Sterlini',
+      'ingiliz sterlini': 'İngiliz Sterlini',
+      'chf': 'İsviçre Frangı',
+      'frang': 'İsviçre Frangı',
+      'isviçre frangı': 'İsviçre Frangı',
+      'cad': 'Kanada Doları',
+      'kanada doları': 'Kanada Doları',
+      'aud': 'Avustralya Doları',
+      'avustralya doları': 'Avustralya Doları',
+      'rub': 'Rus Rublesi',
+      'ruble': 'Rus Rublesi',
+      'rus rublesi': 'Rus Rublesi',
+      'jpy': 'Japon Yeni',
+      'yen': 'Japon Yeni',
+      'japon yeni': 'Japon Yeni',
+      'sar': 'Suudi Arabistan Riyali',
+      'riyali': 'Suudi Arabistan Riyali',
+      'suudi arabistan riyali': 'Suudi Arabistan Riyali',
+      'aed': 'Birleşik Arap Emirlikleri Dirhemi',
+      'dirhem': 'Birleşik Arap Emirlikleri Dirhemi',
+      'birleşik arap emirlikleri dirhemi': 'Birleşik Arap Emirlikleri Dirhemi',
+      'kwd': 'Kuveyt Dinarı',
+      'dinar': 'Kuveyt Dinarı',
+      'kuveyt dinarı': 'Kuveyt Dinarı',
+    };
+    
+    const fallback = name.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+    return mapping[lower] || fallback;
   };
 
   // Helper to format month
@@ -253,12 +344,6 @@ export default function Dashboard() {
           {isVaultExpanded && (
             <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
             {(() => {
-              const isGoldType = (type: string) => {
-                const lower = type.toLowerCase();
-                const goldKeywords = ['gram', 'çeyrek', 'yarım', 'tam', 'ata', 'reşat', 'ayar', 'bilezik', 'altın', 'has', 'külçe'];
-                return goldKeywords.some(kw => lower.includes(kw));
-              };
-
               const addMonths = (dateStr: string, months: number): string => {
                 let [y, m] = dateStr.split('-').map(Number);
                 m += months;
@@ -310,7 +395,7 @@ export default function Dashboard() {
                   if (totalGold === 0) return null;
 
                   return (
-                    <Card key={asset} title={getAssetShortName(asset)} className="bg-yellow-500/5 border-yellow-500/20">
+                    <Card key={asset} title={getAssetFullTitle(asset)} className="bg-yellow-500/5 border-yellow-500/20">
                       <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-500 mt-2">
                         {totalGold} {getAssetShortName(asset)}
                       </div>
@@ -352,7 +437,7 @@ export default function Dashboard() {
                   if (remaining === 0) return null;
 
                   return (
-                    <Card key={asset} title={getAssetShortName(asset)} className="bg-emerald-500/5 border-emerald-500/20">
+                    <Card key={asset} title={getAssetFullTitle(asset)} className="bg-emerald-500/5 border-emerald-500/20">
                       <div className={`text-2xl font-bold mt-2 ${remaining < 0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-500'}`}>
                         {remaining.toLocaleString('tr-TR')} {getAssetShortName(asset)}
                       </div>
