@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { NavLink } from 'react-router-dom';
+import { useEffect } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Wallet, CreditCard, TurkishLira } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -16,6 +17,16 @@ const navItems = [
 
 export function Layout({ children }: LayoutProps) {
   const currentNavItems = navItems;
+  const location = useLocation();
+
+  useEffect(() => {
+    const currentItem = navItems.find(item => item.path === location.pathname);
+    if (currentItem) {
+      document.title = `${currentItem.label} | Hesabını Bil!`;
+    } else {
+      document.title = 'Hesabını Bil!';
+    }
+  }, [location.pathname]);
 
   return (
     <div className="flex min-h-screen bg-background text-foreground w-full max-w-full">
