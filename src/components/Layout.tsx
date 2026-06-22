@@ -8,8 +8,8 @@ interface LayoutProps {
 }
 
 const navItems = [
-  { path: '/', label: 'Özet', icon: LayoutDashboard },
-  { path: '/fixed', label: 'Sabit', icon: Wallet },
+  { path: '/', label: 'Bilanço', icon: LayoutDashboard },
+  { path: '/fixed', label: 'Varlıklarım', icon: Wallet },
   { path: '/daily', label: 'Günlük', icon: TurkishLira },
   { path: '/debt', label: 'Borç', icon: CreditCard },
 ];
