@@ -259,7 +259,7 @@ export default function Dashboard() {
   const usagePercentage = totalCashResources > 0 ? (totalCashSpent / totalCashResources) * 100 : 0;
 
   // Pie Chart Data
-  const pieData = [];
+  const pieData: { name: string; value: number; fill?: string; color?: string }[] = [];
   const COLORS = ['#FFBB28', '#FF8042', '#8884D8', '#A28DFF', '#FF6666', '#0088FE', '#00C49F'];
 
   // The pie chart must represent the TOTAL MONTHLY INCOME.
