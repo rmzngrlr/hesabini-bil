@@ -375,6 +375,7 @@ export default function Dashboard() {
                   .reduce((sum, r) => {
                     const amt = Number(r.amount);
                     const tType = r.transaction_type || 'Birikim';
+                    if (tType === 'Borç Verdim') return sum;
                     if (tType === 'Birikim' || tType === 'Giriş' || tType === 'Bütçe Geliri') {
                       return sum + amt;
                     } else {
@@ -402,7 +403,9 @@ export default function Dashboard() {
                   const groupRecords = vaultRecords.filter(r => r.gold_type === asset && (r.transaction_type || 'Birikim') !== 'Düğün Hediyesi / Takı');
                   const totalGold = groupRecords.reduce((sum, r) => {
                     const amt = Number(r.amount);
-                    return (r.transaction_type || 'Birikim') === 'Birikim' ? sum + amt : sum - amt;
+                    const tType = r.transaction_type || 'Birikim';
+                    if (tType === 'Borç Verdim') return sum;
+                    return tType === 'Birikim' ? sum + amt : sum - amt;
                   }, 0);
 
                   if (totalGold === 0) return null;

@@ -211,7 +211,9 @@ export function VaultSection() {
                                     // Net balance for the type: Birikim is positive, Borç Verdim is negative
                                     const totalGiris = groupRecords.reduce((sum, record) => {
                                         const amt = Number(record.amount);
-                                        return (record.transaction_type || 'Birikim') === 'Birikim' ? sum + amt : sum - amt;
+                                        const tType = record.transaction_type || 'Birikim';
+                                        if (tType === 'Borç Verdim') return sum; // Ignore Borç Verdim
+                                        return tType === 'Birikim' ? sum + amt : sum - amt;
                                     }, 0);
 
                                     return (
