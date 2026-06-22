@@ -259,43 +259,27 @@ export default function Dashboard() {
   const usagePercentage = totalCashResources > 0 ? (totalCashSpent / totalCashResources) * 100 : 0;
 
   // Pie Chart Data
-  const pieData = [];
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#A28DFF', '#FF6666'];
+  let pieData = [];
+  const COLORS = ['#FFBB28', '#FF8042', '#8884D8', '#A28DFF', '#FF6666', '#0088FE', '#00C49F'];
 
   // The pie chart must represent the TOTAL MONTHLY INCOME.
-  // We include ALL fixed expenses (even if unpaid, to show the budget slice).
   let totalBudgetedFixed = 0;
-  let colorIndex = 0;
 
-  state.fixedExpenses.forEach(expense => {
-      if (expense.amount > 0) {
-          // We include all fixed expenses in the pie chart as TL equivalents because they reduce the total monthly income
-          totalBudgetedFixed += expense.amount;
-          pieData.push({
-              name: expense.title,
-              value: expense.amount,
-              color: COLORS[colorIndex % COLORS.length]
-          });
-          colorIndex++;
-      }
-  });
+  // Prepare fixed expenses alphabetically
+  const validFixedExpenses = state.fixedExpenses
+    .filter(e => e.amount > 0)
+    .sort((a, b) => a.title.localeCompare(b.title, 'tr'));
 
-  // Add daily expenses summary slice
+  // Calculate daily expenses summary slice
   const dailyCashSpentTotal = state.dailyExpenses
       .filter(e => e.type === 'NAKIT' && e.amount < 0)
       .reduce((sum, e) => sum + Math.abs(e.amount), 0);
 
-  if (dailyCashSpentTotal > 0 && !isFuture) {
-      pieData.push({
-          name: 'Günlük Harcamalar',
-          value: dailyCashSpentTotal,
-          color: '#ef4444' // red-500
-      });
-  }
-
   // The remaining pie slice is (Total Resources - ALL Fixed Expenses - Daily Spent)
+  validFixedExpenses.forEach(e => totalBudgetedFixed += e.amount);
   const trueRemaining = totalCashResources - totalBudgetedFixed - (isFuture ? 0 : dailyCashSpentTotal);
 
+  // 1. Kalan TL / Bütçe Açığı
   if (trueRemaining > 0) {
       pieData.push({
           name: 'Kalan TL',
@@ -309,6 +293,28 @@ export default function Dashboard() {
           color: '#7f1d1d' // dark red
       });
   }
+
+  // 2. Günlük Harcamalar
+  if (dailyCashSpentTotal > 0 && !isFuture) {
+      pieData.push({
+          name: 'Günlük Harcamalar',
+          value: dailyCashSpentTotal,
+          color: '#ef4444' // red-500
+      });
+  }
+
+  // 3. Sabit Giderler (Alphabetical)
+  let colorIndex = 0;
+  validFixedExpenses.forEach(expense => {
+      pieData.push({
+          name: expense.title,
+          value: expense.amount,
+          color: COLORS[colorIndex % COLORS.length]
+      });
+      colorIndex++;
+  });
+
+  const totalPieValue = pieData.reduce((sum, item) => sum + item.value, 0);
 
   return (
     <div className="space-y-6 pb-20 p-4">
@@ -520,20 +526,12 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Main Budget Progress */}
-      <Card title={isFuture ? "Bütçe Planı" : "Aylık TL Bütçe Durumu"} className="space-y-4">
+      {/* Main Budget Summary & Chart */}
+      <Card title={isFuture ? "Bütçe Planı" : "Aylık TL Bütçe Durumu"} className="space-y-6">
 
-        <div className="flex justify-between items-center text-sm mb-1">
-           <span className="text-muted-foreground">{spendingLabel}: {totalCashSpent.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}</span>
-           <span className="font-medium text-foreground">{(100 - usagePercentage).toFixed(1)}% Kalan</span>
-        </div>
-        <ProgressBar value={totalCashSpent} max={totalCashResources || 1} />
-      </Card>
-
-      {/* Pie Chart Section */}
-      {pieData.length > 0 && (
-        <Card title="Nakit Bütçe Dağılımı" className="mt-6">
-            <div className="h-64 w-full mt-4">
+        {/* Pie Chart Section */}
+        {pieData.length > 0 && (
+            <div className="h-64 w-full mt-2 border-b border-border pb-6">
                 <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                         <Pie
@@ -550,15 +548,27 @@ export default function Dashboard() {
                             ))}
                         </Pie>
                         <Tooltip
-                            formatter={(value) => [Number(value).toLocaleString('tr-TR') + ' ₺', 'Tutar']}
+                            formatter={(value, name) => {
+                                const percent = totalPieValue > 0 ? ((Number(value) / totalPieValue) * 100).toFixed(1) : 0;
+                                return [`${Number(value).toLocaleString('tr-TR')} ₺ (%${percent})`, name];
+                            }}
                             contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)' }}
                         />
                         <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
                     </PieChart>
                 </ResponsiveContainer>
             </div>
-        </Card>
-      )}
+        )}
+
+        {/* Progress Bar Section */}
+        <div>
+            <div className="flex justify-between items-center text-sm mb-2">
+               <span className="text-muted-foreground">{spendingLabel}: {totalCashSpent.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}</span>
+               <span className="font-medium text-foreground">{(100 - usagePercentage).toFixed(1)}% Kalan</span>
+            </div>
+            <ProgressBar value={totalCashSpent} max={totalCashResources || 1} />
+        </div>
+      </Card>
     </div>
   );
 }
