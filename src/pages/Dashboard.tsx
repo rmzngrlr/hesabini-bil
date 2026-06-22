@@ -82,7 +82,7 @@ export default function Dashboard() {
       'isveç kronu': 'kr', 'norveç kronu': 'kr', 'danimarka kronu': 'kr',
     };
 
-    return mapping[lower] || name.toUpperCase();
+    return mapping[lower] || name.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
   };
 
   const getAssetFullTitle = (name: string): string => {

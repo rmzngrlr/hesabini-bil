@@ -9,6 +9,11 @@ import type { FixedExpense } from '../types';
 import { VaultSection } from '../components/VaultSection';
 
 
+const formatTitleCase = (str: string) => {
+  if (str === 'NAKIT') return 'Türk Lirası';
+  return str.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+};
+
 export default function FixedExpenses() {
   const { isAdmin } = useAuth();
   const {
@@ -298,7 +303,7 @@ export default function FixedExpenses() {
               const paid = state.fixedExpenses.filter(e => (e.type || 'NAKIT') === curr && e.isPaid).reduce((sum, e) => sum + e.amount, 0);
               return (
                 <div key={curr} className="flex flex-col gap-1 border-b border-border/50 last:border-0 pb-3 last:pb-0">
-                  <div className="text-xs font-bold text-primary tracking-wider uppercase">{curr === 'NAKIT' ? 'Türk Lirası' : curr}</div>
+                  <div className="text-xs font-bold text-primary tracking-wider">{formatTitleCase(curr)}</div>
                   <div className="flex justify-between items-end">
                     <div>
                       <div className="text-xs text-muted-foreground">Toplam Gider</div>
