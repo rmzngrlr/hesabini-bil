@@ -90,7 +90,7 @@ export default function Vault() {
         const currentTypes = Array.from(new Set(records.map(r => r.gold_type)));
 
         // Merge the saved vaultOrder with current types to ensure no types are missed
-        let orderArray = [...vaultOrder];
+        const orderArray = [...vaultOrder];
         for (const type of currentTypes) {
             if (!orderArray.includes(type)) {
                 orderArray.push(type);

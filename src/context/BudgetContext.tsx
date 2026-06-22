@@ -250,7 +250,7 @@ function recalculateHistoryAndCurrent(state: BudgetState): BudgetState {
     // Track running rollovers for other currencies
     const activeCurrencies = getActiveCurrencies(newState, globalVaultRecords);
 
-    let runningAssetRollovers: Record<string, number> = {};
+    const runningAssetRollovers: Record<string, number> = {};
 
     // For the very first month, starting asset rollovers are computed from vault records before that month
     const firstMonth = newState.history.length > 0 ? newState.history[0].month : newState.currentMonth;
@@ -594,7 +594,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       if (recordToDelete) {
         // If we deleted a vault record, find and delete the associated daily expenses
         setRealState(prev => {
-          let updatedState = { ...prev };
+          const updatedState = { ...prev };
           const goldAmount = Number(recordToDelete.amount);
 
           const isGoldMatch = (exp: DailyExpense) =>
