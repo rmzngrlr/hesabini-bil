@@ -8,32 +8,17 @@
     <meta name="description" content="Kişisel Bütçe ve Altın Takip Uygulaması" />
     <title>Hesabını Bil!</title>
       <style>
-      html, body {
-        touch-action: pan-x pan-y;
-        overscroll-behavior: none;
-      }
-      button, a, input, select, textarea {
+      /* Prevent double-tap to zoom natively without breaking scroll */
+      * {
         touch-action: manipulation;
       }
     </style>
     <script>
-      // Prevent double-tap to zoom
-      let lastTouchEnd = 0;
-      document.addEventListener('touchend', function (event) {
-        const now = (new Date()).getTime();
-        if (now - lastTouchEnd <= 300) {
-          event.preventDefault();
-        }
-        lastTouchEnd = now;
-      }, { passive: false });
-
-      // Prevent pinch to zoom
+      // Prevent pinch-to-zoom on iOS specifically via JS, carefully checking for multiple touches
+      // without breaking standard 1-finger vertical/horizontal scrolling.
       document.addEventListener('touchmove', function(event) {
-        if (event.scale !== 1 && event.scale !== undefined) {
-          event.preventDefault();
-        }
         if (event.touches.length > 1) {
-          event.preventDefault();
+          event.preventDefault(); // Stop pinch to zoom
         }
       }, { passive: false });
     </script>
