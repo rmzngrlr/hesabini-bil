@@ -308,27 +308,27 @@ export default function Dashboard() {
         <Card title={isFuture ? "Tahmini Kalan Türk Lirası" : "Kalan Türk Lirası"} className="bg-gradient-to-br from-card to-secondary/10">
 
            <div className={`text-3xl font-bold mt-2 ${remainingCash < 0 ? 'text-red-500' : 'text-foreground'}`}>
-             {remainingCash.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+             {remainingCash.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}
            </div>
            <div className="text-xs text-muted-foreground mt-1">
-             Toplam: {totalCashResources.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+             Toplam: {totalCashResources.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}
            </div>
         </Card>
 
         {showMealCard && (
             <Card title="Kalan Yemek Kartı" className="bg-gradient-to-br from-card to-orange-500/5 border-orange-500/20">
             <div className="text-3xl font-bold text-orange-600 mt-2">
-                {finalRemainingYk.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+                {finalRemainingYk.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}
             </div>
             <div className="text-xs text-muted-foreground mt-1">
-                Toplam: {totalYkResources.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+                Toplam: {totalYkResources.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}
             </div>
             </Card>
         )}
 
         <Card title={isFuture ? "Tahmini Kredi Kartı Ödemesi" : "Toplam Kredi Kartı Borcu"} className="border-red-900/20 bg-red-950/5">
            <div className="text-3xl font-bold text-red-500 mt-2">
-             {totalCCDebt.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+             {totalCCDebt.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}
            </div>
            {isFuture && <div className="text-xs text-muted-foreground mt-1">Bu ay ödenecek taksitler</div>}
         </Card>
@@ -413,7 +413,7 @@ export default function Dashboard() {
                   return (
                     <Card key={asset} title={getAssetFullTitle(asset)} className="bg-yellow-500/5 border-yellow-500/20">
                       <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-500 mt-2">
-                        {totalGold} {getAssetSymbol(asset)}
+                        {totalGold}{getAssetSymbol(asset)}
                       </div>
                     </Card>
                   );
@@ -455,7 +455,7 @@ export default function Dashboard() {
                   return (
                     <Card key={asset} title={getAssetFullTitle(asset)} className="bg-emerald-500/5 border-emerald-500/20">
                       <div className={`text-2xl font-bold mt-2 ${remaining < 0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-500'}`}>
-                        {remaining.toLocaleString('tr-TR')} {getAssetSymbol(asset)}
+                        {remaining.toLocaleString('tr-TR')}{getAssetSymbol(asset)}
                       </div>
                     </Card>
                   );
@@ -471,7 +471,7 @@ export default function Dashboard() {
       <Card title={isFuture ? "Bütçe Planı" : "Aylık TL Bütçe Durumu"} className="space-y-4">
 
         <div className="flex justify-between items-center text-sm mb-1">
-           <span className="text-muted-foreground">{spendingLabel}: {totalCashSpent.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</span>
+           <span className="text-muted-foreground">{spendingLabel}: {totalCashSpent.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}</span>
            <span className="font-medium text-foreground">{(100 - usagePercentage).toFixed(1)}% Kalan</span>
         </div>
         <ProgressBar value={totalCashSpent} max={totalCashResources || 1} />

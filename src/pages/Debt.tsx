@@ -143,7 +143,7 @@ export default function Debt() {
 
       <Card title="Bu Ay Ödenecek Toplam Kredi Kartı Borcu" className="bg-red-950/20 border-red-900/20">
         <div className="text-3xl font-bold text-red-500 mt-2">
-          {totalDebt.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+          {totalDebt.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}
         </div>
       </Card>
 
@@ -273,12 +273,12 @@ export default function Debt() {
                        <div>
                          <div className="font-medium">{inst.description}</div>
                          <div className="text-xs text-muted-foreground">
-                           Toplam: {Math.abs(inst.totalAmount).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+                           Toplam: {Math.abs(inst.totalAmount).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}
                          </div>
                        </div>
                        <div className="text-right">
                          <div className="font-bold text-red-500">
-                           {Math.abs(inst.monthlyAmount).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}/ay
+                           {Math.abs(inst.monthlyAmount).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}/ay
                          </div>
                          <div className="flex items-center justify-end gap-2 mt-1">
                             <div className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
@@ -327,7 +327,7 @@ export default function Debt() {
             <div className="text-right">
               <div className={cn("font-bold whitespace-nowrap", debt.amount > 0 ? "text-green-500" : "text-red-500")}>
                 {debt.amount > 0 ? '+' : ''}
-                {debt.amount.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+                {debt.amount.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}
               </div>
               <div className="flex justify-end gap-3 mt-1">
                 <button

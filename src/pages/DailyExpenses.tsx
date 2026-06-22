@@ -902,12 +902,12 @@ export default function DailyExpenses() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Card title={`${isGoldType(activeTab) ? 'Toplam Birikim' : 'Bu Ay Harcanan'} (${getAssetFullTitle(activeTab)})`} className={`${isGoldType(activeTab) ? 'bg-yellow-500/5 border-yellow-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
               <div className={`text-2xl font-bold mt-2 ${isGoldType(activeTab) ? 'text-yellow-600 dark:text-yellow-500' : 'text-red-500'}`}>
-                 {isGoldType(activeTab) ? (currentMonthIncome - currentMonthSpent).toLocaleString('tr-TR') : currentMonthSpent.toLocaleString('tr-TR')} {getAssetUnitLabel(activeTab)}
+                 {isGoldType(activeTab) ? (currentMonthIncome - currentMonthSpent).toLocaleString('tr-TR') : currentMonthSpent.toLocaleString('tr-TR')}{getAssetUnitLabel(activeTab)}
               </div>
             </Card>
             <Card title={`Bu Ayki Gelir / Giriş (${getAssetFullTitle(activeTab)})`} className="bg-green-500/5 border-green-500/20">
               <div className="text-2xl font-bold text-green-500 mt-2">
-                 {currentMonthIncome.toLocaleString('tr-TR')} {getAssetUnitLabel(activeTab)}
+                 {currentMonthIncome.toLocaleString('tr-TR')}{getAssetUnitLabel(activeTab)}
               </div>
             </Card>
         </div>
@@ -940,7 +940,7 @@ export default function DailyExpenses() {
                 {format(new Date(date), 'd MMMM yyyy, EEEE', { locale: tr })}
               </h3>
               <span className={`text-sm font-bold ${dailyTotal >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                 {dailyTotal > 0 ? '+' : ''}{dailyTotal.toLocaleString('tr-TR')} {getAssetUnitLabel(activeTab)}
+                 {dailyTotal > 0 ? '+' : ''}{dailyTotal.toLocaleString('tr-TR')}{getAssetUnitLabel(activeTab)}
               </span>
             </div>
             {groupedExpenses[date].map((expense) => {
@@ -959,7 +959,7 @@ export default function DailyExpenses() {
                 <div className="text-right">
                     <div className={`font-bold whitespace-nowrap ${expense.amount > 0 ? 'text-green-500' : 'text-red-500'}`}>
                       {expense.amount > 0 ? '+' : ''}
-                      {expense.amount.toLocaleString('tr-TR')} {getAssetUnitLabel(expense.type)}
+                      {expense.amount.toLocaleString('tr-TR')}{getAssetUnitLabel(expense.type)}
                     </div>
                     <div className="flex justify-end gap-3 mt-1">
                       <button
