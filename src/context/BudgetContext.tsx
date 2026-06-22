@@ -582,12 +582,57 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const deleteVaultRecord = async (id: number) => {
     try {
+      // Find the record before deleting it so we can clean up daily expenses
+      const recordToDelete = vaultRecords.find(r => r.id === id);
+
       const res = await fetchWithAuth(`/vault/${id}`, {
         method: 'DELETE'
       });
       if (!res.ok) throw new Error('Kayıt silinemedi.');
       await loadVaultRecords();
-      setRealState(prev => recalculateHistoryAndCurrent(prev));
+
+      if (recordToDelete) {
+        // If we deleted a vault record, find and delete the associated daily expenses
+        setRealState(prev => {
+          let updatedState = { ...prev };
+          const goldAmount = Number(recordToDelete.amount);
+
+          const isGoldMatch = (exp: DailyExpense) =>
+            exp.date === recordToDelete.record_date &&
+            exp.type === recordToDelete.gold_type &&
+            Math.abs(exp.amount) === goldAmount &&
+            exp.description.startsWith(`Kime Ait: ${recordToDelete.owner}`);
+
+          const isTLMatch = (exp: DailyExpense) =>
+            exp.date === recordToDelete.record_date &&
+            exp.type === 'NAKIT' &&
+            (exp.description.startsWith(`Altın Alımı: ${goldAmount} ${recordToDelete.gold_type}`) ||
+             exp.description.startsWith(`Altın Satışı: ${goldAmount} ${recordToDelete.gold_type}`));
+
+
+          // Remove from current month
+          updatedState.dailyExpenses = updatedState.dailyExpenses.filter(exp => !isGoldMatch(exp) && !isTLMatch(exp));
+
+          // Remove from history
+          updatedState.history = updatedState.history.map(h => ({
+            ...h,
+            dailyExpenses: h.dailyExpenses.filter(exp => !isGoldMatch(exp) && !isTLMatch(exp))
+          }));
+
+          const newState = recalculateHistoryAndCurrent(updatedState);
+
+          // Make sure we also sync this updated state to the backend
+          fetchWithAuth('/budget', {
+             method: 'POST',
+             body: JSON.stringify(newState)
+          }).catch(console.error);
+
+          return newState;
+        });
+      } else {
+        setRealState(prev => recalculateHistoryAndCurrent(prev));
+      }
+
     } catch (err) {
       console.error(err);
       throw err;

@@ -508,13 +508,17 @@ export default function DailyExpenses() {
         setEditingId(null);
       } else {
         // Add flow
-        // 1. Add to Vault only! (As requested: "Giriş olarak ekleyeyim ama Kasa kısmına eklese yeter.")
+        // The user wants the TL equivalent to be added to the vault note to help with matching
+        // "Altın alış satış da TL karşılığını yazıyorum ya bunu kasa kısmında nota eklersen..."
+        const finalVaultNote = goldPriceTL ? `${goldNote ? goldNote + ' | ' : ''}${goldTransactionType === 'Bozdurma' ? 'Satış' : 'Alış'} Fiyatı: ${goldPriceTL} TL` : goldNote;
+
+        // 1. Add to Vault only!
         await addVaultRecord({
           record_date: date,
           owner: goldOwner,
           gold_type: type,
           amount: numAmount,
-          note: goldNote,
+          note: finalVaultNote,
           transaction_type: goldTransactionType
         });
 
