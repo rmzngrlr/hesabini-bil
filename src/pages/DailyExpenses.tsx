@@ -313,8 +313,9 @@ export default function DailyExpenses() {
     
     if (mapping[lower]) return mapping[lower];
     
+    // No longer forcing uppercase for short names
     if (name.length >= 3 && name.length <= 4 && name === name.toUpperCase()) {
-      return name;
+      return name.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
     }
     
     return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
@@ -354,7 +355,7 @@ export default function DailyExpenses() {
   const [goldOwner, setGoldOwner] = useDraftState('daily_draft_gold_owner', '');
   const [goldNote, setGoldNote] = useDraftState('daily_draft_gold_note', '');
   const [goldPriceTL, setGoldPriceTL] = useDraftState('daily_draft_gold_price_tl', '');
-  const [goldTransactionType, setGoldTransactionType] = useDraftState<'Birikim' | 'Bozdurma' | 'Borç Verdim'>('daily_draft_gold_tx_type', 'Birikim');
+  const [goldTransactionType, setGoldTransactionType] = useDraftState<'Birikim' | 'Bozdurma'>('daily_draft_gold_tx_type', 'Birikim');
 
 
 
@@ -554,7 +555,7 @@ export default function DailyExpenses() {
               record_date: date,
               amount: Math.abs(finalAmount),
               note: description,
-              transaction_type: isExpense ? 'Borç Verdim' : 'Birikim',
+              transaction_type: isExpense ? 'Bozdurma' : 'Birikim',
               gold_type: finalType
             });
           }
@@ -699,7 +700,6 @@ export default function DailyExpenses() {
                     />
                   </div>
                 </div>
-                {goldTransactionType !== 'Borç Verdim' && (
                   <div className="space-y-1">
                     <label className="text-xs text-muted-foreground">
                       {goldTransactionType === 'Bozdurma' ? 'Satış Tutarı (TL) - İsteğe Bağlı' : 'Alış Tutarı (TL) - İsteğe Bağlı'}
@@ -713,7 +713,6 @@ export default function DailyExpenses() {
                       className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                   </div>
-                )}
               </div>
             ) : (
               <div className="space-y-1">
@@ -751,13 +750,7 @@ export default function DailyExpenses() {
                   >
                   Bozdurma
                   </button>
-                  <button
-                  type="button"
-                  onClick={() => { setGoldTransactionType('Borç Verdim'); setTransactionType('EXPENSE'); }}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${goldTransactionType === 'Borç Verdim' ? 'bg-red-500/10 border-red-500 text-red-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
-                  >
-                  Borç Verdim
-                  </button>
+
               </div>
             ) : (
               <div className="flex gap-2 pt-1">
