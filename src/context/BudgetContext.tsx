@@ -619,15 +619,16 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             dailyExpenses: h.dailyExpenses.filter(exp => !isGoldMatch(exp) && !isTLMatch(exp))
           }));
 
-          const newState = recalculateHistoryAndCurrent(updatedState);
+          return recalculateHistoryAndCurrent(updatedState);
+        });
 
-          // Make sure we also sync this updated state to the backend
+        // Safe API call outside the setState updater
+        setRealState(current => {
           fetchWithAuth('/budget', {
              method: 'POST',
-             body: JSON.stringify(newState)
+             body: JSON.stringify(current)
           }).catch(console.error);
-
-          return newState;
+          return current;
         });
       } else {
         setRealState(prev => recalculateHistoryAndCurrent(prev));

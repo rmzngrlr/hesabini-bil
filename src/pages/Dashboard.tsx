@@ -529,9 +529,18 @@ export default function Dashboard() {
       {/* Main Budget Summary & Chart */}
       <Card title={isFuture ? "Bütçe Planı" : "Aylık TL Bütçe Durumu"} className="space-y-6">
 
+        {/* Progress Bar Section */}
+        <div className={pieData.length > 0 ? "border-b border-border pb-6" : ""}>
+            <div className="flex justify-between items-center text-sm mb-2">
+               <span className="text-muted-foreground">{spendingLabel}: {totalCashSpent.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}</span>
+               <span className="font-medium text-foreground">{(100 - usagePercentage).toFixed(1)}% Kalan</span>
+            </div>
+            <ProgressBar value={totalCashSpent} max={totalCashResources || 1} />
+        </div>
+
         {/* Pie Chart Section */}
         {pieData.length > 0 && (
-            <div className="h-64 w-full mt-2 border-b border-border pb-6">
+            <div className="h-64 w-full mt-2">
                 <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                         <Pie
@@ -559,15 +568,6 @@ export default function Dashboard() {
                 </ResponsiveContainer>
             </div>
         )}
-
-        {/* Progress Bar Section */}
-        <div>
-            <div className="flex justify-between items-center text-sm mb-2">
-               <span className="text-muted-foreground">{spendingLabel}: {totalCashSpent.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}</span>
-               <span className="font-medium text-foreground">{(100 - usagePercentage).toFixed(1)}% Kalan</span>
-            </div>
-            <ProgressBar value={totalCashSpent} max={totalCashResources || 1} />
-        </div>
       </Card>
     </div>
   );
