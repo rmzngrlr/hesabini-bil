@@ -10,9 +10,9 @@ interface LayoutProps {
 
 const navItems = [
   { path: '/', label: 'Bilanço', icon: LayoutDashboard },
-  { path: '/fixed', label: 'Varlıklarım', icon: Wallet },
-  { path: '/daily', label: 'Günlük', icon: TurkishLira },
-  { path: '/debt', label: 'Borç', icon: CreditCard },
+  { path: '/varliklarim', label: 'Varlıklarım', icon: Wallet },
+  { path: '/gunluk', label: 'Günlük', icon: TurkishLira },
+  { path: '/borc', label: 'Borç', icon: CreditCard },
 ];
 
 export function Layout({ children }: LayoutProps) {

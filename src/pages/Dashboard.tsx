@@ -269,7 +269,7 @@ export default function Dashboard() {
             >
               {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
             </button>
-            <Link to="/settings" className="p-2 rounded-full bg-secondary text-muted-foreground hover:text-primary transition-colors">
+            <Link to="/ayarlar" className="p-2 rounded-full bg-secondary text-muted-foreground hover:text-primary transition-colors">
               <SettingsIcon size={20} />
             </Link>
           </div>
