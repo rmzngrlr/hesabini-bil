@@ -7,7 +7,7 @@ import { cn } from '../lib/utils';
 import type { CCDebt } from '../types';
 
 export default function Debt() {
-  const { state, viewDate, addCCDebt, updateCCDebt, deleteCCDebt, addInstallment, deleteInstallment, addDailyExpense } = useBudget();
+  const { state, viewDate, addCCDebt, updateCCDebt, deleteCCDebt, addInstallment, deleteInstallment, addDailyExpense, askConfirmation } = useBudget();
   const [description, setDescription] = useDraftState('debt_draft_desc', '');
   const [amount, setAmount] = useDraftState('debt_draft_amount', '');
 
@@ -285,8 +285,8 @@ export default function Debt() {
                               {current} / {inst.installmentCount}
                             </div>
                             <button
-                              onClick={() => {
-                                if (confirm('Bu taksit planını silmek istediğinize emin misiniz? Gelecek aylar için ödeme oluşmayacaktır.')) {
+                              onClick={async () => {
+                                if (await askConfirmation('Bu taksit planını silmek istediğinize emin misiniz? Gelecek aylar için ödeme oluşmayacaktır.')) {
                                   deleteInstallment(inst.id);
                                 }
                               }}
@@ -337,7 +337,7 @@ export default function Debt() {
                   <Pencil size={12} /> Düzenle
                 </button>
                 <button
-                  onClick={() => deleteCCDebt(debt.id)}
+                  onClick={async () => { if (await askConfirmation('Bu kredi kartı borç kaydını silmek istediğinize emin misiniz?')) { deleteCCDebt(debt.id); } }}
                   className="text-xs text-destructive hover:underline flex items-center gap-1"
                 >
                   <Trash2 size={12} /> Sil

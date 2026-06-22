@@ -7,7 +7,7 @@ import { exportToExcel, importFromExcel } from '../services/excelService';
 import { API_URL } from '../services/api';
 
 export default function Settings() {
-  const { state, loadState, showMealCard, toggleShowMealCard, showVault, toggleShowVault } = useBudget();
+  const { state, loadState, showMealCard, toggleShowMealCard, showVault, toggleShowVault, askConfirmation } = useBudget();
   const { username, logout } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [securityQuestion, setSecurityQuestion] = useState('');
@@ -40,7 +40,7 @@ export default function Settings() {
     if (!file) return;
 
     try {
-      if (confirm("Mevcut verilerinizin üzerine bu Excel yedeği yüklenecek. Emin misiniz?")) {
+      if (await askConfirmation("Mevcut verilerinizin üzerine bu Excel yedeği yüklenecek. Emin misiniz?")) {
           const newState = await importFromExcel(file);
           loadState(newState);
           alert("Excel yedeği başarıyla yüklendi!");

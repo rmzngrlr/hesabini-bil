@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useEffect, useState, useMemo, useRef, type ReactNode } from 'react';
-import type { BudgetState, FixedExpense, CustomIncome, DailyExpense, CCDebt, Installment, MonthlyHistory } from '../types';
+import type { BudgetState, FixedExpense, CustomIncome, DailyExpense, CCDebt, Installment, MonthlyHistory, GoldRecord } from '../types';
 import { fetchWithAuth } from '../services/api';
 import { useAuth } from './AuthContext';
+import { ConfirmationModal } from '../components/ConfirmationModal';
 
 const getCurrentMonth = () => {
   const d = new Date();
@@ -57,6 +58,17 @@ interface BudgetContextType {
   toggleShowMealCard: () => void;
   showVault: boolean;
   toggleShowVault: () => void;
+  // Vault state & operations
+  vaultRecords: GoldRecord[];
+  vaultOrder: string[];
+  addVaultRecord: (record: Omit<GoldRecord, 'id'>) => Promise<void>;
+  deleteVaultRecord: (id: number) => Promise<void>;
+  updateVaultRecord: (id: number, record: Partial<GoldRecord>) => Promise<void>;
+  updateVaultOrder: (order: string[]) => Promise<void>;
+  updateAssetIncome: (assetType: string, amount: number) => void;
+  updateAssetRollover: (assetType: string, amount: number) => void;
+  activeCurrencies: string[];
+  askConfirmation: (message: string, title?: string) => Promise<boolean>;
 }
 
 const BudgetContext = createContext<BudgetContextType | undefined>(undefined);
@@ -95,9 +107,138 @@ function monthDiff(d1: string, d2: string): number {
     return (y2 - y1) * 12 + (m2 - m1);
 }
 
+let globalVaultRecords: GoldRecord[] = [];
+
+const isGoldType = (type: string) => {
+  const lower = type.toLowerCase();
+  const goldKeywords = ['gram', 'çeyrek', 'yarım', 'tam', 'ata', 'reşat', 'ayar', 'bilezik', 'altın', 'has', 'külçe'];
+  return goldKeywords.some(kw => lower.includes(kw));
+};
+
+const getKasaSum = (records: GoldRecord[], type: string, filterFn: (date: string) => boolean) => {
+  return records
+    .filter(r => r.gold_type === type && filterFn(r.record_date))
+    .reduce((sum, r) => {
+      const amt = Number(r.amount);
+      const tType = r.transaction_type || 'Birikim';
+      if (tType === 'Birikim' || tType === 'Giriş' || tType === 'Bütçe Geliri') {
+        return sum + amt;
+      } else {
+        return sum - amt;
+      }
+    }, 0);
+};
+
+const getCurrencyVaultExpenses = (records: GoldRecord[]): DailyExpense[] => {
+  return (records || [])
+    .filter(r => r && r.gold_type && !isGoldType(r.gold_type) && r.record_date && typeof r.record_date === 'string')
+    .map(r => {
+      const isExpense = r.transaction_type === 'Borç Verdim' || r.transaction_type === 'Bozdurma' || r.transaction_type === 'Çıkış';
+      const amt = Number(r.amount);
+      return {
+        id: `vault-curr-${r.id}`,
+        date: r.record_date,
+        description: r.note ? `${r.owner}: ${r.note}` : r.owner || 'Kasa Kaydı',
+        amount: isExpense ? -Math.abs(amt) : Math.abs(amt),
+        type: r.gold_type
+      };
+    });
+};
+
+const getActiveCurrencies = (state: BudgetState, vaultRecs: GoldRecord[]) => {
+  const found = new Set<string>();
+  
+  // Scan vault records
+  (vaultRecs || []).forEach(r => {
+    if (!isGoldType(r.gold_type)) found.add(r.gold_type);
+  });
+
+  if (state) {
+    // Scan current daily expenses
+    (state.dailyExpenses || []).forEach(e => {
+      if (e.type !== 'NAKIT' && e.type !== 'YK' && !isGoldType(e.type)) {
+        found.add(e.type);
+      }
+    });
+
+    // Scan history
+    (state.history || []).forEach(h => {
+      (h.dailyExpenses || []).forEach(e => {
+        if (e.type !== 'NAKIT' && e.type !== 'YK' && !isGoldType(e.type)) {
+          found.add(e.type);
+        }
+      });
+      (h.fixedExpenses || []).forEach(e => {
+        if (e.type && e.type !== 'NAKIT' && e.type !== 'YK' && !isGoldType(e.type)) {
+          found.add(e.type);
+        }
+      });
+      (h.customIncomes || []).forEach(i => {
+        if (i.type && i.type !== 'NAKIT' && i.type !== 'YK' && !isGoldType(i.type)) {
+          found.add(i.type);
+        }
+      });
+    });
+
+    // Scan current month fixed expenses and custom incomes
+    (state.fixedExpenses || []).forEach(e => {
+      if (e.type && e.type !== 'NAKIT' && e.type !== 'YK' && !isGoldType(e.type)) {
+        found.add(e.type);
+      }
+    });
+    (state.customIncomes || []).forEach(i => {
+      if (i.type && i.type !== 'NAKIT' && i.type !== 'YK' && !isGoldType(i.type)) {
+        found.add(i.type);
+      }
+    });
+
+    // Scan future data
+    Object.values(state.futureData || {}).forEach((f: any) => {
+      if (f.fixedExpenses) {
+        f.fixedExpenses.forEach((e: any) => {
+          if (e.type && e.type !== 'NAKIT' && e.type !== 'YK' && !isGoldType(e.type)) {
+            found.add(e.type);
+          }
+        });
+      }
+      if (f.customIncomes) {
+        f.customIncomes.forEach((i: any) => {
+          if (i.type && i.type !== 'NAKIT' && i.type !== 'YK' && !isGoldType(i.type)) {
+            found.add(i.type);
+          }
+        });
+      }
+      if (f.assetBudgets) {
+        Object.keys(f.assetBudgets).forEach(curr => {
+          if (!isGoldType(curr)) found.add(curr);
+        });
+      }
+    });
+  }
+
+  return Array.from(found);
+};
+
 // Helper: Recalculate all subsequent months (Ripple Effect)
 function recalculateHistoryAndCurrent(state: BudgetState): BudgetState {
-    const newState = { ...state, history: [...state.history] };
+    const vaultExpenses = getCurrencyVaultExpenses(globalVaultRecords);
+
+    const newState: BudgetState = { 
+        ...state, 
+        dailyExpenses: [
+            ...(state.dailyExpenses || [])
+                .filter(e => e && e.id && typeof e.id === 'string' && !e.id.startsWith('vault-curr-')),
+            ...vaultExpenses.filter(e => e && e.date && typeof e.date === 'string' && e.date.startsWith(state.currentMonth))
+        ],
+        history: (state.history || []).map(hist => ({
+            ...hist,
+            dailyExpenses: [
+                ...(hist.dailyExpenses || [])
+                    .filter(e => e && e.id && typeof e.id === 'string' && !e.id.startsWith('vault-curr-')),
+                ...vaultExpenses.filter(e => e && e.date && typeof e.date === 'string' && e.date.startsWith(hist.month))
+            ]
+        }))
+    };
 
     // Sort history chronologically just in case
     newState.history.sort((a, b) => a.month.localeCompare(b.month));
@@ -106,16 +247,33 @@ function recalculateHistoryAndCurrent(state: BudgetState): BudgetState {
     let runningYkRollover = 0;
     let runningCCDebt = 0;
 
-    // We assume the first history entry's starting rollover is correct (or 0).
-    // Actually, we should propagate from the first entry to the current month.
+    // Track running rollovers for other currencies
+    const activeCurrencies = getActiveCurrencies(newState, globalVaultRecords);
+
+    let runningAssetRollovers: Record<string, number> = {};
+
+    // For the very first month, starting asset rollovers are computed from vault records before that month
+    const firstMonth = newState.history.length > 0 ? newState.history[0].month : newState.currentMonth;
+    activeCurrencies.forEach(curr => {
+      runningAssetRollovers[curr] = getKasaSum(globalVaultRecords, curr, d => d < `${firstMonth}-01`);
+    });
 
     for (let i = 0; i < newState.history.length; i++) {
         const hist = newState.history[i];
+        hist.assetBudgets = hist.assetBudgets || {};
 
         // Apply starting rollovers from previous iteration
         if (i > 0) {
             hist.rollover = runningRollover;
             hist.ykRollover = runningYkRollover;
+
+            activeCurrencies.forEach(curr => {
+                hist.assetBudgets = hist.assetBudgets || {};
+                hist.assetBudgets[curr] = {
+                    income: hist.assetBudgets[curr]?.income || 0,
+                    rollover: runningAssetRollovers[curr] || 0
+                };
+            });
 
             // Update CC Debt Fixed Expense for this month based on previous month's total debt
             // Filter out old debt
@@ -125,37 +283,18 @@ function recalculateHistoryAndCurrent(state: BudgetState): BudgetState {
                     id: generateId(),
                     title: 'Kredi Kartı Borcu (Geçen Ay)',
                     amount: runningCCDebt,
-                    isPaid: true // Historical debts are assumed paid to not mess up historical cash flow, or maybe keep their original state?
-                    // Actually, if we re-inject it, we might lose the 'isPaid' state the user set.
-                    // Better approach: Find the existing item, update its amount, keep its isPaid state.
+                    isPaid: true // Historical debts are assumed paid
                 });
             }
-        }
-
-        // Wait, if I just replace the CC Debt fixed expense, I lose `isPaid` state.
-        // Let's refine CC Debt injection for History:
-        if (i > 0) {
-            hist.rollover = runningRollover;
-            hist.ykRollover = runningYkRollover;
-
-            const existingCCDebtIdx = hist.fixedExpenses.findIndex(e => e.title === 'Kredi Kartı Borcu (Geçen Ay)');
-            if (runningCCDebt > 0) {
-                if (existingCCDebtIdx !== -1) {
-                    hist.fixedExpenses[existingCCDebtIdx].amount = runningCCDebt;
-                } else {
-                    hist.fixedExpenses.push({
-                        id: generateId(),
-                        title: 'Kredi Kartı Borcu (Geçen Ay)',
-                        amount: runningCCDebt,
-                        isPaid: true // default true for generated historical
-                    });
-                }
-            } else {
-                // If runningCCDebt is 0, remove it if exists
-                if (existingCCDebtIdx !== -1) {
-                    hist.fixedExpenses.splice(existingCCDebtIdx, 1);
-                }
-            }
+        } else {
+            // For the first history entry, set initial rollovers
+            activeCurrencies.forEach(curr => {
+                hist.assetBudgets = hist.assetBudgets || {};
+                hist.assetBudgets[curr] = {
+                    income: hist.assetBudgets[curr]?.income || 0,
+                    rollover: runningAssetRollovers[curr] || 0
+                };
+            });
         }
 
         // Calculate end-of-month balances for hist
@@ -167,9 +306,11 @@ function recalculateHistoryAndCurrent(state: BudgetState): BudgetState {
           .filter(e => e.type === 'NAKIT' && e.amount > 0)
           .reduce((sum, e) => sum + e.amount, 0);
         const paidFixed = hist.fixedExpenses
-          .filter(e => e.isPaid)
+          .filter(e => e.isPaid && (e.type === 'NAKIT' || !e.type))
           .reduce((sum, e) => sum + e.amount, 0);
-        const customIncomeTotal = (hist.customIncomes || []).reduce((sum, e) => sum + e.amount, 0);
+        const customIncomeTotal = (hist.customIncomes || [])
+          .filter(i => i.type === 'NAKIT' || !i.type)
+          .reduce((sum, e) => sum + e.amount, 0);
 
         const totalCash = hist.income + hist.rollover + cashDailyIncome + customIncomeTotal;
         runningRollover = totalCash - (paidFixed + cashSpent);
@@ -187,15 +328,49 @@ function recalculateHistoryAndCurrent(state: BudgetState): BudgetState {
         runningYkRollover = totalYk - ykSpent;
         if (runningYkRollover < 0) runningYkRollover = 0;
 
+        // Other active currencies
+        activeCurrencies.forEach(curr => {
+            const assetBudget = hist.assetBudgets?.[curr];
+            const startRollover = assetBudget?.rollover || 0;
+            const monthIncome = assetBudget?.income || 0;
+
+            const kasaChanges = 0; // Vault currency records are merged into dailyExpenses
+
+            const assetCustomIncome = (hist.customIncomes || [])
+              .filter(i => i.type === curr)
+              .reduce((sum, i) => sum + i.amount, 0);
+            const assetDailyIncome = hist.dailyExpenses
+              .filter(e => e.type === curr && e.amount > 0)
+              .reduce((sum, e) => sum + e.amount, 0);
+            const assetDailySpent = hist.dailyExpenses
+              .filter(e => e.type === curr && e.amount < 0)
+              .reduce((sum, e) => sum + Math.abs(e.amount), 0);
+            const assetFixedSpent = hist.fixedExpenses
+              .filter(e => e.isPaid && e.type === curr)
+              .reduce((sum, e) => sum + e.amount, 0);
+
+            const totalAsset = startRollover + kasaChanges + monthIncome + assetCustomIncome + assetDailyIncome;
+            const remainingAsset = totalAsset - (assetFixedSpent + assetDailySpent);
+            runningAssetRollovers[curr] = remainingAsset > 0 ? remainingAsset : 0;
+        });
+
         // CC Debt
         runningCCDebt = Math.abs(hist.ccDebts.reduce((sum, d) => sum + d.amount, 0));
     }
 
     // Finally, apply to Current Month
-    if (newState.history.length > 0) {
-        newState.rollover = runningRollover;
-        newState.ykRollover = runningYkRollover;
+    newState.rollover = runningRollover;
+    newState.ykRollover = runningYkRollover;
+    newState.assetBudgets = newState.assetBudgets || {};
+    activeCurrencies.forEach(curr => {
+        newState.assetBudgets = newState.assetBudgets || {};
+        newState.assetBudgets[curr] = {
+            income: newState.assetBudgets[curr]?.income || 0,
+            rollover: runningAssetRollovers[curr] || 0
+        };
+    });
 
+    if (newState.history.length > 0) {
         // Propagate CC Debt to Current Month
         const existingCCDebtIdx = newState.fixedExpenses.findIndex(e => e.title === 'Kredi Kartı Borcu (Geçen Ay)');
         if (runningCCDebt > 0) {
@@ -305,9 +480,40 @@ function migrateState(parsed: any): BudgetState {
 }
 
 export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { isAuthenticated } = useAuth();
   const isInitialMount = useRef(true);
   const [isLoading, setIsLoading] = useState(true);
+
+  const [confirmState, setConfirmState] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    resolve: ((value: boolean) => void) | null;
+  } | null>(null);
+
+  const askConfirmation = (message: string, title = 'Emin misiniz?'): Promise<boolean> => {
+    return new Promise<boolean>((resolve) => {
+      setConfirmState({
+        isOpen: true,
+        title,
+        message,
+        resolve,
+      });
+    });
+  };
+
+  const handleConfirm = () => {
+    if (confirmState?.resolve) {
+      confirmState.resolve(true);
+    }
+    setConfirmState(null);
+  };
+
+  const handleCancel = () => {
+    if (confirmState?.resolve) {
+      confirmState.resolve(false);
+    }
+    setConfirmState(null);
+  };
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     try {
@@ -327,6 +533,138 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       return true;
     }
   });
+
+  const { isAuthenticated, isAdmin } = useAuth();
+  const [vaultRecords, setVaultRecords] = useState<GoldRecord[]>([]);
+  const [vaultOrder, setVaultOrder] = useState<string[]>([]);
+
+  // Update module-level variable for recalculateHistoryAndCurrent
+  useEffect(() => {
+    globalVaultRecords = vaultRecords;
+  }, [vaultRecords]);
+
+  const loadVaultRecords = async () => {
+    if (!isAuthenticated || !isAdmin) return;
+    try {
+      const res = await fetchWithAuth('/vault');
+      if (res.ok) {
+        const data = await res.json();
+        setVaultRecords(data.records || []);
+        if (data.vaultOrder && Array.isArray(data.vaultOrder)) {
+          setVaultOrder(data.vaultOrder);
+        }
+      }
+    } catch (err) {
+      console.error("Error loading vault records", err);
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated && isAdmin) {
+      loadVaultRecords();
+    }
+  }, [isAuthenticated, isAdmin]);
+
+  const addVaultRecord = async (record: Omit<GoldRecord, 'id'>) => {
+    try {
+      const res = await fetchWithAuth('/vault', {
+        method: 'POST',
+        body: JSON.stringify(record)
+      });
+      if (!res.ok) throw new Error('Kayıt eklenemedi.');
+      await loadVaultRecords();
+      setRealState(prev => recalculateHistoryAndCurrent(prev));
+    } catch (err) {
+      console.error(err);
+      throw err;
+    }
+  };
+
+  const deleteVaultRecord = async (id: number) => {
+    try {
+      const res = await fetchWithAuth(`/vault/${id}`, {
+        method: 'DELETE'
+      });
+      if (!res.ok) throw new Error('Kayıt silinemedi.');
+      await loadVaultRecords();
+      setRealState(prev => recalculateHistoryAndCurrent(prev));
+    } catch (err) {
+      console.error(err);
+      throw err;
+    }
+  };
+
+  const updateVaultRecord = async (id: number, record: Partial<GoldRecord>) => {
+    try {
+      const res = await fetchWithAuth(`/vault/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(record)
+      });
+      if (!res.ok) throw new Error('Kayıt güncellenemedi.');
+      await loadVaultRecords();
+      setRealState(prev => recalculateHistoryAndCurrent(prev));
+    } catch (err) {
+      console.error(err);
+      throw err;
+    }
+  };
+
+  const updateVaultOrder = async (order: string[]) => {
+    try {
+      setVaultOrder(order); // Optimistic
+      const res = await fetchWithAuth('/vault/order', {
+        method: 'PUT',
+        body: JSON.stringify({ order })
+      });
+      if (!res.ok) throw new Error('Sıralama güncellenemedi.');
+    } catch (err) {
+      console.error(err);
+      await loadVaultRecords();
+      throw err;
+    }
+  };
+
+  const updateAssetIncome = (assetType: string, amount: number) => {
+    setRealState(prev => {
+      if (viewDate === prev.currentMonth) {
+        const assetBudgets = { ...prev.assetBudgets };
+        assetBudgets[assetType] = {
+          income: amount,
+          rollover: assetBudgets[assetType]?.rollover || 0
+        };
+        return recalculateHistoryAndCurrent({ ...prev, assetBudgets });
+      } else if (viewDate > prev.currentMonth) {
+        const future = prev.futureData[viewDate] || {};
+        const assetBudgets = { ...future.assetBudgets };
+        assetBudgets[assetType] = {
+          income: amount,
+          rollover: assetBudgets[assetType]?.rollover || 0
+        };
+        return {
+          ...prev,
+          futureData: {
+            ...prev.futureData,
+            [viewDate]: { ...future, assetBudgets }
+          }
+        };
+      }
+      return prev;
+    });
+  };
+
+  const updateAssetRollover = (assetType: string, amount: number) => {
+    setRealState(prev => {
+      if (viewDate === prev.currentMonth) {
+        const assetBudgets = { ...prev.assetBudgets };
+        assetBudgets[assetType] = {
+          income: assetBudgets[assetType]?.income || 0,
+          rollover: amount
+        };
+        return recalculateHistoryAndCurrent({ ...prev, assetBudgets });
+      }
+      return prev;
+    });
+  };
 
   const [realState, setRealState] = useState<BudgetState>(initialState);
 
@@ -350,10 +688,22 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           }
           return res.json();
         })
-        .then(data => {
+        .then(async data => {
           if (data) {
+             // Load vault records first to ensure globalVaultRecords is set before migrateState/recalculate
+             if (isAdmin) {
+               const vaultRes = await fetchWithAuth('/vault');
+               if (vaultRes.ok) {
+                 const vaultData = await vaultRes.json();
+                 setVaultRecords(vaultData.records || []);
+                 globalVaultRecords = vaultData.records || [];
+                 if (vaultData.vaultOrder && Array.isArray(vaultData.vaultOrder)) {
+                   setVaultOrder(vaultData.vaultOrder);
+                 }
+               }
+             }
              const migrated = migrateState(data);
-             setRealState(migrated);
+             setRealState(recalculateHistoryAndCurrent(migrated));
              setViewDate(migrated.currentMonth || getCurrentMonth());
           }
           setIsLoading(false);
@@ -361,10 +711,9 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         .catch(err => {
           console.error("Failed to load budget data from server", err);
           setLoadError("Sunucu ile iletişim kurulamadı. Verileriniz korunması için uygulama durduruldu.");
-          // Do NOT set isLoading to false if it's a critical error to prevent syncing empty state
         });
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isAdmin]);
 
   const earliestAllowedMonth = useMemo(() => {
       const historyMonths = realState.history.map(h => h.month);
@@ -608,7 +957,61 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     // Future Projection
 
-    // Initial CC Debt (from current month)
+    // 1. Calculate running rollovers starting from the current month's actual ending balances
+    let runningProjRollover = 0;
+    let runningProjYkRollover = 0;
+    const runningProjAssetBudgets: Record<string, { income: number; rollover: number }> = {};
+
+    const currentFixedTotal = realState.fixedExpenses.filter(e => e.isPaid && (e.type === 'NAKIT' || !e.type)).reduce((sum, e) => sum + e.amount, 0);
+    const currentCustomIncomes = realState.customIncomes.filter(i => i.type === 'NAKIT' || !i.type).reduce((sum, i) => sum + i.amount, 0);
+    const totalCashResources = realState.income + realState.rollover + currentCustomIncomes;
+
+    const cashExpenses = realState.dailyExpenses.filter(e => e.type === 'NAKIT' || !e.type);
+    const ykExpenses = realState.dailyExpenses.filter(e => e.type === 'YK');
+
+    const totalCashDaily = Math.abs(cashExpenses.filter(e => e.amount < 0).reduce((sum, e) => sum + e.amount, 0));
+    const totalCashDailyIncome = cashExpenses.filter(e => e.amount > 0).reduce((sum, e) => sum + e.amount, 0);
+
+    const totalYkDaily = Math.abs(ykExpenses.filter(e => e.amount < 0).reduce((sum, e) => sum + e.amount, 0));
+    const totalYkDailyIncome = ykExpenses.filter(e => e.amount > 0).reduce((sum, e) => sum + e.amount, 0);
+
+    runningProjRollover = totalCashResources + totalCashDailyIncome - currentFixedTotal - totalCashDaily;
+    if (runningProjRollover < 0) runningProjRollover = 0;
+
+    runningProjYkRollover = (realState.ykIncome + realState.ykRollover + totalYkDailyIncome) - totalYkDaily;
+    if (runningProjYkRollover < 0) runningProjYkRollover = 0;
+
+    const activeCurrencies = getActiveCurrencies(realState, globalVaultRecords);
+
+    activeCurrencies.forEach(curr => {
+        const assetBudget = realState.assetBudgets?.[curr];
+        const startRollover = assetBudget?.rollover || 0;
+        const monthInc = assetBudget?.income || 0;
+
+        const kasaChanges = 0; // Vault currency records are merged into dailyExpenses
+
+        const assetCustomIncome = realState.customIncomes
+          .filter(i => i.type === curr)
+          .reduce((sum, i) => sum + i.amount, 0);
+        const assetDailyIncome = realState.dailyExpenses
+          .filter(e => e.type === curr && e.amount > 0)
+          .reduce((sum, e) => sum + e.amount, 0);
+        const assetDailySpent = realState.dailyExpenses
+          .filter(e => e.type === curr && e.amount < 0)
+          .reduce((sum, e) => sum + Math.abs(e.amount), 0);
+        const assetFixedSpent = realState.fixedExpenses
+          .filter(e => e.isPaid && e.type === curr)
+          .reduce((sum, e) => sum + e.amount, 0);
+
+        const totalAsset = startRollover + kasaChanges + monthInc + assetCustomIncome + assetDailyIncome;
+        const remainingAsset = totalAsset - (assetFixedSpent + assetDailySpent);
+        runningProjAssetBudgets[curr] = {
+            income: realState.assetBudgets?.[curr]?.income || 0,
+            rollover: remainingAsset > 0 ? remainingAsset : 0
+        };
+    });
+
+    // 2. Initial CC Debt (from current month)
     let lastMonthCCDebt = Math.abs(realState.ccDebts.reduce((sum, d) => sum + d.amount, 0));
 
     // Iterate intervening months
@@ -656,11 +1059,6 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const adjustedCCDebt = lastMonthCCDebt + ccDebtAdjustment;
 
         // Ensure "Kredi Kartı Borcu (Geçen Ay)" is present with adjusted value
-        // Note: If user previously edited it, it might be in `monthFixedExpenses` via `future.fixedExpenses`.
-        // However, we want "Smart Update" where we apply adjustment to CURRENT calculated base.
-        // So we should find the item (or create it) and set amount to `adjustedCCDebt`.
-
-        // Filter out any stale entry first (to replace with fresh calculation + adjustment)
         monthFixedExpenses = monthFixedExpenses.filter(e => e.title !== 'Kredi Kartı Borcu (Geçen Ay)');
 
         if (adjustedCCDebt > 0 || ccDebtAdjustment !== 0) {
@@ -711,12 +1109,9 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         });
 
         // Combine Manual + Projected for Total Calculation and Display
-        // User requested "Newest Last". Projected installments are "old/automatic". Manual additions are "new".
-        // So Projected first, then Manual.
         allCCDebts = [...projectedCCDebts, ...allCCDebts];
 
         // Calculate total CC Debt for THIS month (to become Fixed Expense in NEXT month)
-        // Includes Projected Installments AND Manual Future Debts
         lastMonthCCDebt = Math.abs(allCCDebts.reduce((sum, d) => sum + d.amount, 0));
 
         if (isTarget) {
@@ -728,51 +1123,61 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 }))
                 .filter(inst => inst.remainingInstallments > 0);
 
-            // Dynamic Rollover Logic (Only from current month to immediately next month)
-            let dynamicRollover = 0;
-            let dynamicYkRollover = 0;
-
-            if (monthsAway === 1) {
-                // Calculate current month's net cash and YK to pass as dynamic rollover
-                const currentFixedTotal = realState.fixedExpenses.filter(e => e.isPaid).reduce((sum, e) => sum + e.amount, 0);
-                const currentCustomIncomes = realState.customIncomes.reduce((sum, i) => sum + i.amount, 0);
-                const totalCashResources = realState.income + realState.rollover + currentCustomIncomes;
-
-                const cashExpenses = realState.dailyExpenses.filter(e => e.type === 'NAKIT');
-                const ykExpenses = realState.dailyExpenses.filter(e => e.type === 'YK');
-
-                const totalCashDaily = Math.abs(cashExpenses.filter(e => e.amount < 0).reduce((sum, e) => sum + e.amount, 0));
-                const totalCashDailyIncome = cashExpenses.filter(e => e.amount > 0).reduce((sum, e) => sum + e.amount, 0);
-
-                const totalYkDaily = Math.abs(ykExpenses.filter(e => e.amount < 0).reduce((sum, e) => sum + e.amount, 0));
-                const totalYkDailyIncome = ykExpenses.filter(e => e.amount > 0).reduce((sum, e) => sum + e.amount, 0);
-
-                const currentNetCash = totalCashResources + totalCashDailyIncome - currentFixedTotal - totalCashDaily;
-                const currentNetYk = (realState.ykIncome + realState.ykRollover + totalYkDailyIncome) - totalYkDaily;
-
-                dynamicRollover = currentNetCash;
-                dynamicYkRollover = currentNetYk;
-            }
+            // Construct final dynamicAssetBudgets for target month
+            const finalAssetBudgets: Record<string, { income: number; rollover: number }> = {};
+            activeCurrencies.forEach(curr => {
+                const futAsset = future.assetBudgets?.[curr];
+                finalAssetBudgets[curr] = {
+                    income: futAsset?.income !== undefined ? futAsset.income : (realState.assetBudgets?.[curr]?.income || 0),
+                    rollover: runningProjAssetBudgets[curr]?.rollover || 0
+                };
+            });
 
             return {
                 ...realState,
                 currentMonth: viewDate,
                 income: monthIncome,
                 ykIncome: monthYkIncome,
-                rollover: dynamicRollover,
-                ykRollover: dynamicYkRollover,
+                rollover: monthsAway === 1 ? runningProjRollover : 0,
+                ykRollover: monthsAway === 1 ? runningProjYkRollover : 0,
                 fixedExpenses: monthFixedExpenses,
                 customIncomes: monthCustomIncomes,
                 dailyExpenses: [],
                 ccDebts: allCCDebts, // Show merged list
                 installments: projectedInstallments,
                 futureData: realState.futureData,
+                assetBudgets: finalAssetBudgets
             };
         }
+
+        // For intervening months, cascade asset currency budgets
+        activeCurrencies.forEach(curr => {
+            const futAsset = future.assetBudgets?.[curr];
+            const monthInc = futAsset?.income !== undefined ? futAsset.income : (realState.assetBudgets?.[curr]?.income || 0);
+            const startRollover = runningProjAssetBudgets[curr]?.rollover || 0;
+
+            const kasaChanges = 0; // Vault currency records are merged into dailyExpenses
+
+            const assetCustomIncome = monthCustomIncomes
+              .filter(i => i.type === curr)
+              .reduce((sum, i) => sum + i.amount, 0);
+            const assetFixedSpent = monthFixedExpenses
+              .filter(e => e.type === curr)
+              .reduce((sum, e) => sum + e.amount, 0);
+
+            const totalAsset = startRollover + kasaChanges + monthInc + assetCustomIncome;
+            const remainingAsset = totalAsset - assetFixedSpent;
+
+            runningProjAssetBudgets[curr] = {
+                income: monthInc,
+                rollover: remainingAsset > 0 ? remainingAsset : 0
+            };
+        });
 
         iterMonth = addMonths(iterMonth, 1);
     }
     return realState;
+
 
   }, [realState, viewDate]);
 
@@ -1501,8 +1906,12 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const loadState = (newState: BudgetState) => {
     const migrated = migrateState(newState);
-    setRealState(migrated);
+    setRealState(recalculateHistoryAndCurrent(migrated));
   };
+
+  const activeCurrencies = useMemo(() => {
+    return getActiveCurrencies(realState, vaultRecords);
+  }, [realState, vaultRecords]);
 
   if (loadError) {
     return (
@@ -1555,10 +1964,29 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             showMealCard,
             toggleShowMealCard,
             showVault,
-            toggleShowVault
+            toggleShowVault,
+            vaultRecords,
+            vaultOrder,
+            addVaultRecord,
+            deleteVaultRecord,
+            updateVaultRecord,
+            updateVaultOrder,
+            updateAssetIncome,
+            updateAssetRollover,
+            activeCurrencies,
+            askConfirmation
         }}
     >
         {children}
+        {confirmState && (
+          <ConfirmationModal
+            isOpen={confirmState.isOpen}
+            title={confirmState.title}
+            message={confirmState.message}
+            onConfirm={handleConfirm}
+            onCancel={handleCancel}
+          />
+        )}
     </BudgetContext.Provider>
   );
 };

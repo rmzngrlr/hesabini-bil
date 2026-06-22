@@ -1,12 +1,21 @@
 import { useState, useEffect } from 'react';
 import { useDraftState } from '../hooks/useDraftState';
 import { useBudget } from '../context/BudgetContext';
+import { useAuth } from '../context/AuthContext';
 import { Card } from '../components/ui/Card';
 import { Plus, Trash2, CheckCircle, Circle, Pencil, X, Calendar } from 'lucide-react';
 import { cn } from '../lib/utils';
 import type { FixedExpense } from '../types';
+import { VaultSection } from '../components/VaultSection';
+
+
+const formatTitleCase = (str: string) => {
+  if (str === 'NAKIT') return 'Türk Lirası';
+  return str.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+};
 
 export default function FixedExpenses() {
+  const { isAdmin } = useAuth();
   const {
     state,
     viewDate,
@@ -20,26 +29,40 @@ export default function FixedExpenses() {
     updateRollover,
     updateYkIncome,
     updateYkRollover,
-    showMealCard
+    showMealCard,
+    showVault,
+    vaultRecords,
+    askConfirmation
   } = useBudget();
+
+  const isGoldType = (type: string) => {
+    const lower = type.toLowerCase();
+    const goldKeywords = ['gram', 'çeyrek', 'yarım', 'tam', 'ata', 'reşat', 'ayar', 'bilezik', 'altın', 'has', 'külçe'];
+    return goldKeywords.some(kw => lower.includes(kw));
+  };
+
+  const activeCurrencies = Array.from(new Set(
+    vaultRecords
+      .map(r => r.gold_type)
+      .filter(t => !isGoldType(t))
+  ));
 
   const [title, setTitle] = useDraftState('fixed_draft_title', '');
   const [amount, setAmount] = useDraftState('fixed_draft_amount', '');
+  const [expenseType, setExpenseType] = useState('NAKIT');
   const [editingId, setEditingId] = useDraftState<string | null>('fixed_draft_editing_id', null);
 
   const [incomeTitle, setIncomeTitle] = useDraftState('fixed_draft_inc_title', '');
   const [incomeAmount, setIncomeAmount] = useDraftState('fixed_draft_inc_amount', '');
+  const [incomeType, setIncomeType] = useState('NAKIT');
 
-  // Local state for inputs
   const [income, setIncome] = useState(state.income.toString());
   const [rollover, setRollover] = useState(state.rollover.toFixed(2));
   const [ykIncome, setYkIncome] = useState((state.ykIncome || 0).toString());
   const [ykRollover, setYkRollover] = useState((state.ykRollover || 0).toFixed(2));
 
-  // Sync when state changes (e.g. viewDate change or external update)
   useEffect(() => {
     setIncome(state.income.toString());
-    // Format rollovers to max 2 decimals to prevent long floating point numbers
     setRollover(Number(state.rollover).toFixed(2));
     setYkIncome((state.ykIncome || 0).toString());
     setYkRollover(Number(state.ykRollover || 0).toFixed(2));
@@ -65,12 +88,14 @@ export default function FixedExpenses() {
     setEditingId(expense.id);
     setTitle(expense.title);
     setAmount(expense.amount.toString());
+    setExpenseType(expense.type || 'NAKIT');
   };
 
   const cancelEdit = () => {
     setEditingId(null);
     setTitle('');
     setAmount('');
+    setExpenseType('NAKIT');
 
     sessionStorage.removeItem('fixed_draft_title');
     sessionStorage.removeItem('fixed_draft_amount');
@@ -83,10 +108,12 @@ export default function FixedExpenses() {
 
     addCustomIncome({
       title: incomeTitle,
-      amount: parseFloat(incomeAmount)
+      amount: parseFloat(incomeAmount),
+      type: incomeType
     });
     setIncomeTitle('');
     setIncomeAmount('');
+    setIncomeType('NAKIT');
 
     sessionStorage.removeItem('fixed_draft_inc_title');
     sessionStorage.removeItem('fixed_draft_inc_amount');
@@ -99,29 +126,30 @@ export default function FixedExpenses() {
     if (editingId) {
       updateFixedExpense(editingId, {
         title,
-        amount: parseFloat(amount)
+        amount: parseFloat(amount),
+        type: expenseType
       });
       setEditingId(null);
     } else {
-      addFixedExpense({ title, amount: parseFloat(amount) });
+      addFixedExpense({ title, amount: parseFloat(amount), type: expenseType });
     }
 
     setTitle('');
     setAmount('');
+    setExpenseType('NAKIT');
   };
 
-  const getLocalMonth = () => {
+  const getLocalDateMonth = () => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   };
-  const isFuture = viewDate > getLocalMonth();
+  const isFuture = viewDate > getLocalDateMonth();
   const formattedMonth = new Date(
       parseInt(viewDate.split('-')[0]),
       parseInt(viewDate.split('-')[1]) - 1
   ).toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
 
-  const totalFixed = state.fixedExpenses.reduce((sum, e) => sum + e.amount, 0);
-  const paidFixed = state.fixedExpenses.filter(e => e.isPaid).reduce((sum, e) => sum + e.amount, 0);
+  const fixedExpenseCurrencies = Array.from(new Set(state.fixedExpenses.map(e => e.type || 'NAKIT')));
 
   return (
     <div className="space-y-6 pb-20 p-4">
@@ -135,7 +163,7 @@ export default function FixedExpenses() {
       </header>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Card title="Aylık Gelir (Nakit)">
+        <Card title="Aylık Gelir (TL)">
           <div className="mt-2">
             <input
               type="number"
@@ -147,21 +175,21 @@ export default function FixedExpenses() {
           </div>
         </Card>
 
-        <Card title="Devreden (Nakit)">
+        <Card title="Devreden (TL)">
           <div className="mt-2">
              <input
                type="number"
                value={rollover}
                onChange={(e) => setRollover(e.target.value)}
                onBlur={handleRolloverSave}
-               disabled={isFuture || viewDate < getLocalMonth()}
+               disabled={isFuture || viewDate < getLocalDateMonth()}
                className={cn(
                  "w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary",
-                 (isFuture || viewDate < getLocalMonth()) && "opacity-50 cursor-not-allowed bg-secondary/30"
+                 (isFuture || viewDate < getLocalDateMonth()) && "opacity-50 cursor-not-allowed bg-secondary/30"
                )}
              />
              {isFuture && <div className="text-xs text-muted-foreground mt-1">Önceki aydan tahmini devir</div>}
-             {viewDate < getLocalMonth() && <div className="text-xs text-muted-foreground mt-1">Geçmiş devir otomatik hesaplanır</div>}
+             {viewDate < getLocalDateMonth() && <div className="text-xs text-muted-foreground mt-1">Geçmiş devir otomatik hesaplanır</div>}
           </div>
         </Card>
 
@@ -186,18 +214,19 @@ export default function FixedExpenses() {
                     value={ykRollover}
                     onChange={(e) => setYkRollover(e.target.value)}
                     onBlur={handleYkRolloverSave}
-                    disabled={isFuture || viewDate < getLocalMonth()}
+                    disabled={isFuture || viewDate < getLocalDateMonth()}
                     className={cn(
                         "w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary",
-                        (isFuture || viewDate < getLocalMonth()) && "opacity-50 cursor-not-allowed bg-secondary/30"
+                        (isFuture || viewDate < getLocalDateMonth()) && "opacity-50 cursor-not-allowed bg-secondary/30"
                     )}
                     />
                     {isFuture && <div className="text-xs text-muted-foreground mt-1">Önceki aydan tahmini devir</div>}
-                    {viewDate < getLocalMonth() && <div className="text-xs text-muted-foreground mt-1">Geçmiş devir otomatik hesaplanır</div>}
+                    {viewDate < getLocalDateMonth() && <div className="text-xs text-muted-foreground mt-1">Geçmiş devir otomatik hesaplanır</div>}
                 </div>
                 </Card>
             </>
         )}
+
       </div>
 
       <div className="mt-6 mb-8 space-y-4">
@@ -211,16 +240,23 @@ export default function FixedExpenses() {
             className="w-full sm:flex-[2] min-w-0 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
           />
           <div className="flex gap-2 w-full sm:w-auto">
-            <div className="relative w-full sm:w-32">
-              <input
-                type="number"
-                placeholder="0"
-                value={incomeAmount}
-                onChange={(e) => setIncomeAmount(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary pr-8"
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">₺</span>
-            </div>
+            <input
+              type="number"
+              placeholder="Tutar"
+              value={incomeAmount}
+              onChange={(e) => setIncomeAmount(e.target.value)}
+              className="flex-[2] sm:flex-none sm:w-24 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+            <select
+              value={incomeType}
+              onChange={(e) => setIncomeType(e.target.value)}
+              className="flex-1 sm:flex-none sm:w-28 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+            >
+              <option value="NAKIT">TL</option>
+              {activeCurrencies.map(curr => (
+                <option key={curr} value={curr}>{curr}</option>
+              ))}
+            </select>
             <button
               type="submit"
               className="p-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors shrink-0"
@@ -236,10 +272,10 @@ export default function FixedExpenses() {
               <span className="font-medium">{income.title}</span>
               <div className="flex items-center gap-3">
                 <span className="font-bold text-green-500">
-                  +{income.amount.toLocaleString('tr-TR')} ₺
+                  +{income.amount.toLocaleString('tr-TR')} {income.type === 'NAKIT' || !income.type ? '₺' : income.type}
                 </span>
                 <button
-                  onClick={() => deleteCustomIncome(income.id)}
+                  onClick={async () => { if (await askConfirmation('Bu geliri silmek istediğinize emin misiniz?')) { deleteCustomIncome(income.id); } }}
                   className="p-1 text-muted-foreground hover:text-red-500 transition-colors rounded-lg hover:bg-red-500/10"
                 >
                   <Trash2 size={18} />
@@ -258,15 +294,30 @@ export default function FixedExpenses() {
       <h1 className="text-2xl font-bold tracking-tight mt-8">Sabit Giderler</h1>
 
       <Card title="Gider Özeti" className="bg-gradient-to-br from-card to-primary/5">
-        <div className="flex flex-col gap-2 mt-2 sm:flex-row sm:justify-between sm:items-end sm:gap-0">
-          <div>
-            <div className="text-sm text-muted-foreground">Toplam</div>
-            <div className="text-2xl font-bold whitespace-nowrap">{totalFixed.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</div>
-          </div>
-          <div className="text-right">
-            <div className="text-sm text-muted-foreground">Ödenen</div>
-            <div className="text-xl font-bold text-green-500 whitespace-nowrap">{paidFixed.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</div>
-          </div>
+        <div className="space-y-4 mt-2">
+          {fixedExpenseCurrencies.length === 0 ? (
+            <div className="text-sm text-muted-foreground">Sabit gider bulunmuyor.</div>
+          ) : (
+            fixedExpenseCurrencies.map(curr => {
+              const total = state.fixedExpenses.filter(e => (e.type || 'NAKIT') === curr).reduce((sum, e) => sum + e.amount, 0);
+              const paid = state.fixedExpenses.filter(e => (e.type || 'NAKIT') === curr && e.isPaid).reduce((sum, e) => sum + e.amount, 0);
+              return (
+                <div key={curr} className="flex flex-col gap-1 border-b border-border/50 last:border-0 pb-3 last:pb-0">
+                  <div className="text-xs font-bold text-primary tracking-wider">{formatTitleCase(curr)}</div>
+                  <div className="flex justify-between items-end">
+                    <div>
+                      <div className="text-xs text-muted-foreground">Toplam Gider</div>
+                      <div className="text-lg font-bold whitespace-nowrap">{total.toLocaleString('tr-TR')} {curr === 'NAKIT' ? '₺' : curr}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-muted-foreground">Ödenen</div>
+                      <div className="text-md font-bold text-green-500 whitespace-nowrap">{paid.toLocaleString('tr-TR')} {curr === 'NAKIT' ? '₺' : curr}</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </Card>
 
@@ -284,8 +335,18 @@ export default function FixedExpenses() {
             placeholder="Tutar"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="flex-1 sm:flex-none sm:w-28 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            className="flex-1 sm:flex-none sm:w-24 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
           />
+          <select
+            value={expenseType}
+            onChange={(e) => setExpenseType(e.target.value)}
+            className="flex-1 sm:flex-none sm:w-28 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+          >
+            <option value="NAKIT">TL</option>
+            {activeCurrencies.map(curr => (
+              <option key={curr} value={curr}>{curr}</option>
+            ))}
+          </select>
 
           {editingId && (
              <button
@@ -327,7 +388,7 @@ export default function FixedExpenses() {
               <div className="text-left min-w-0 flex-1">
                 <div className={cn("font-medium truncate", expense.isPaid && "line-through")}>{expense.title}</div>
                 <div className="text-sm text-muted-foreground whitespace-nowrap">
-                  {expense.amount.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+                  {expense.amount.toLocaleString('tr-TR')} {expense.type === 'NAKIT' || !expense.type ? '₺' : expense.type}
                 </div>
               </div>
             </button>
@@ -340,7 +401,7 @@ export default function FixedExpenses() {
                 <Pencil size={20} />
               </button>
               <button
-                onClick={(e) => { e.stopPropagation(); deleteFixedExpense(expense.id); }}
+                onClick={async (e) => { e.stopPropagation(); if (await askConfirmation('Bu sabit gideri silmek istediğinize emin misiniz?')) { deleteFixedExpense(expense.id); } }}
                 className="p-2 text-muted-foreground hover:text-destructive transition-colors"
               >
                 <Trash2 size={20} />
@@ -354,6 +415,8 @@ export default function FixedExpenses() {
           </div>
         )}
       </div>
+
+      {isAdmin && showVault && <VaultSection />}
     </div>
   );
 }
