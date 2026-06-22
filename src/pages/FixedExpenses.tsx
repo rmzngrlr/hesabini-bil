@@ -153,6 +153,9 @@ export default function FixedExpenses() {
 
   return (
     <div className="space-y-6 pb-20 p-4">
+      <div className="mb-8">
+        <h1 className="text-3xl font-extrabold tracking-tight text-primary">Varlıklarım</h1>
+      </div>
       <header className="flex flex-col gap-2">
         <h1 className="text-2xl font-bold tracking-tight">Sabit Gelirler</h1>
         <div className="flex items-center gap-2 text-muted-foreground">
