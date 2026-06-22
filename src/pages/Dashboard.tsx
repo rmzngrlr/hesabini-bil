@@ -565,7 +565,35 @@ export default function Dashboard() {
                             }}
                             contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)' }}
                         />
-                        <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+                        <Legend
+                            content={(props) => {
+                                const { payload } = props;
+                                if (!payload) return null;
+
+                                // We want to force the exact order of pieData:
+                                // Kalan TL, Günlük Harcamalar, then Sabit Giderler.
+                                // Recharts provides the payload, we just re-order it based on pieData.
+                                const sortedPayload = [...payload].sort((a, b) => {
+                                    const indexA = pieData.findIndex(item => item.name === a.value);
+                                    const indexB = pieData.findIndex(item => item.name === b.value);
+                                    return indexA - indexB;
+                                });
+
+                                return (
+                                    <ul className="recharts-default-legend" style={{ padding: '0px', margin: '0px', textAlign: 'center' }}>
+                                        {sortedPayload.map((entry, index) => (
+                                            <li key={`item-${index}`} className={`recharts-legend-item legend-item-${index}`} style={{ display: 'inline-block', marginRight: '10px' }}>
+                                                <svg className="recharts-surface" width="14" height="14" viewBox="0 0 32 32" style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '4px' }}>
+                                                    <path fill={entry.color} cx="16" cy="16" type="square" className="recharts-legend-icon" d="M0,0h32v32h-32z"></path>
+                                                </svg>
+                                                <span className="recharts-legend-item-text" style={{ color: entry.color }}>{entry.value}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                );
+                            }}
+                            wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
+                        />
                     </PieChart>
                 </ResponsiveContainer>
             </div>
