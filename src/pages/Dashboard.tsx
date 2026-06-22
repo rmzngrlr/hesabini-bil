@@ -551,6 +551,8 @@ export default function Dashboard() {
                             outerRadius={80}
                             paddingAngle={2}
                             dataKey="value"
+                            startAngle={90}
+                            endAngle={-270}
                         >
                             {pieData.map((entry, index) => (
                                 <Cell key={`cell-${index}`} fill={entry.color} />
