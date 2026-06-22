@@ -269,7 +269,7 @@ export default function Dashboard() {
             >
               {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
             </button>
-            <Link to="/settings" className="p-2 rounded-full bg-secondary text-muted-foreground hover:text-primary transition-colors">
+            <Link to="/ayarlar" className="p-2 rounded-full bg-secondary text-muted-foreground hover:text-primary transition-colors">
               <SettingsIcon size={20} />
             </Link>
           </div>
@@ -413,7 +413,7 @@ export default function Dashboard() {
                   return (
                     <Card key={asset} title={getAssetFullTitle(asset)} className="bg-yellow-500/5 border-yellow-500/20">
                       <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-500 mt-2">
-                        {totalGold}{getAssetSymbol(asset)}
+                        {totalGold} {getAssetSymbol(asset)}
                       </div>
                     </Card>
                   );
@@ -455,7 +455,7 @@ export default function Dashboard() {
                   return (
                     <Card key={asset} title={getAssetFullTitle(asset)} className="bg-emerald-500/5 border-emerald-500/20">
                       <div className={`text-2xl font-bold mt-2 ${remaining < 0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-500'}`}>
-                        {remaining.toLocaleString('tr-TR')}{getAssetSymbol(asset)}
+                        {remaining.toLocaleString('tr-TR')}{isGoldType(asset) ? ' ' : ''}{getAssetSymbol(asset)}
                       </div>
                     </Card>
                   );

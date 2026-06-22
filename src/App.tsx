@@ -41,22 +41,22 @@ function AppRoutes() {
           <Dashboard />
         </ProtectedRoute>
       } />
-      <Route path="/fixed" element={
+      <Route path="/varliklarim" element={
         <ProtectedRoute>
           <FixedExpenses />
         </ProtectedRoute>
       } />
-      <Route path="/daily" element={
+      <Route path="/gunluk" element={
         <ProtectedRoute>
           <DailyExpenses />
         </ProtectedRoute>
       } />
-      <Route path="/debt" element={
+      <Route path="/borc" element={
         <ProtectedRoute>
           <Debt />
         </ProtectedRoute>
       } />
-      <Route path="/settings" element={
+      <Route path="/ayarlar" element={
         <ProtectedRoute>
           <Settings />
         </ProtectedRoute>

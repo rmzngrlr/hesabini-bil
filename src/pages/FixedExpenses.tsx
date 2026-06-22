@@ -275,7 +275,7 @@ export default function FixedExpenses() {
               <span className="font-medium">{income.title}</span>
               <div className="flex items-center gap-3">
                 <span className="font-bold text-green-500">
-                  +{income.amount.toLocaleString('tr-TR')}{income.type === 'NAKIT' || !income.type ? '₺' : income.type}
+                  +{income.amount.toLocaleString('tr-TR')}{income.type && isGoldType(income.type) ? ' ' : ''}{income.type === 'NAKIT' || !income.type ? '₺' : income.type}
                 </span>
                 <button
                   onClick={async () => { if (await askConfirmation('Bu geliri silmek istediğinize emin misiniz?')) { deleteCustomIncome(income.id); } }}
@@ -310,11 +310,11 @@ export default function FixedExpenses() {
                   <div className="flex justify-between items-end">
                     <div>
                       <div className="text-xs text-muted-foreground">Toplam Gider</div>
-                      <div className="text-lg font-bold whitespace-nowrap">{total.toLocaleString('tr-TR')}{curr === 'NAKIT' ? '₺' : curr}</div>
+                      <div className="text-lg font-bold whitespace-nowrap">{total.toLocaleString('tr-TR')}{isGoldType(curr) ? ' ' : ''}{curr === 'NAKIT' ? '₺' : curr}</div>
                     </div>
                     <div className="text-right">
                       <div className="text-xs text-muted-foreground">Ödenen</div>
-                      <div className="text-md font-bold text-green-500 whitespace-nowrap">{paid.toLocaleString('tr-TR')}{curr === 'NAKIT' ? '₺' : curr}</div>
+                      <div className="text-md font-bold text-green-500 whitespace-nowrap">{paid.toLocaleString('tr-TR')}{isGoldType(curr) ? ' ' : ''}{curr === 'NAKIT' ? '₺' : curr}</div>
                     </div>
                   </div>
                 </div>
@@ -391,7 +391,7 @@ export default function FixedExpenses() {
               <div className="text-left min-w-0 flex-1">
                 <div className={cn("font-medium truncate", expense.isPaid && "line-through")}>{expense.title}</div>
                 <div className="text-sm text-muted-foreground whitespace-nowrap">
-                  {expense.amount.toLocaleString('tr-TR')}{expense.type === 'NAKIT' || !expense.type ? '₺' : expense.type}
+                  {expense.amount.toLocaleString('tr-TR')}{expense.type && isGoldType(expense.type) ? ' ' : ''}{expense.type === 'NAKIT' || !expense.type ? '₺' : expense.type}
                 </div>
               </div>
             </button>
