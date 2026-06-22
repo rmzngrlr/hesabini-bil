@@ -262,12 +262,14 @@ export default function Dashboard() {
   const pieData = [];
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#A28DFF', '#FF6666'];
 
-  // Add fixed expenses slices
-  const activeFixedExpenses = isFuture ? state.fixedExpenses : state.fixedExpenses.filter(e => e.isPaid);
+  // The pie chart must represent the TOTAL MONTHLY INCOME.
+  // We include ALL fixed expenses (even if unpaid, to show the budget slice).
+  let totalBudgetedFixed = 0;
   let colorIndex = 0;
 
-  activeFixedExpenses.forEach(expense => {
+  state.fixedExpenses.forEach(expense => {
       if (expense.amount > 0 && expense.type === 'NAKIT') {
+          totalBudgetedFixed += expense.amount;
           pieData.push({
               name: expense.title,
               value: expense.amount,
@@ -290,17 +292,19 @@ export default function Dashboard() {
       });
   }
 
-  // Handle Remaining Cash slice
-  if (remainingCash > 0) {
+  // The remaining pie slice is (Total Resources - ALL Fixed Expenses - Daily Spent)
+  const trueRemaining = totalCashResources - totalBudgetedFixed - (isFuture ? 0 : dailyCashSpentTotal);
+
+  if (trueRemaining > 0) {
       pieData.push({
-          name: 'Kalan Bütçe',
-          value: remainingCash,
+          name: 'Kalan TL',
+          value: trueRemaining,
           color: '#22c55e' // green-500
       });
-  } else if (remainingCash < 0) {
+  } else if (trueRemaining < 0) {
       pieData.push({
           name: 'Bütçe Açığı',
-          value: Math.abs(remainingCash),
+          value: Math.abs(trueRemaining),
           color: '#7f1d1d' // dark red
       });
   }
