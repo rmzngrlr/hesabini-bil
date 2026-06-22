@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Settings as SettingsIcon, Sun, Moon, ChevronLeft, ChevronRight, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
 import { useBudget } from '../context/BudgetContext';
 import { Card } from '../components/ui/Card';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { ProgressBar } from '../components/ui/ProgressBar';
 
 const isGoldType = (type: string) => {
@@ -257,6 +258,53 @@ export default function Dashboard() {
   // If future, usage = fixed expenses / income
   const usagePercentage = totalCashResources > 0 ? (totalCashSpent / totalCashResources) * 100 : 0;
 
+  // Pie Chart Data
+  const pieData = [];
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#A28DFF', '#FF6666'];
+
+  // Add fixed expenses slices
+  const activeFixedExpenses = isFuture ? state.fixedExpenses : state.fixedExpenses.filter(e => e.isPaid);
+  let colorIndex = 0;
+
+  activeFixedExpenses.forEach(expense => {
+      if (expense.amount > 0 && expense.type === 'NAKIT') {
+          pieData.push({
+              name: expense.title,
+              value: expense.amount,
+              color: COLORS[colorIndex % COLORS.length]
+          });
+          colorIndex++;
+      }
+  });
+
+  // Add daily expenses summary slice
+  const dailyCashSpentTotal = state.dailyExpenses
+      .filter(e => e.type === 'NAKIT' && e.amount < 0)
+      .reduce((sum, e) => sum + Math.abs(e.amount), 0);
+
+  if (dailyCashSpentTotal > 0 && !isFuture) {
+      pieData.push({
+          name: 'Günlük Harcamalar',
+          value: dailyCashSpentTotal,
+          color: '#ef4444' // red-500
+      });
+  }
+
+  // Handle Remaining Cash slice
+  if (remainingCash > 0) {
+      pieData.push({
+          name: 'Kalan Bütçe',
+          value: remainingCash,
+          color: '#22c55e' // green-500
+      });
+  } else if (remainingCash < 0) {
+      pieData.push({
+          name: 'Bütçe Açığı',
+          value: Math.abs(remainingCash),
+          color: '#7f1d1d' // dark red
+      });
+  }
+
   return (
     <div className="space-y-6 pb-20 p-4">
       <header className="flex flex-col gap-4">
@@ -476,6 +524,36 @@ export default function Dashboard() {
         </div>
         <ProgressBar value={totalCashSpent} max={totalCashResources || 1} />
       </Card>
+
+      {/* Pie Chart Section */}
+      {pieData.length > 0 && (
+        <Card title="Nakit Bütçe Dağılımı" className="mt-6">
+            <div className="h-64 w-full mt-4">
+                <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                        <Pie
+                            data={pieData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={60}
+                            outerRadius={80}
+                            paddingAngle={2}
+                            dataKey="value"
+                        >
+                            {pieData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                        </Pie>
+                        <Tooltip
+                            formatter={(value) => [Number(value).toLocaleString('tr-TR') + ' ₺', 'Tutar']}
+                            contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)' }}
+                        />
+                        <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+                    </PieChart>
+                </ResponsiveContainer>
+            </div>
+        </Card>
+      )}
     </div>
   );
 }
