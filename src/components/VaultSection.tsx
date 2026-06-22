@@ -70,7 +70,7 @@ export function VaultSection() {
         }
 
         const currentTypes = Array.from(new Set(vaultRecords.filter(r => isGoldType(r.gold_type)).map(r => r.gold_type)));
-        let orderArray = [...vaultOrder];
+        const orderArray = [...vaultOrder];
         for (const type of currentTypes) {
             if (!orderArray.includes(type)) {
                 orderArray.push(type);

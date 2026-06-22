@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Settings as SettingsIcon, Sun, Moon, ChevronLeft, ChevronRight, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
 import { useBudget } from '../context/BudgetContext';
@@ -14,6 +14,16 @@ const isGoldType = (type: string) => {
 
 export default function Dashboard() {
   const { state, viewDate, earliestAllowedMonth, setViewDate, theme, toggleTheme, showMealCard, vaultRecords, vaultOrder, activeCurrencies } = useBudget();
+
+  // Track window size for responsive chart rendering
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    handleResize(); // Initial check
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const [isVaultExpanded, setIsVaultExpanded] = useState<boolean>(() => {
     try {
       const stored = localStorage.getItem('dashboard_vault_expanded');
@@ -259,7 +269,7 @@ export default function Dashboard() {
   const usagePercentage = totalCashResources > 0 ? (totalCashSpent / totalCashResources) * 100 : 0;
 
   // Pie Chart Data
-  let pieData = [];
+  const pieData: { name: string; value: number; fill?: string; color?: string }[] = [];
   const COLORS = ['#FFBB28', '#FF8042', '#8884D8', '#A28DFF', '#FF6666', '#0088FE', '#00C49F'];
 
   // The pie chart must represent the TOTAL MONTHLY INCOME.
@@ -540,16 +550,16 @@ export default function Dashboard() {
 
         {/* Pie Chart Section */}
         {pieData.length > 0 && (
-            <div className="h-64 w-full mt-2">
+            <div className={`w-full mt-2 ${isMobile ? 'h-80' : 'h-64'}`}>
                 <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                         <Pie
                             data={pieData}
                             cx="50%"
                             cy="50%"
-                            innerRadius={60}
-                            outerRadius={80}
-                            paddingAngle={2}
+                            innerRadius={0}
+                            outerRadius={isMobile ? 80 : 100}
+                            paddingAngle={0}
                             dataKey="value"
                             startAngle={90}
                             endAngle={-270}
@@ -565,7 +575,35 @@ export default function Dashboard() {
                             }}
                             contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)' }}
                         />
-                        <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+                        <Legend
+                            content={(props) => {
+                                const { payload } = props;
+                                if (!payload) return null;
+
+                                // We want to force the exact order of pieData:
+                                // Kalan TL, Günlük Harcamalar, then Sabit Giderler.
+                                // Recharts provides the payload, we just re-order it based on pieData.
+                                const sortedPayload = [...payload].sort((a, b) => {
+                                    const indexA = pieData.findIndex(item => item.name === a.value);
+                                    const indexB = pieData.findIndex(item => item.name === b.value);
+                                    return indexA - indexB;
+                                });
+
+                                return (
+                                    <ul className="recharts-default-legend" style={{ padding: '0px', margin: '0px', textAlign: 'center' }}>
+                                        {sortedPayload.map((entry, index) => (
+                                            <li key={`item-${index}`} className={`recharts-legend-item legend-item-${index}`} style={{ display: 'inline-block', marginRight: '10px' }}>
+                                                <svg className="recharts-surface" width="14" height="14" viewBox="0 0 32 32" style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '4px' }}>
+                                                    <path fill={entry.color} cx="16" cy="16" type="square" className="recharts-legend-icon" d="M0,0h32v32h-32z"></path>
+                                                </svg>
+                                                <span className="recharts-legend-item-text" style={{ color: entry.color }}>{entry.value}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                );
+                            }}
+                            wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
+                        />
                     </PieChart>
                 </ResponsiveContainer>
             </div>
