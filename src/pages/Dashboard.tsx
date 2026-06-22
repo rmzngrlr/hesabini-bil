@@ -268,7 +268,8 @@ export default function Dashboard() {
   let colorIndex = 0;
 
   state.fixedExpenses.forEach(expense => {
-      if (expense.amount > 0 && expense.type === 'NAKIT') {
+      if (expense.amount > 0) {
+          // We include all fixed expenses in the pie chart as TL equivalents because they reduce the total monthly income
           totalBudgetedFixed += expense.amount;
           pieData.push({
               name: expense.title,
