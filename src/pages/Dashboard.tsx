@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Settings as SettingsIcon, Sun, Moon, ChevronLeft, ChevronRight, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
 import { useBudget } from '../context/BudgetContext';
@@ -14,6 +14,16 @@ const isGoldType = (type: string) => {
 
 export default function Dashboard() {
   const { state, viewDate, earliestAllowedMonth, setViewDate, theme, toggleTheme, showMealCard, vaultRecords, vaultOrder, activeCurrencies } = useBudget();
+
+  // Track window size for responsive chart rendering
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    handleResize(); // Initial check
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const [isVaultExpanded, setIsVaultExpanded] = useState<boolean>(() => {
     try {
       const stored = localStorage.getItem('dashboard_vault_expanded');
@@ -540,7 +550,7 @@ export default function Dashboard() {
 
         {/* Pie Chart Section */}
         {pieData.length > 0 && (
-            <div className="h-64 w-full mt-2">
+            <div className={`w-full mt-2 ${isMobile ? 'h-80' : 'h-64'}`}>
                 <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                         <Pie
@@ -548,7 +558,7 @@ export default function Dashboard() {
                             cx="50%"
                             cy="50%"
                             innerRadius={0}
-                            outerRadius={100}
+                            outerRadius={isMobile ? 80 : 100}
                             paddingAngle={0}
                             dataKey="value"
                             startAngle={90}
