@@ -550,15 +550,15 @@ export default function Dashboard() {
 
         {/* Pie Chart Section */}
         {pieData.length > 0 && (
-            <div className={`w-full mt-2 ${isMobile ? 'h-80' : 'h-64'}`}>
+            <div className={`w-full mt-2 ${isMobile ? 'h-[340px]' : 'h-64'}`}>
                 <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                         <Pie
                             data={pieData}
                             cx="50%"
-                            cy="50%"
+                            cy={isMobile ? "45%" : "50%"}
                             innerRadius={0}
-                            outerRadius={isMobile ? 80 : 100}
+                            outerRadius={isMobile ? 100 : 110}
                             paddingAngle={0}
                             dataKey="value"
                             startAngle={90}
