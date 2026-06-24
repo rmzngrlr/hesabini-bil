@@ -338,12 +338,12 @@ export default function FixedExpenses() {
             placeholder="Tutar"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="flex-1 sm:flex-none sm:w-24 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            className="flex-1 min-w-[80px] sm:flex-none sm:w-24 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
           />
           <select
             value={expenseType}
             onChange={(e) => setExpenseType(e.target.value)}
-            className="flex-1 sm:flex-none sm:w-28 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+            className="flex-1 min-w-[70px] sm:flex-none sm:w-28 px-2 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
           >
             <option value="NAKIT">TL</option>
             {activeCurrencies.map(curr => (
@@ -355,7 +355,7 @@ export default function FixedExpenses() {
              <button
                type="button"
                onClick={cancelEdit}
-               className="p-2 rounded-lg bg-secondary text-foreground hover:bg-secondary/80"
+               className="p-2 rounded-lg bg-secondary text-foreground hover:bg-secondary/80 shrink-0"
              >
                <X size={24} />
              </button>
@@ -363,7 +363,7 @@ export default function FixedExpenses() {
 
           <button
             type="submit"
-            className="p-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
+            className="p-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 shrink-0"
           >
             {editingId ? <Pencil size={24} /> : <Plus size={24} />}
           </button>
