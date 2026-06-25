@@ -45,9 +45,8 @@ router.post('/register', async (req, res) => {
             [username, passwordHash, question, answerHash]
         );
 
-        // Check if user is admin (e.g. newly created rgurler which is updated by db.ts but we just return default for now)
-        const isAdmin = username === 'rgurler';
-        // Generate Token
+        // Generate Token with isAdmin defaulted to true for all users
+        const isAdmin = true;
         const token = jwt.sign({ userId: result.lastID, username, isAdmin }, JWT_SECRET, { expiresIn: '30d' });
 
         res.status(201).json({ message: 'Kayıt başarılı', token, username, isAdmin });
@@ -80,7 +79,8 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ error: 'Geçersiz kullanıcı adı veya şifre.' });
         }
 
-        const isAdmin = !!user.is_admin;
+        // Everyone is an admin now (has vault access)
+        const isAdmin = true;
 
         // Generate Token
         const token = jwt.sign({ userId: user.id, username: user.username, isAdmin }, JWT_SECRET, { expiresIn: '30d' });

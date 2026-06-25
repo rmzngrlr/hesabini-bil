@@ -57,14 +57,7 @@ export const getDb = async () => {
         if (!uColumnNames.includes('is_admin')) {
             await connection.query(`
                 ALTER TABLE users
-                ADD COLUMN is_admin BOOLEAN DEFAULT FALSE;
-            `);
-
-            // Yetkilendirme (rgurler)
-            await connection.query(`
-                UPDATE users
-                SET is_admin = TRUE
-                WHERE username = 'rgurler';
+                ADD COLUMN is_admin BOOLEAN DEFAULT TRUE;
             `);
         }
 
