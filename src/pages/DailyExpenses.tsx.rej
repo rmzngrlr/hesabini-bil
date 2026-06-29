@@ -1,0 +1,46 @@
+--- src/pages/DailyExpenses.tsx
++++ src/pages/DailyExpenses.tsx
+@@ -658,25 +658,37 @@
+     if (isNaN(fAmount) || fAmount <= 0 || isNaN(tAmount) || tAmount <= 0) {
+       return; // Invalid amounts
+     }
+-    if (exchangeFromType === exchangeToType) return; // Same type, ignore
++
++    let finalFromType = exchangeFromType;
++    if (finalFromType === 'NEW_CURRENCY') {
++      if (!exchangeFromCustomCode) return;
++      finalFromType = detectCurrencyCode(exchangeFromCustomCode);
++    }
++
++    let finalToType = exchangeToType;
++    if (finalToType === 'NEW_CURRENCY') {
++      if (!exchangeToCustomCode) return;
++      finalToType = detectCurrencyCode(exchangeToCustomCode);
++    }
++
++    if (finalFromType === finalToType) return; // Same type, ignore
+
+     const note = exchangeNote.trim() ? ` - ${exchangeNote}` : '';
+-    const fDesc = `Dönüşüm Çıkışı: ${fAmount} ${exchangeFromType} -> ${tAmount} ${exchangeToType}${note}`;
+-    const tDesc = `Dönüşüm Girişi: ${fAmount} ${exchangeFromType} -> ${tAmount} ${exchangeToType}${note}`;
++    const fDesc = `Dönüşüm Çıkışı: ${fAmount} ${finalFromType} -> ${tAmount} ${finalToType}${note}`;
++    const tDesc = `Dönüşüm Girişi: ${fAmount} ${finalFromType} -> ${tAmount} ${finalToType}${note}`;
+
+     // Deduct from `exchangeFromType`
+     addDailyExpense({
+       date: exchangeDate,
+       description: fDesc,
+       amount: -fAmount,
+-      type: exchangeFromType
++      type: finalFromType
+     });
+
+-    if (isGoldType(exchangeFromType)) {
++    if (isGoldType(finalFromType)) {
+       await addVaultRecord({
+         record_date: exchangeDate,
+         owner: 'Ortak',
+         amount: fAmount,
+         note: fDesc,
+         transaction_type: 'Bozdurma',
+-        gold_type: exchangeFromType

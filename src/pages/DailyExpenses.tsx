@@ -365,6 +365,8 @@ export default function DailyExpenses() {
   const [exchangeToAmount, setExchangeToAmount] = useState('');
   const [exchangeDate, setExchangeDate] = useState(new Date().toISOString().split('T')[0]);
   const [exchangeNote, setExchangeNote] = useState('');
+  const [exchangeFromCustomCode, setExchangeFromCustomCode] = useState('');
+  const [exchangeToCustomCode, setExchangeToCustomCode] = useState('');
 
   const uniqueDescriptions = useMemo(() => {
     const descriptions = new Set<string>();
@@ -653,28 +655,41 @@ export default function DailyExpenses() {
     if (isNaN(fAmount) || fAmount <= 0 || isNaN(tAmount) || tAmount <= 0) {
       return; // Invalid amounts
     }
-    if (exchangeFromType === exchangeToType) return; // Same type, ignore
+
+    let finalFromType = exchangeFromType;
+    if (finalFromType === 'NEW_CURRENCY') {
+      if (!exchangeFromCustomCode) return;
+      finalFromType = detectCurrencyCode(exchangeFromCustomCode);
+    }
+
+    let finalToType = exchangeToType;
+    if (finalToType === 'NEW_CURRENCY') {
+      if (!exchangeToCustomCode) return;
+      finalToType = detectCurrencyCode(exchangeToCustomCode);
+    }
+
+    if (finalFromType === finalToType) return; // Same type, ignore
 
     const note = exchangeNote.trim() ? ` - ${exchangeNote}` : '';
-    const fDesc = `Dönüşüm Çıkışı: ${fAmount} ${exchangeFromType} -> ${tAmount} ${exchangeToType}${note}`;
-    const tDesc = `Dönüşüm Girişi: ${fAmount} ${exchangeFromType} -> ${tAmount} ${exchangeToType}${note}`;
+    const fDesc = `Dönüşüm Çıkışı: ${fAmount} ${finalFromType} -> ${tAmount} ${finalToType}${note}`;
+    const tDesc = `Dönüşüm Girişi: ${fAmount} ${finalFromType} -> ${tAmount} ${finalToType}${note}`;
 
     // Deduct from `exchangeFromType`
     addDailyExpense({
       date: exchangeDate,
       description: fDesc,
       amount: -fAmount,
-      type: exchangeFromType
+      type: finalFromType
     });
 
-    if (isGoldType(exchangeFromType)) {
+    if (isGoldType(finalFromType)) {
       await addVaultRecord({
         record_date: exchangeDate,
         owner: 'Ortak',
         amount: fAmount,
         note: fDesc,
         transaction_type: 'Bozdurma',
-        gold_type: exchangeFromType
+        gold_type: finalFromType
       });
     }
 
@@ -683,17 +698,17 @@ export default function DailyExpenses() {
       date: exchangeDate,
       description: tDesc,
       amount: tAmount,
-      type: exchangeToType
+      type: finalToType
     });
 
-    if (isGoldType(exchangeToType)) {
+    if (isGoldType(finalToType)) {
       await addVaultRecord({
         record_date: exchangeDate,
         owner: 'Ortak',
         amount: tAmount,
         note: tDesc,
         transaction_type: 'Birikim',
-        gold_type: exchangeToType
+        gold_type: finalToType
       });
     }
 
@@ -701,7 +716,9 @@ export default function DailyExpenses() {
     setExchangeFromAmount('');
     setExchangeToAmount('');
     setExchangeNote('');
-    setActiveTab(exchangeToType);
+    setExchangeFromCustomCode('');
+    setExchangeToCustomCode('');
+    setActiveTab(finalToType);
   };
 
   const handleDeleteClick = async (expense: DailyExpense) => {
@@ -778,6 +795,7 @@ export default function DailyExpenses() {
       <option value="NAKIT">Türk Lirası</option>
       {showMealCard && <option value="YK">Yemek Kartı</option>}
       {activeCurrencies.map(curr => (<option key={curr} value={curr}>{getAssetFullTitle(curr)}</option>))}
+      <option value="NEW_CURRENCY">+ Diğer Para Birimi Ekle...</option>
     </>
   );
 
@@ -834,6 +852,13 @@ export default function DailyExpenses() {
                 </div>
               </div>
 
+              {exchangeFromType === 'NEW_CURRENCY' && (
+                 <div className="space-y-1 mb-2">
+                   <label className="text-xs text-muted-foreground">Yeni Verilen Para Birimi Adı (Örn: Dolar)</label>
+                   <input type="text" required placeholder="Para Birimi Girin" value={exchangeFromCustomCode} onChange={e => setExchangeFromCustomCode(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary font-medium" />
+                 </div>
+              )}
+
               <div className="flex justify-center text-muted-foreground py-1">
                 <ArrowRightLeft size={20} className="rotate-90" />
               </div>
@@ -853,6 +878,13 @@ export default function DailyExpenses() {
                    <input type="number" step="0.001" required placeholder="0.00" value={exchangeToAmount} onChange={e => setExchangeToAmount(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary" />
                 </div>
               </div>
+
+              {exchangeToType === 'NEW_CURRENCY' && (
+                 <div className="space-y-1 mt-1 mb-2">
+                   <label className="text-xs text-muted-foreground">Yeni Alınan Para Birimi Adı (Örn: Dolar)</label>
+                   <input type="text" required placeholder="Para Birimi Girin" value={exchangeToCustomCode} onChange={e => setExchangeToCustomCode(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary font-medium" />
+                 </div>
+              )}
 
               <div className="flex gap-2">
                  <div className="flex-[2] space-y-1">
