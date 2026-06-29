@@ -248,12 +248,12 @@ export default function FixedExpenses() {
               placeholder="Tutar"
               value={incomeAmount}
               onChange={(e) => setIncomeAmount(e.target.value)}
-              className="flex-[2] sm:flex-none sm:w-24 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              className="flex-1 min-w-[80px] sm:flex-none sm:w-24 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             />
             <select
               value={incomeType}
               onChange={(e) => setIncomeType(e.target.value)}
-              className="flex-1 sm:flex-none sm:w-28 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+              className="flex-1 min-w-[70px] sm:flex-none sm:w-28 px-2 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
             >
               <option value="NAKIT">TL</option>
               {activeCurrencies.map(curr => (
