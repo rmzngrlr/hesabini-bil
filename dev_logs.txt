@@ -2,29 +2,27 @@
 > app@1.1.1 dev:all
 > npx -y concurrently "npm run dev" "npm run server:start"
 
+[1]
+[1] > app@1.1.1 server:start
+[1] > cd server && npm start
+[1]
 [0]
 [0] > app@1.1.1 dev
 [0] > vite --host
 [0]
 [1]
-[1] > app@1.1.1 server:start
-[1] > cd server && npm start
-[1]
-[1]
 [1] > server@1.0.0 start
 [1] > npx -y tsx src/index.ts
 [1]
-[0] Port 3002 is in use, trying another one...
-[0] Port 3003 is in use, trying another one...
 [0]
-[0]   VITE v7.3.1  ready in 323 ms
+[0]   VITE v7.3.1  ready in 809 ms
 [0]
-[0]   ➜  Local:   http://localhost:3004/
-[0]   ➜  Network: http://192.168.0.2:3004/
-[1] ◇ injected env (0) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
-[1] ◇ injected env (0) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
-[1] ◇ injected env (0) from .env // tip: ⌘ enable debugging { debug: true }
-[1] ◇ injected env (0) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+[0]   ➜  Local:   http://localhost:3002/
+[0]   ➜  Network: http://192.168.0.2:3002/
+[1] ◇ injected env (0) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+[1] ◇ injected env (0) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+[1] ◇ injected env (0) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+[1] ◇ injected env (0) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
 [1] Sunucu başlatılamadı: Error: connect ECONNREFUSED 127.0.0.1:3306
 [1]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16) {
 [1]   errno: -111,
