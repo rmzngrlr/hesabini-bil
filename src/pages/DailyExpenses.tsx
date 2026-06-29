@@ -920,14 +920,14 @@ export default function DailyExpenses() {
                  </div>
               )}
 
-              <div className="flex gap-2">
-                 <div className="flex-[2] space-y-1">
-                    <label className="text-xs text-muted-foreground">Açıklama / Kur Bilgisi (İsteğe Bağlı)</label>
-                    <input type="text" placeholder="Örn: 1 Dolar = 35 TL" value={exchangeNote} onChange={e => setExchangeNote(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary" />
-                 </div>
-                 <div className="flex-1 space-y-1">
+              <div className="space-y-3">
+                 <div className="space-y-1">
                     <label className="text-xs text-muted-foreground">Tarih</label>
                     <input type="date" value={exchangeDate} onChange={e => setExchangeDate(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary" />
+                 </div>
+                 <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Açıklama / Kur Bilgisi (İsteğe Bağlı)</label>
+                    <input type="text" placeholder="Örn: 1 Dolar = 35 TL" value={exchangeNote} onChange={e => setExchangeNote(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary" />
                  </div>
               </div>
 
@@ -940,8 +940,8 @@ export default function DailyExpenses() {
             </form>
             ) : (
             <form onSubmit={handleSubmit} className="space-y-3 mt-2">
-            <div className="flex gap-2">
-                <div className="flex-1 space-y-1">
+            <div className="space-y-3">
+                <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">Tarih</label>
                 <input
                     type="date"
@@ -950,7 +950,7 @@ export default function DailyExpenses() {
                     className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 />
                 </div>
-                <div className="flex-[2] space-y-1">
+                <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">Miktar</label>
                 <input
                     type="number"
@@ -1071,8 +1071,8 @@ export default function DailyExpenses() {
         ) : (
         <Card title={editingId ? "Kayıt Düzenle" : "Yeni İşlem Ekle"}>
             <form onSubmit={handleSubmit} className="space-y-3 mt-2">
-            <div className="flex gap-2">
-                <div className="flex-1 space-y-1">
+            <div className="space-y-3">
+                <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">Tarih</label>
                 <input
                     type="date"
@@ -1081,7 +1081,7 @@ export default function DailyExpenses() {
                     className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 />
                 </div>
-                <div className="flex-[2] space-y-1">
+                <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">Tutar</label>
                 <input
                     type="number"
