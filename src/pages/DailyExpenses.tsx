@@ -870,7 +870,7 @@ export default function DailyExpenses() {
                      exchangeTabMode === 'GOLD' ? "bg-background text-foreground shadow" : "text-muted-foreground hover:text-foreground"
                   )}
                >
-                  Altın İşlemleri (Kasa)
+                  Altın İşlemleri
                </button>
             </div>
 
@@ -881,9 +881,6 @@ export default function DailyExpenses() {
                    <label className="text-xs text-muted-foreground">Verilen Birim</label>
                    <select value={exchangeFromType} onChange={e => setExchangeFromType(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary">
                      <optgroup label="Para Birimleri">{assetOptions}</optgroup>
-                     <optgroup label="Altın Türleri">
-                       {allFormTypes.golds.map(gold => (<option key={gold} value={gold}>{getAssetFullTitle(gold)}</option>))}
-                     </optgroup>
                    </select>
                 </div>
                 <div className="flex-1 space-y-1">
@@ -908,9 +905,6 @@ export default function DailyExpenses() {
                    <label className="text-xs text-muted-foreground">Alınan Birim</label>
                    <select value={exchangeToType} onChange={e => setExchangeToType(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary">
                      <optgroup label="Para Birimleri">{assetOptions}</optgroup>
-                     <optgroup label="Altın Türleri">
-                       {allFormTypes.golds.map(gold => (<option key={gold} value={gold}>{getAssetFullTitle(gold)}</option>))}
-                     </optgroup>
                    </select>
                 </div>
                 <div className="flex-1 space-y-1">

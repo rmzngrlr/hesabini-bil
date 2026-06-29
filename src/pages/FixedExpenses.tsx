@@ -248,12 +248,12 @@ export default function FixedExpenses() {
               placeholder="Tutar"
               value={incomeAmount}
               onChange={(e) => setIncomeAmount(e.target.value)}
-              className="flex-[2] sm:flex-none sm:w-24 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              className="flex-[2] min-w-0 sm:flex-none sm:w-24 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             />
             <select
               value={incomeType}
               onChange={(e) => setIncomeType(e.target.value)}
-              className="flex-1 sm:flex-none sm:w-28 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+              className="flex-1 min-w-0 sm:flex-none sm:w-28 px-2 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
             >
               <option value="NAKIT">TL</option>
               {activeCurrencies.map(curr => (
@@ -271,15 +271,15 @@ export default function FixedExpenses() {
 
         <div className="space-y-2">
           {state.customIncomes?.map((income) => (
-            <div key={income.id} className="flex items-center justify-between p-3 rounded-lg bg-card border border-border/50">
-              <span className="font-medium">{income.title}</span>
-              <div className="flex items-center gap-3">
+            <div key={income.id} className="flex items-center justify-between p-3 rounded-lg bg-card border border-border/50 gap-2">
+              <span className="font-medium break-words min-w-0">{income.title}</span>
+              <div className="flex items-center gap-3 shrink-0">
                 <span className="font-bold text-green-500">
                   +{income.amount.toLocaleString('tr-TR')}{income.type && isGoldType(income.type) ? ' ' : ''}{income.type === 'NAKIT' || !income.type ? '₺' : income.type}
                 </span>
                 <button
                   onClick={async () => { if (await askConfirmation('Bu geliri silmek istediğinize emin misiniz?')) { deleteCustomIncome(income.id); } }}
-                  className="p-1 text-muted-foreground hover:text-red-500 transition-colors rounded-lg hover:bg-red-500/10"
+                  className="p-1 text-muted-foreground hover:text-red-500 transition-colors rounded-lg hover:bg-red-500/10 shrink-0"
                 >
                   <Trash2 size={18} />
                 </button>
@@ -338,12 +338,12 @@ export default function FixedExpenses() {
             placeholder="Tutar"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="flex-1 min-w-[80px] sm:flex-none sm:w-24 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            className="flex-1 min-w-0 sm:flex-none sm:w-24 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
           />
           <select
             value={expenseType}
             onChange={(e) => setExpenseType(e.target.value)}
-            className="flex-1 min-w-[70px] sm:flex-none sm:w-28 px-2 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+            className="flex-1 min-w-0 sm:flex-none sm:w-28 px-2 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
           >
             <option value="NAKIT">TL</option>
             {activeCurrencies.map(curr => (
