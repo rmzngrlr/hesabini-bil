@@ -66,7 +66,7 @@ export function Layout({ children }: LayoutProps) {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-full overflow-y-auto pb-20 md:pb-0 md:pl-64 transition-all duration-300 min-w-0">
-        <main className="flex-1 p-4 w-full mx-auto md:p-8 md:max-w-7xl min-w-0">
+        <main className="flex-1 p-4 w-full mx-auto md:p-8 md:max-w-[1450px] min-w-0">
           {children}
         </main>
       </div>
