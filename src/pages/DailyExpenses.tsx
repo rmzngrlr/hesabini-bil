@@ -845,7 +845,7 @@ export default function DailyExpenses() {
                    showExchangeForm ? "bg-primary text-primary-foreground shadow" : "bg-secondary text-muted-foreground hover:bg-secondary/80"
                 )}
              >
-                <ArrowRightLeft size={16} /> Döviz/Altın Dönüştür
+                Döviz/Altın İşlemleri
              </button>
           </div>
 
@@ -875,95 +875,83 @@ export default function DailyExpenses() {
             </div>
 
             {exchangeTabMode === 'CURRENCY' ? (
-            <form onSubmit={handleExchangeSubmit} className="space-y-4 mt-2">
-
-              {/* Çeviri Bloğu (Verilen -> Alınan) */}
-              <div className="relative border border-border bg-secondary/20 rounded-xl p-3">
-
-                  {/* Verilen */}
-                  <div className="flex gap-3">
-                    <div className="flex-[2] space-y-1">
-                        <label className="text-[11px] uppercase tracking-wider text-muted-foreground/80 font-semibold">Verilen</label>
-                        <select value={exchangeFromType} onChange={e => setExchangeFromType(e.target.value)} className="w-full h-10 px-3 rounded-lg bg-background border border-border focus:ring-2 focus:ring-primary text-sm font-medium">
-                            <optgroup label="Para Birimleri">{assetOptions}</optgroup>
-                        </select>
-                    </div>
-                    <div className="flex-1 space-y-1">
-                        <label className="text-[11px] uppercase tracking-wider text-muted-foreground/80 font-semibold">Tutar</label>
-                        <input type="number" step="0.001" required placeholder="0" value={exchangeFromAmount} onChange={e => setExchangeFromAmount(e.target.value)} className="w-full h-10 px-3 rounded-lg bg-background border border-border focus:ring-2 focus:ring-primary text-sm font-medium" />
-                    </div>
-                  </div>
-
-                  {exchangeFromType === 'NEW_CURRENCY' && (
-                     <div className="mt-2 space-y-1">
-                       <label className="text-[11px] uppercase tracking-wider text-muted-foreground/80 font-semibold">Yeni Verilen Birim Adı</label>
-                       <input type="text" required placeholder="Örn: Sterlin" value={exchangeFromCustomCode} onChange={e => setExchangeFromCustomCode(e.target.value)} className="w-full h-10 px-3 rounded-lg bg-background border border-border focus:ring-2 focus:ring-primary text-sm font-medium" />
-                     </div>
-                  )}
-
-                  {/* Dekoratif Yer Değiştirme Butonu Ortalanmış */}
-                  <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-8 rounded-full bg-background border border-border shadow-sm text-muted-foreground z-10">
-                      <ArrowRightLeft size={14} className="rotate-90" />
-                  </div>
-
-                  <div className="h-px bg-border/50 my-4"></div>
-
-                  {/* Alınan */}
-                  <div className="flex gap-3">
-                    <div className="flex-[2] space-y-1">
-                        <label className="text-[11px] uppercase tracking-wider text-muted-foreground/80 font-semibold">Alınan</label>
-                        <select value={exchangeToType} onChange={e => setExchangeToType(e.target.value)} className="w-full h-10 px-3 rounded-lg bg-background border border-border focus:ring-2 focus:ring-primary text-sm font-medium">
-                            <optgroup label="Para Birimleri">{assetOptions}</optgroup>
-                        </select>
-                    </div>
-                    <div className="flex-1 space-y-1">
-                        <label className="text-[11px] uppercase tracking-wider text-muted-foreground/80 font-semibold">Tutar</label>
-                        <input type="number" step="0.001" required placeholder="0" value={exchangeToAmount} onChange={e => setExchangeToAmount(e.target.value)} className="w-full h-10 px-3 rounded-lg bg-background border border-border focus:ring-2 focus:ring-primary text-sm font-medium" />
-                    </div>
-                  </div>
-
-                  {exchangeToType === 'NEW_CURRENCY' && (
-                     <div className="mt-2 space-y-1">
-                       <label className="text-[11px] uppercase tracking-wider text-muted-foreground/80 font-semibold">Yeni Alınan Birim Adı</label>
-                       <input type="text" required placeholder="Örn: Frank" value={exchangeToCustomCode} onChange={e => setExchangeToCustomCode(e.target.value)} className="w-full h-10 px-3 rounded-lg bg-background border border-border focus:ring-2 focus:ring-primary text-sm font-medium" />
-                     </div>
-                  )}
-
+            <form onSubmit={handleExchangeSubmit} className="space-y-3 mt-2">
+              <div className="flex gap-2 items-center">
+                <div className="flex-[2] space-y-1">
+                   <label className="text-xs text-muted-foreground">Verilen Birim</label>
+                   <select value={exchangeFromType} onChange={e => setExchangeFromType(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary">
+                     <optgroup label="Para Birimleri">{assetOptions}</optgroup>
+                   </select>
+                </div>
+                <div className="flex-1 space-y-1">
+                   <label className="text-xs text-muted-foreground">Tutar</label>
+                   <input type="number" step="0.001" required placeholder="0.00" value={exchangeFromAmount} onChange={e => setExchangeFromAmount(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary" />
+                </div>
               </div>
 
-              {/* Sabit Yükseklikli Tarih ve Açıklama Alanı (Grid Layout) */}
-              <div className="grid grid-cols-2 gap-3">
+              {exchangeFromType === 'NEW_CURRENCY' && (
+                 <div className="space-y-1 mb-2">
+                   <label className="text-xs text-muted-foreground">Yeni Verilen Para Birimi Adı (Örn: Dolar)</label>
+                   <input type="text" required placeholder="Para Birimi Girin" value={exchangeFromCustomCode} onChange={e => setExchangeFromCustomCode(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary font-medium" />
+                 </div>
+              )}
+
+              <div className="flex justify-center text-muted-foreground py-1">
+                <ArrowRightLeft size={20} className="rotate-90" />
+              </div>
+
+              <div className="flex gap-2 items-center">
+                <div className="flex-[2] space-y-1">
+                   <label className="text-xs text-muted-foreground">Alınan Birim</label>
+                   <select value={exchangeToType} onChange={e => setExchangeToType(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary">
+                     <optgroup label="Para Birimleri">{assetOptions}</optgroup>
+                   </select>
+                </div>
+                <div className="flex-1 space-y-1">
+                   <label className="text-xs text-muted-foreground">Tutar</label>
+                   <input type="number" step="0.001" required placeholder="0.00" value={exchangeToAmount} onChange={e => setExchangeToAmount(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary" />
+                </div>
+              </div>
+
+              {exchangeToType === 'NEW_CURRENCY' && (
+                 <div className="space-y-1 mt-1 mb-2">
+                   <label className="text-xs text-muted-foreground">Yeni Alınan Para Birimi Adı (Örn: Dolar)</label>
+                   <input type="text" required placeholder="Para Birimi Girin" value={exchangeToCustomCode} onChange={e => setExchangeToCustomCode(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary font-medium" />
+                 </div>
+              )}
+
+              <div className="space-y-3">
                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">Tarih</label>
-                    <input type="date" value={exchangeDate} onChange={e => setExchangeDate(e.target.value)} className="w-full h-10 px-3 rounded-lg bg-secondary border border-transparent focus:ring-2 focus:ring-primary text-sm" />
+                    <label className="text-xs text-muted-foreground">Tarih</label>
+                    <input type="date" value={exchangeDate} onChange={e => setExchangeDate(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary" />
                  </div>
                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">Kur / Açıklama</label>
-                    <input type="text" placeholder="1 Dolar = 35 TL vb." value={exchangeNote} onChange={e => setExchangeNote(e.target.value)} className="w-full h-10 px-3 rounded-lg bg-secondary border border-transparent focus:ring-2 focus:ring-primary text-sm" />
+                    <label className="text-xs text-muted-foreground">Açıklama / Kur Bilgisi (İsteğe Bağlı)</label>
+                    <input type="text" placeholder="Örn: 1 Dolar = 35 TL" value={exchangeNote} onChange={e => setExchangeNote(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary" />
                  </div>
               </div>
 
               <button
                 type="submit"
-                className="w-full py-3 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors mt-2 shadow-sm"
+                className="w-full py-3 mt-4 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors"
               >
                 Dönüştür
               </button>
             </form>
             ) : (
             <form onSubmit={handleSubmit} className="space-y-3 mt-2">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-3">
                 <div className="space-y-1">
-                <label className="text-xs text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">Tarih</label>
+                <label className="text-xs text-muted-foreground">Tarih</label>
                 <input
                     type="date"
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    className="w-full h-10 px-3 rounded-lg bg-secondary text-foreground border border-transparent focus:ring-2 focus:ring-primary text-sm"
+                    className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 />
                 </div>
                 <div className="space-y-1">
-                <label className="text-xs text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">Miktar</label>
+                <label className="text-xs text-muted-foreground">Miktar</label>
                 <input
                     type="number"
                     step="0.01"
@@ -971,7 +959,7 @@ export default function DailyExpenses() {
                     placeholder="0.00"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    className="w-full h-10 px-3 rounded-lg bg-secondary text-foreground border border-transparent focus:ring-2 focus:ring-primary text-sm"
+                    className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 />
                 </div>
             </div>
@@ -1083,25 +1071,25 @@ export default function DailyExpenses() {
         ) : (
         <Card title={editingId ? "Kayıt Düzenle" : "Yeni İşlem Ekle"}>
             <form onSubmit={handleSubmit} className="space-y-3 mt-2">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-3">
                 <div className="space-y-1">
-                <label className="text-xs text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">Tarih</label>
+                <label className="text-xs text-muted-foreground">Tarih</label>
                 <input
                     type="date"
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    className="w-full h-10 px-3 rounded-lg bg-secondary text-foreground border border-transparent focus:ring-2 focus:ring-primary text-sm"
+                    className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 />
                 </div>
                 <div className="space-y-1">
-                <label className="text-xs text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">Tutar</label>
+                <label className="text-xs text-muted-foreground">Tutar</label>
                 <input
                     type="number"
                     step="0.01"
                     placeholder="0.00"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    className="w-full h-10 px-3 rounded-lg bg-secondary text-foreground border border-transparent focus:ring-2 focus:ring-primary text-sm"
+                    className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 />
                 </div>
             </div>
