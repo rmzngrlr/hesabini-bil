@@ -29,7 +29,7 @@ export function Layout({ children }: LayoutProps) {
   }, [location.pathname]);
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground w-full max-w-full">
+    <div className="flex h-screen h-[100dvh] overflow-hidden bg-background text-foreground w-full max-w-full">
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-64 border-r border-border bg-card p-6 space-y-8 fixed h-full left-0 top-0 overflow-y-auto">
         <div className="flex items-center gap-3 px-2">
@@ -65,7 +65,7 @@ export function Layout({ children }: LayoutProps) {
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-h-screen pb-20 md:pb-0 md:pl-64 transition-all duration-300 min-w-0">
+      <div className="flex-1 flex flex-col h-full overflow-y-auto pb-20 md:pb-0 md:pl-64 transition-all duration-300 min-w-0">
         <main className="flex-1 p-4 w-full mx-auto md:p-8 md:max-w-7xl min-w-0">
           {children}
         </main>
