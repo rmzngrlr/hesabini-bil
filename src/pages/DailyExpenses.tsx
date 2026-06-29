@@ -357,8 +357,8 @@ export default function DailyExpenses() {
   const [goldPriceTL, setGoldPriceTL] = useDraftState('daily_draft_gold_price_tl', '');
   const [goldTransactionType, setGoldTransactionType] = useDraftState<'Birikim' | 'Bozdurma'>('daily_draft_gold_tx_type', 'Birikim');
 
-  // Exchange Form State
   const [showExchangeForm, setShowExchangeForm] = useState(false);
+  const [exchangeTabMode, setExchangeTabMode] = useState<'CURRENCY' | 'GOLD'>('CURRENCY');
   const [exchangeFromType, setExchangeFromType] = useState('NAKIT');
   const [exchangeToType, setExchangeToType] = useState('NAKIT');
   const [exchangeFromAmount, setExchangeFromAmount] = useState('');
@@ -367,6 +367,9 @@ export default function DailyExpenses() {
   const [exchangeNote, setExchangeNote] = useState('');
   const [exchangeFromCustomCode, setExchangeFromCustomCode] = useState('');
   const [exchangeToCustomCode, setExchangeToCustomCode] = useState('');
+
+
+
 
   const uniqueDescriptions = useMemo(() => {
     const descriptions = new Set<string>();
@@ -646,6 +649,7 @@ export default function DailyExpenses() {
     sessionStorage.removeItem('daily_draft_editing_id');
   };
 
+
   const handleExchangeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -674,7 +678,6 @@ export default function DailyExpenses() {
     const fDesc = `Dönüşüm Çıkışı: ${fAmount} ${finalFromType} -> ${tAmount} ${finalToType}${note}`;
     const tDesc = `Dönüşüm Girişi: ${fAmount} ${finalFromType} -> ${tAmount} ${finalToType}${note}`;
 
-    // Deduct from `exchangeFromType`
     addDailyExpense({
       date: exchangeDate,
       description: fDesc,
@@ -683,17 +686,9 @@ export default function DailyExpenses() {
     });
 
     if (isGoldType(finalFromType)) {
-      await addVaultRecord({
-        record_date: exchangeDate,
-        owner: 'Ortak',
-        amount: fAmount,
-        note: fDesc,
-        transaction_type: 'Bozdurma',
-        gold_type: finalFromType
-      });
+      await addVaultRecord({ record_date: exchangeDate, owner: 'Ortak', amount: fAmount, note: fDesc, transaction_type: 'Bozdurma', gold_type: finalFromType });
     }
 
-    // Add to `exchangeToType`
     addDailyExpense({
       date: exchangeDate,
       description: tDesc,
@@ -702,14 +697,7 @@ export default function DailyExpenses() {
     });
 
     if (isGoldType(finalToType)) {
-      await addVaultRecord({
-        record_date: exchangeDate,
-        owner: 'Ortak',
-        amount: tAmount,
-        note: tDesc,
-        transaction_type: 'Birikim',
-        gold_type: finalToType
-      });
+      await addVaultRecord({ record_date: exchangeDate, owner: 'Ortak', amount: tAmount, note: tDesc, transaction_type: 'Birikim', gold_type: finalToType });
     }
 
     setShowExchangeForm(false);
@@ -835,6 +823,30 @@ export default function DailyExpenses() {
 
         {showExchangeForm ? (
           <Card title="Varlık Dönüştür (Takas)">
+            <div className="flex gap-2 mb-4 bg-secondary p-1 rounded-lg">
+               <button
+                  type="button"
+                  onClick={() => setExchangeTabMode('CURRENCY')}
+                  className={cn(
+                     "flex-1 py-1.5 text-sm font-medium rounded-md transition-all",
+                     exchangeTabMode === 'CURRENCY' ? "bg-background text-foreground shadow" : "text-muted-foreground hover:text-foreground"
+                  )}
+               >
+                  Döviz Takası
+               </button>
+               <button
+                  type="button"
+                  onClick={() => setExchangeTabMode('GOLD')}
+                  className={cn(
+                     "flex-1 py-1.5 text-sm font-medium rounded-md transition-all",
+                     exchangeTabMode === 'GOLD' ? "bg-background text-foreground shadow" : "text-muted-foreground hover:text-foreground"
+                  )}
+               >
+                  Altın İşlemleri (Kasa)
+               </button>
+            </div>
+
+            {exchangeTabMode === 'CURRENCY' ? (
             <form onSubmit={handleExchangeSubmit} className="space-y-3 mt-2">
               <div className="flex gap-2 items-center">
                 <div className="flex-[2] space-y-1">
@@ -904,9 +916,7 @@ export default function DailyExpenses() {
                 Dönüştür
               </button>
             </form>
-          </Card>
-        ) : (
-        <Card title={editingId ? "Kayıt Düzenle" : "Yeni Kazanç/Harcama Ekle"}>
+            ) : (
             <form onSubmit={handleSubmit} className="space-y-3 mt-2">
             <div className="flex gap-2">
                 <div className="flex-1 space-y-1">
@@ -918,11 +928,12 @@ export default function DailyExpenses() {
                     className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 />
                 </div>
-                <div className="flex-1 space-y-1">
-                <label className="text-xs text-muted-foreground">{isGoldType(type) ? 'Miktar' : 'Tutar'}</label>
+                <div className="flex-[2] space-y-1">
+                <label className="text-xs text-muted-foreground">Miktar</label>
                 <input
                     type="number"
                     step="0.01"
+                    required
                     placeholder="0.00"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
@@ -931,15 +942,13 @@ export default function DailyExpenses() {
                 </div>
             </div>
 
-            {isGoldType(type) ? (
-              <div className="space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">Kime Ait</label>
+              <div className="space-y-3 border border-border p-3 rounded-lg bg-secondary/20">
+                <div className="flex gap-2">
+                  <div className="flex-1 space-y-1">
+                    <label className="text-xs text-muted-foreground">Altın Sahibi</label>
                     <input
                       type="text"
-                      required
-                      placeholder="Örn: Ahmet"
+                      placeholder="Kimin Adına?"
                       value={goldOwner}
                       onChange={(e) => setGoldOwner(e.target.value)}
                       className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
@@ -970,7 +979,99 @@ export default function DailyExpenses() {
                     />
                   </div>
               </div>
-            ) : (
+
+              <div className="flex gap-2 pt-1">
+                  <button
+                  type="button"
+                  onClick={() => { setGoldTransactionType('Birikim'); setTransactionType('INCOME'); }}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${goldTransactionType === 'Birikim' ? 'bg-green-500/10 border-green-500 text-green-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
+                  >
+                  Birikim
+                  </button>
+                  <button
+                  type="button"
+                  onClick={() => { setGoldTransactionType('Bozdurma'); setTransactionType('EXPENSE'); }}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${goldTransactionType === 'Bozdurma' ? 'bg-red-500/10 border-red-500 text-red-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
+                  >
+                  Bozdurma
+                  </button>
+              </div>
+
+            <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Altın Türü</label>
+                <select
+                  value={type}
+                  onChange={(e) => { setType(e.target.value); setActiveTab(e.target.value); }}
+                  className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+                >
+                  <optgroup label="Altın Türleri (Kasa)">
+                    {allFormTypes.golds.map(gold => (
+                      <option key={gold} value={gold}>{getAssetFullTitle(gold)}</option>
+                    ))}
+                  </optgroup>
+                </select>
+            </div>
+
+            {type === 'NEW_CURRENCY' && (
+              <div className="space-y-1 mt-2">
+                <label className="text-xs text-muted-foreground">Yeni Para Birimi Adı, Sembolü veya Kodu (Örn: Dolar, $, Euro, €)</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Para Birimi Girin (Örn: Dolar, $, Euro)"
+                  value={customCurrencyCode}
+                  onChange={(e) => setCustomCurrencyCode(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+                />
+              </div>
+            )}
+
+            <div className="flex gap-2 mt-2">
+                {editingId && (
+                <button
+                    type="button"
+                    onClick={cancelEdit}
+                    className="flex-1 py-3 bg-secondary text-foreground font-medium rounded-lg hover:bg-secondary/80 transition-colors flex items-center justify-center gap-2"
+                >
+                    <X size={20} /> İptal
+                </button>
+                )}
+                <button
+                type="submit"
+                className="flex-[2] py-3 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors"
+                >
+                {editingId ? 'Güncelle' : 'Altın İşlemini Kaydet'}
+                </button>
+            </div>
+            </form>
+            )}
+          </Card>
+        ) : (
+        <Card title={editingId ? "Kayıt Düzenle" : "Yeni İşlem Ekle"}>
+            <form onSubmit={handleSubmit} className="space-y-3 mt-2">
+            <div className="flex gap-2">
+                <div className="flex-1 space-y-1">
+                <label className="text-xs text-muted-foreground">Tarih</label>
+                <input
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                </div>
+                <div className="flex-[2] space-y-1">
+                <label className="text-xs text-muted-foreground">Tutar</label>
+                <input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                </div>
+            </div>
+
               <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">Açıklama</label>
                 <input
@@ -988,27 +1089,7 @@ export default function DailyExpenses() {
                   ))}
                 </datalist>
               </div>
-            )}
 
-            {isGoldType(type) ? (
-              <div className="flex gap-2 pt-1">
-                  <button
-                  type="button"
-                  onClick={() => { setGoldTransactionType('Birikim'); setTransactionType('INCOME'); }}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${goldTransactionType === 'Birikim' ? 'bg-green-500/10 border-green-500 text-green-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
-                  >
-                  Birikim
-                  </button>
-                  <button
-                  type="button"
-                  onClick={() => { setGoldTransactionType('Bozdurma'); setTransactionType('EXPENSE'); }}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${goldTransactionType === 'Bozdurma' ? 'bg-red-500/10 border-red-500 text-red-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
-                  >
-                  Bozdurma
-                  </button>
-
-              </div>
-            ) : (
               <div className="flex gap-2 pt-1">
                   <button
                   type="button"
@@ -1025,7 +1106,6 @@ export default function DailyExpenses() {
                   Gider (-)
                   </button>
               </div>
-            )}
 
             <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">Varlık / Para Birimi</label>
@@ -1036,12 +1116,6 @@ export default function DailyExpenses() {
                 >
                   <optgroup label="Para Birimleri">
                     {assetOptions}
-                    <option value="NEW_CURRENCY">+ Diğer Para Birimi Ekle...</option>
-                  </optgroup>
-                  <optgroup label="Altın Türleri (Kasa)">
-                    {allFormTypes.golds.map(gold => (
-                      <option key={gold} value={gold}>{getAssetFullTitle(gold)}</option>
-                    ))}
                   </optgroup>
                 </select>
             </div>
