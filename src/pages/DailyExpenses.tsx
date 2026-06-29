@@ -845,7 +845,7 @@ export default function DailyExpenses() {
                    showExchangeForm ? "bg-primary text-primary-foreground shadow" : "bg-secondary text-muted-foreground hover:bg-secondary/80"
                 )}
              >
-                <ArrowRightLeft size={16} /> Döviz/Altın Dönüştür
+                Döviz/Altın İşlemleri
              </button>
           </div>
 
