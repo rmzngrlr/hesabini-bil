@@ -965,8 +965,8 @@ export default function DailyExpenses() {
             </div>
 
               <div className="space-y-3 border border-border p-3 rounded-lg bg-secondary/20">
-                <div className="flex gap-2">
-                  <div className="flex-1 space-y-1">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
                     <label className="text-xs text-muted-foreground">Altın Sahibi</label>
                     <input
                       type="text"
