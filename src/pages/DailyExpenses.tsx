@@ -818,7 +818,7 @@ export default function DailyExpenses() {
   return (
     <div className="space-y-6 pb-20 p-4">
       <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold tracking-tight">Günlük Defter</h1>
+        <h1 className="text-2xl font-bold tracking-tight">İşlem Tutanağı</h1>
         <div className="flex items-center gap-2 text-muted-foreground">
             <Calendar size={16} />
             <span className="capitalize">{formattedMonth}</span>

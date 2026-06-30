@@ -46,7 +46,7 @@ function AppRoutes() {
           <FixedExpenses />
         </ProtectedRoute>
       } />
-      <Route path="/gunluk" element={
+      <Route path="/islemler" element={
         <ProtectedRoute>
           <DailyExpenses />
         </ProtectedRoute>
