@@ -50,7 +50,7 @@ export default function Debt() {
     }
 
     // Scroll to top
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => { document.getElementById('main-form-container')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
   };
 
   const cancelEdit = () => {
@@ -165,7 +165,7 @@ export default function Debt() {
   ).toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
 
   return (
-    <div className="space-y-6 pb-20 p-4">
+    <div id="main-form-container" className="space-y-6 pb-20 p-4">
       <header className="flex flex-col gap-2">
         <h1 className="text-2xl font-bold tracking-tight">Kredi Kartı Borçları</h1>
         <div className="flex items-center gap-2 text-muted-foreground">
@@ -181,7 +181,7 @@ export default function Debt() {
         </div>
       </Card>
 
-      <Card title={editingId ? "İşlemi Düzenle" : "İşlem Ekle"}>
+      <div id="edit-form-card"><Card title={editingId ? "İşlemi Düzenle" : "İşlem Ekle"}>
         <form onSubmit={handleSubmit} className="space-y-3 mt-2">
           <div className="flex gap-2">
              <button
@@ -301,7 +301,7 @@ export default function Debt() {
              </div>
           )}
         </form>
-      </Card>
+      </Card></div>
 
       {/* Active Installments Section */}
       {state.installments.length > 0 && (
