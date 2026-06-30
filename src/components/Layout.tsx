@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Wallet, CreditCard, TurkishLira } from 'lucide-react';
+import { LayoutDashboard, Wallet, CreditCard, ArrowRightLeft } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface LayoutProps {
@@ -11,7 +11,7 @@ interface LayoutProps {
 const navItems = [
   { path: '/', label: 'Bilanço', icon: LayoutDashboard },
   { path: '/varliklarim', label: 'Varlıklarım', icon: Wallet },
-  { path: '/gunluk', label: 'Günlük', icon: TurkishLira },
+  { path: '/islemler', label: 'İşlemler', icon: ArrowRightLeft },
   { path: '/borc', label: 'Borç', icon: CreditCard },
 ];
 
