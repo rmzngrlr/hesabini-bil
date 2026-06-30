@@ -37,6 +37,7 @@ export interface CCDebt {
   id: string;
   description: string;
   amount: number;
+  date?: string; // ISO string for the date the debt was incurred or paid
   installmentId?: string; // Link to parent installment if applicable
   currentInstallment?: number; // e.g. 1 (of 6)
   totalInstallments?: number; // e.g. 6
