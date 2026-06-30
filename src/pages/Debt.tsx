@@ -3,7 +3,7 @@ import { useBudget } from '../context/BudgetContext';
 import { Card } from '../components/ui/Card';
 import React, { useMemo } from 'react';
 import { Plus, Trash2, CalendarClock, CreditCard, Pencil, X } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn, scrollToElement } from '../lib/utils';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import type { CCDebt } from '../types';
@@ -50,7 +50,7 @@ export default function Debt() {
     }
 
     // Scroll to top
-    setTimeout(() => { document.getElementById('main-form-container')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
+    scrollToElement('main-form-container');
   };
 
   const cancelEdit = () => {
