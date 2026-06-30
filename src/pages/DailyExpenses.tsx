@@ -6,7 +6,7 @@ import { Trash2, Banknote, CreditCard, Pencil, X, Calendar, ArrowRightLeft } fro
 import { format } from 'date-fns';
 import React, { useMemo, useEffect, useState } from 'react';
 import { tr } from 'date-fns/locale';
-import { cn } from '../lib/utils';
+import { cn, scrollToElement } from '../lib/utils';
 
 export default function DailyExpenses() {
   const {
@@ -476,7 +476,7 @@ export default function DailyExpenses() {
       setGoldNote('');
     }
     
-    setTimeout(() => { document.getElementById('main-form-container')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
+    scrollToElement('main-form-container');
   };
 
   const cancelEdit = () => {

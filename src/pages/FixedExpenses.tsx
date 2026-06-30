@@ -4,7 +4,7 @@ import { useBudget } from '../context/BudgetContext';
 import { useAuth } from '../context/AuthContext';
 import { Card } from '../components/ui/Card';
 import { Plus, Trash2, CheckCircle, Circle, Pencil, X, Calendar } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn, scrollToElement } from '../lib/utils';
 import type { FixedExpense } from '../types';
 import { VaultSection } from '../components/VaultSection';
 
@@ -89,7 +89,7 @@ export default function FixedExpenses() {
     setTitle(expense.title);
     setAmount(expense.amount.toString());
     setExpenseType(expense.type || 'NAKIT');
-    setTimeout(() => { document.getElementById('main-form-container')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
+    scrollToElement('main-form-container');
   };
 
   const cancelEdit = () => {
