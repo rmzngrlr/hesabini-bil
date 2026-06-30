@@ -412,6 +412,20 @@ export default function DailyExpenses() {
     }
   }, [availableTabs, allFormTypes, activeTab, type]);
 
+
+  // Ensure 'type' is set to a valid gold type when switching to GOLD mode
+  useEffect(() => {
+    if (exchangeTabMode === 'GOLD' && !isGoldType(type)) {
+      if (allFormTypes.golds.length > 0) {
+        setType(allFormTypes.golds[0]);
+        setActiveTab(allFormTypes.golds[0]);
+      }
+    } else if (exchangeTabMode === 'CURRENCY' && isGoldType(type)) {
+        setType('NAKIT');
+        setActiveTab('NAKIT');
+    }
+  }, [exchangeTabMode, allFormTypes.golds, type, setType, setActiveTab, isGoldType]);
+
   // Reset date draft if it belongs to a past day
   useEffect(() => {
     const today = getLocalDate();
