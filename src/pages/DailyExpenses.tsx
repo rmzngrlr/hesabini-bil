@@ -476,7 +476,7 @@ export default function DailyExpenses() {
       setGoldNote('');
     }
     
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => { document.getElementById('main-form-container')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
   };
 
   const cancelEdit = () => {
@@ -830,7 +830,7 @@ export default function DailyExpenses() {
   );
 
   return (
-    <div className="space-y-6 pb-20 p-4">
+    <div id="main-form-container" className="space-y-6 pb-20 p-4">
       <header className="flex flex-col gap-2">
         <h1 className="text-2xl font-bold tracking-tight">İşlem Tutanağı</h1>
         <div className="flex items-center gap-2 text-muted-foreground">

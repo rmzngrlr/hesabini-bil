@@ -89,6 +89,7 @@ export default function FixedExpenses() {
     setTitle(expense.title);
     setAmount(expense.amount.toString());
     setExpenseType(expense.type || 'NAKIT');
+    setTimeout(() => { document.getElementById('main-form-container')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
   };
 
   const cancelEdit = () => {
@@ -152,7 +153,7 @@ export default function FixedExpenses() {
   const fixedExpenseCurrencies = Array.from(new Set(state.fixedExpenses.map(e => e.type || 'NAKIT')));
 
   return (
-    <div className="space-y-6 pb-20 p-4">
+    <div id="main-form-container" className="space-y-6 pb-20 p-4">
       <div className="mb-8">
         <h1 className="text-3xl font-extrabold tracking-tight text-primary">Varlıklarım</h1>
       </div>
@@ -324,7 +325,7 @@ export default function FixedExpenses() {
         </div>
       </Card>
 
-      <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2 w-full">
+      <form id="edit-form-card" onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2 w-full">
         <input
           type="text"
           placeholder="Gider Adı (örn: Kira)"
