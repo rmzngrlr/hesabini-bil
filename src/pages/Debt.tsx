@@ -4,12 +4,15 @@ import { Card } from '../components/ui/Card';
 import React, { useMemo } from 'react';
 import { Plus, Trash2, CalendarClock, CreditCard, Pencil, X } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { format } from 'date-fns';
+import { tr } from 'date-fns/locale';
 import type { CCDebt } from '../types';
 
 export default function Debt() {
   const { state, viewDate, addCCDebt, updateCCDebt, deleteCCDebt, addInstallment, deleteInstallment, addDailyExpense, askConfirmation } = useBudget();
   const [description, setDescription] = useDraftState('debt_draft_desc', '');
   const [amount, setAmount] = useDraftState('debt_draft_amount', '');
+  const [date, setDate] = useDraftState('debt_draft_date', new Date().toISOString().split('T')[0]);
 
   // Taksit modu
   const [isInstallment, setIsInstallment] = useDraftState('debt_draft_is_inst', false);
@@ -40,6 +43,11 @@ export default function Debt() {
     setAmount(Math.abs(debt.amount).toString());
     setTransactionType(debt.amount >= 0 ? 'PAY' : 'SPEND');
     setIsInstallment(false); // Can't toggle installment on existing debt edit for now
+    if (debt.date) {
+        setDate(debt.date);
+    } else {
+        setDate(new Date().toISOString().split('T')[0]);
+    }
 
     // Scroll to top
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -49,11 +57,13 @@ export default function Debt() {
     setEditingId(null);
     setDescription('');
     setAmount('');
+    setDate(new Date().toISOString().split('T')[0]);
     setTransactionType('SPEND');
     setIsInstallment(false);
 
     sessionStorage.removeItem('debt_draft_desc');
     sessionStorage.removeItem('debt_draft_amount');
+    sessionStorage.removeItem('debt_draft_date');
     sessionStorage.removeItem('debt_draft_is_inst');
     sessionStorage.removeItem('debt_draft_inst_count');
     sessionStorage.removeItem('debt_draft_editing_id');
@@ -61,7 +71,7 @@ export default function Debt() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!description || !amount) return;
+    if (!description || !amount || !date) return;
 
     const numAmount = parseFloat(amount);
 
@@ -70,15 +80,16 @@ export default function Debt() {
         const finalAmount = transactionType === 'PAY' ? Math.abs(numAmount) : -Math.abs(numAmount);
         updateCCDebt(editingId, {
             description,
-            amount: finalAmount
+            amount: finalAmount,
+            date
         });
         setEditingId(null);
     } else {
         if (transactionType === 'PAY') {
-            addCCDebt({ description, amount: Math.abs(numAmount) });
+            addCCDebt({ description, amount: Math.abs(numAmount), date });
             // Otomatik olarak nakitten de düşmesini sağlıyoruz (Nakit gider olarak eklenir)
             addDailyExpense({
-                date: new Date().toISOString(),
+                date: new Date(date).toISOString(),
                 description: description,
                 amount: -Math.abs(numAmount),
                 type: 'NAKIT'
@@ -95,21 +106,23 @@ export default function Debt() {
                 totalAmount: debtAmount * count,
                 installmentCount: count,
                 monthlyAmount: debtAmount,
-                startDate: new Date().toISOString()
+                startDate: new Date(date).toISOString()
               });
             } else {
-              addCCDebt({ description, amount: debtAmount });
+              addCCDebt({ description, amount: debtAmount, date });
             }
         }
     }
 
     setDescription('');
     setAmount('');
+    setDate(new Date().toISOString().split('T')[0]);
     setIsInstallment(false);
     setInstallmentCount('2');
 
     sessionStorage.removeItem('debt_draft_desc');
     sessionStorage.removeItem('debt_draft_amount');
+    sessionStorage.removeItem('debt_draft_date');
     sessionStorage.removeItem('debt_draft_is_inst');
     sessionStorage.removeItem('debt_draft_inst_count');
     sessionStorage.removeItem('debt_draft_editing_id');
@@ -119,6 +132,27 @@ export default function Debt() {
   // Result is negative balance (e.g. -5000).
   // Display as positive magnitude.
   const totalDebt = Math.abs(state.ccDebts.reduce((sum, d) => sum + d.amount, 0));
+
+  const groupedDebts = useMemo(() => {
+    const groups: Record<string, CCDebt[]> = {};
+    const noDateGroup: CCDebt[] = [];
+
+    state.ccDebts.forEach(debt => {
+      if (debt.date) {
+        if (!groups[debt.date]) groups[debt.date] = [];
+        groups[debt.date].push(debt);
+      } else {
+        noDateGroup.push(debt);
+      }
+    });
+
+    return { groups, noDateGroup };
+  }, [state.ccDebts]);
+
+  const sortedDates = useMemo(() => {
+    return Object.keys(groupedDebts.groups).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+  }, [groupedDebts.groups]);
+
 
   const getLocalMonth = () => {
     const d = new Date();
@@ -190,6 +224,16 @@ export default function Debt() {
           </div>
 
           <div className="flex gap-2">
+             <div className="flex-1 space-y-1">
+               <label className="text-xs text-muted-foreground">Tarih</label>
+               <input
+                 type="date"
+                 value={date}
+                 onChange={(e) => setDate(e.target.value)}
+                 className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+               />
+             </div>
+
              <div className="flex-1 space-y-1">
                <label className="text-xs text-muted-foreground">Tutar</label>
                <input
@@ -311,41 +355,109 @@ export default function Debt() {
         </div>
       )}
 
-      <div className="space-y-3">
+      <div className="space-y-6">
         <h2 className="text-lg font-semibold">Bu Ayın Ekstresi</h2>
-        {state.ccDebts.map((debt) => (
-          <div key={debt.id} className="flex items-center justify-between p-4 rounded-xl bg-card border border-border">
-            <div className="flex items-center gap-3">
-               <div className={cn("p-2 rounded-full", debt.amount > 0 ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500")}>
-                 <CreditCard size={20} />
-               </div>
-               <div>
-                 <div className="font-medium">{debt.description}</div>
-               </div>
+
+        {sortedDates.map((date) => {
+          const dailyTotal = groupedDebts.groups[date].reduce((sum, item) => sum + item.amount, 0);
+          return (
+            <div key={date} className="space-y-3">
+              <div className="flex justify-between items-center ml-1 pr-1">
+                <h3 className="text-sm font-medium text-muted-foreground">
+                  {format(new Date(date), 'd MMMM yyyy, EEEE', { locale: tr })}
+                </h3>
+                <span className={cn("text-sm font-bold", dailyTotal >= 0 ? "text-green-500" : "text-red-500")}>
+                  {dailyTotal > 0 ? '+' : ''}
+                  {dailyTotal.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}
+                </span>
+              </div>
+
+              {groupedDebts.groups[date].map((debt) => (
+                <div key={debt.id} className="flex items-center justify-between p-4 rounded-xl bg-card border border-border">
+                  <div className="flex items-center gap-3">
+                     <div className={cn("p-2 rounded-full", debt.amount > 0 ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500")}>
+                       <CreditCard size={20} />
+                     </div>
+                     <div>
+                       <div className="font-medium">{debt.description}</div>
+                     </div>
+                  </div>
+
+                  <div className="text-right">
+                    <div className={cn("font-bold whitespace-nowrap", debt.amount > 0 ? "text-green-500" : "text-red-500")}>
+                      {debt.amount > 0 ? '+' : ''}
+                      {debt.amount.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}
+                    </div>
+                    <div className="flex justify-end gap-3 mt-1">
+                      <button
+                        onClick={() => handleEdit(debt)}
+                        className="text-xs text-primary hover:underline flex items-center gap-1"
+                      >
+                        <Pencil size={12} /> Düzenle
+                      </button>
+                      <button
+                        onClick={async () => { if (await askConfirmation('Bu kredi kartı borç kaydını silmek istediğinize emin misiniz?')) { deleteCCDebt(debt.id); } }}
+                        className="text-xs text-destructive hover:underline flex items-center gap-1"
+                      >
+                        <Trash2 size={12} /> Sil
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })}
+
+        {groupedDebts.noDateGroup.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex justify-between items-center ml-1 pr-1">
+              <h3 className="text-sm font-medium text-muted-foreground">Tarihsiz İşlemler</h3>
+              <span className={cn(
+                "text-sm font-bold",
+                groupedDebts.noDateGroup.reduce((sum, item) => sum + item.amount, 0) >= 0 ? "text-green-500" : "text-red-500"
+              )}>
+                {groupedDebts.noDateGroup.reduce((sum, item) => sum + item.amount, 0) > 0 ? '+' : ''}
+                {groupedDebts.noDateGroup.reduce((sum, item) => sum + item.amount, 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}
+              </span>
             </div>
 
-            <div className="text-right">
-              <div className={cn("font-bold whitespace-nowrap", debt.amount > 0 ? "text-green-500" : "text-red-500")}>
-                {debt.amount > 0 ? '+' : ''}
-                {debt.amount.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}
+            {groupedDebts.noDateGroup.map((debt) => (
+              <div key={debt.id} className="flex items-center justify-between p-4 rounded-xl bg-card border border-border">
+                <div className="flex items-center gap-3">
+                   <div className={cn("p-2 rounded-full", debt.amount > 0 ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500")}>
+                     <CreditCard size={20} />
+                   </div>
+                   <div>
+                     <div className="font-medium">{debt.description}</div>
+                   </div>
+                </div>
+
+                <div className="text-right">
+                  <div className={cn("font-bold whitespace-nowrap", debt.amount > 0 ? "text-green-500" : "text-red-500")}>
+                    {debt.amount > 0 ? '+' : ''}
+                    {debt.amount.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}
+                  </div>
+                  <div className="flex justify-end gap-3 mt-1">
+                    <button
+                      onClick={() => handleEdit(debt)}
+                      className="text-xs text-primary hover:underline flex items-center gap-1"
+                    >
+                      <Pencil size={12} /> Düzenle
+                    </button>
+                    <button
+                      onClick={async () => { if (await askConfirmation('Bu kredi kartı borç kaydını silmek istediğinize emin misiniz?')) { deleteCCDebt(debt.id); } }}
+                      className="text-xs text-destructive hover:underline flex items-center gap-1"
+                    >
+                      <Trash2 size={12} /> Sil
+                    </button>
+                  </div>
+                </div>
               </div>
-              <div className="flex justify-end gap-3 mt-1">
-                <button
-                  onClick={() => handleEdit(debt)}
-                  className="text-xs text-primary hover:underline flex items-center gap-1"
-                >
-                  <Pencil size={12} /> Düzenle
-                </button>
-                <button
-                  onClick={async () => { if (await askConfirmation('Bu kredi kartı borç kaydını silmek istediğinize emin misiniz?')) { deleteCCDebt(debt.id); } }}
-                  className="text-xs text-destructive hover:underline flex items-center gap-1"
-                >
-                  <Trash2 size={12} /> Sil
-                </button>
-              </div>
-            </div>
+            ))}
           </div>
-        ))}
+        )}
+
          {state.ccDebts.length === 0 && (
           <div className="text-center text-muted-foreground py-8">
             Borç kaydı bulunmamaktadır.
