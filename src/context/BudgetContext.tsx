@@ -1324,9 +1324,8 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const addFixedExpense = (expense: Omit<FixedExpense, 'id' | 'isPaid'>) => {
     const newExpense: FixedExpense = {
+        ...expense,
         id: generateId(),
-        title: expense.title,
-        amount: expense.amount,
         isPaid: false,
     };
 
