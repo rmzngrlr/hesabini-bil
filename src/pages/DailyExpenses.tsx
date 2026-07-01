@@ -692,8 +692,24 @@ export default function DailyExpenses() {
     if (finalFromType === finalToType) return; // Same type, ignore
 
     const note = exchangeNote.trim() ? ` - ${exchangeNote}` : '';
-    const fDesc = `Dönüşüm Çıkışı: ${fAmount} ${finalFromType} -> ${tAmount} ${finalToType}${note}`;
-    const tDesc = `Dönüşüm Girişi: ${fAmount} ${finalFromType} -> ${tAmount} ${finalToType}${note}`;
+
+    // NAKIT -> Dolar = Dolar Alımı (Nakit çıkışı, Dolar girişi)
+    // Dolar -> NAKIT = Dolar Satışı (Dolar çıkışı, Nakit girişi)
+    // Dolar -> Euro = Euro Alımı (Takas)
+
+    let fDesc = `Dönüşüm Çıkışı: ${fAmount} ${finalFromType} -> ${tAmount} ${finalToType}${note}`;
+    let tDesc = `Dönüşüm Girişi: ${fAmount} ${finalFromType} -> ${tAmount} ${finalToType}${note}`;
+
+    if (finalFromType === 'NAKIT' && finalToType !== 'NAKIT') {
+      fDesc = `${tAmount} ${finalToType} Alımı${note}`; // Nakit'ten düşecek (Gider)
+      tDesc = `${tAmount} ${finalToType} Alımı${note}`; // Döviz/Altın'a eklenecek (Gelir)
+    } else if (finalFromType !== 'NAKIT' && finalToType === 'NAKIT') {
+      fDesc = `${fAmount} ${finalFromType} Satışı${note}`; // Döviz/Altın'dan düşecek
+      tDesc = `${fAmount} ${finalFromType} Satışı${note}`; // Nakit'e eklenecek
+    } else if (finalFromType !== 'NAKIT' && finalToType !== 'NAKIT') {
+      fDesc = `${tAmount} ${finalToType} Alımı (Takas)${note}`;
+      tDesc = `${tAmount} ${finalToType} Alımı (Takas)${note}`;
+    }
 
     addDailyExpense({
       date: exchangeDate,
