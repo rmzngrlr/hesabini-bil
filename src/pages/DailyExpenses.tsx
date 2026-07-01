@@ -553,7 +553,10 @@ export default function DailyExpenses() {
           if (!isNaN(tlAmount) && tlAmount > 0) {
             const isSale = goldTransactionType === 'Bozdurma'; // Bozdurma is sale (gold EXPENSE, cash INCOME)
             const tlFinalAmount = isSale ? tlAmount : -tlAmount;
-            const tlDesc = isSale ? `Altın Satışı: ${numAmount} ${type}` : `Altın Alımı: ${numAmount} ${type}`;
+
+            const actionStr = isSale ? 'Satışı' : 'Alımı';
+            const categoryStr = isGoldType(type) ? 'Altın' : 'Döviz';
+            const tlDesc = `${categoryStr} ${actionStr}: ${numAmount} ${type}`;
             
             addDailyExpense({
               date,
