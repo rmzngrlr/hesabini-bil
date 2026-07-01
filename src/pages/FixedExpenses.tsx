@@ -7,6 +7,7 @@ import { Plus, Trash2, CheckCircle, Circle, Pencil, X, Calendar } from 'lucide-r
 import { cn, scrollToElement } from '../lib/utils';
 import type { FixedExpense } from '../types';
 import { VaultSection } from '../components/VaultSection';
+import { PlannedVaultSection } from '../components/PlannedVaultSection';
 
 
 const formatTitleCase = (str: string) => {
@@ -150,7 +151,17 @@ export default function FixedExpenses() {
       parseInt(viewDate.split('-')[1]) - 1
   ).toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
 
-  const fixedExpenseCurrencies = Array.from(new Set(state.fixedExpenses.map(e => e.type || 'NAKIT')));
+  // Exclude PLANNED_VAULT from standard currency list
+  const fixedExpenseCurrencies = Array.from(new Set(
+      state.fixedExpenses.filter(e => e.type !== 'PLANNED_VAULT').map(e => e.type || 'NAKIT')
+  ));
+
+  // If we only have PLANNED_VAULT (which acts as NAKIT), we should ensure NAKIT is in the currencies list
+  // so that the summary displays "Türk Lirası Toplam Gider" correctly including planned ones.
+  const hasPlannedVault = state.fixedExpenses.some(e => e.type === 'PLANNED_VAULT');
+  if (hasPlannedVault && !fixedExpenseCurrencies.includes('NAKIT')) {
+      fixedExpenseCurrencies.push('NAKIT');
+  }
 
   return (
     <div id="main-form-container" className="space-y-6 pb-20 p-4">
@@ -303,8 +314,15 @@ export default function FixedExpenses() {
             <div className="text-sm text-muted-foreground">Sabit gider bulunmuyor.</div>
           ) : (
             fixedExpenseCurrencies.map(curr => {
-              const total = state.fixedExpenses.filter(e => (e.type || 'NAKIT') === curr).reduce((sum, e) => sum + e.amount, 0);
-              const paid = state.fixedExpenses.filter(e => (e.type || 'NAKIT') === curr && e.isPaid).reduce((sum, e) => sum + e.amount, 0);
+              // Calculate total and paid. If curr is NAKIT, also add PLANNED_VAULT amounts.
+              const expensesForCurr = state.fixedExpenses.filter(e => {
+                  const type = e.type || 'NAKIT';
+                  if (curr === 'NAKIT' && type === 'PLANNED_VAULT') return true;
+                  return type === curr;
+              });
+
+              const total = expensesForCurr.reduce((sum, e) => sum + e.amount, 0);
+              const paid = expensesForCurr.filter(e => e.isPaid).reduce((sum, e) => sum + e.amount, 0);
               return (
                 <div key={curr} className="flex flex-col gap-1 border-b border-border/50 last:border-0 pb-3 last:pb-0">
                   <div className="text-xs font-bold text-primary tracking-wider">{formatTitleCase(curr)}</div>
@@ -372,7 +390,7 @@ export default function FixedExpenses() {
       </form>
 
       <div className="space-y-3">
-        {state.fixedExpenses.map((expense) => (
+        {state.fixedExpenses.filter(e => e.type !== 'PLANNED_VAULT').map((expense) => (
           <div
             key={expense.id}
             className={cn(
@@ -413,14 +431,19 @@ export default function FixedExpenses() {
             </div>
           </div>
         ))}
-        {state.fixedExpenses.length === 0 && (
+        {state.fixedExpenses.filter(e => e.type !== 'PLANNED_VAULT').length === 0 && (
           <div className="text-center text-muted-foreground py-8">
             Henüz sabit gider eklenmemiş.
           </div>
         )}
       </div>
 
-      {isAdmin && showVault && <VaultSection />}
+      {isAdmin && showVault && (
+        <div className="space-y-6">
+          <PlannedVaultSection />
+          <VaultSection />
+        </div>
+      )}
     </div>
   );
 }
