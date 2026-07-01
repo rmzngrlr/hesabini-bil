@@ -13,14 +13,22 @@ export interface FixedExpense {
   title: string;
   amount: number;
   isPaid: boolean;
-  type?: string; // e.g. 'NAKIT', 'YK', 'Dolar', 'Euro'
+  type?: string; // e.g. 'NAKIT', 'YK', 'Dolar', 'Euro', 'PLANNED_VAULT'
+  vault_gold_type?: string;
+  vault_amount?: number;
+  vault_owner?: string;
+  vault_note?: string;
 }
 
 export interface CustomIncome {
   id: string;
   title: string;
   amount: number;
-  type?: string; // e.g. 'NAKIT', 'Dolar'
+  type?: string; // e.g. 'NAKIT', 'YK', 'Dolar', 'Euro', 'PLANNED_VAULT'
+  vault_gold_type?: string;
+  vault_amount?: number;
+  vault_owner?: string;
+  vault_note?: string;
 }
 
 export type ExpenseType = 'NAKIT' | 'YK' | string;

@@ -240,14 +240,21 @@ export default function Dashboard() {
   if (isFuture) {
       // Future Projection Mode
       // Assume all fixed expenses will be paid
+      // PLANNED_VAULT is a cash expense. So we include it in totalCashSpent.
       const totalFixed = state.fixedExpenses.reduce((sum, e) => sum + e.amount, 0);
       totalCashSpent = totalFixed;
       // No daily expenses in future
       spendingLabel = "Planlanan Gider";
   } else {
       // Normal Mode
+      // Treat PLANNED_VAULT as fixed expense. It is 'unpaid' until executed, but wait, the plan asks:
+      // "but add their sum to totalCashExpense" -> this means we should act as if they are paid or just include them in the total.
+      // Wait, in Varlıklarım page, we add PLANNED_VAULT to "Türk Lirası Toplam Gider".
+      // But they are not "isPaid" until we execute them (they get deleted and become a DailyExpense).
+      // So while they exist, should they reduce the "Kalan TL" in Dashboard? Yes, they reserve money.
+      // So we should add ALL PLANNED_VAULT expenses to `paidFixed` (or treat them as reserved).
       const paidFixed = state.fixedExpenses
-        .filter(e => e.isPaid)
+        .filter(e => e.isPaid || e.type === 'PLANNED_VAULT')
         .reduce((sum, e) => sum + e.amount, 0);
 
       const cashSpent = state.dailyExpenses
@@ -276,8 +283,13 @@ export default function Dashboard() {
   let totalBudgetedFixed = 0;
 
   // Prepare fixed expenses alphabetically
+  // Include PLANNED_VAULT as they are fixed expenses (budgeted)
   const validFixedExpenses = state.fixedExpenses
-    .filter(e => e.amount > 0)
+    .filter(e => e.amount > 0 && (e.type === 'NAKIT' || e.type === 'PLANNED_VAULT' || !e.type))
+    .map(e => ({
+      ...e,
+      title: e.type === 'PLANNED_VAULT' ? (e.title || `Planlanan ${e.vault_gold_type} Alımı`) : e.title
+    }))
     .sort((a, b) => a.title.localeCompare(b.title, 'tr'));
 
   // Calculate daily expenses summary slice
