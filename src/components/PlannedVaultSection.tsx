@@ -33,7 +33,7 @@ export function PlannedVaultSection() {
     const [amountTL, setAmountTL] = useState('');
     const [goldType, setGoldType] = useState('Gram');
     const [goldAmount, setGoldAmount] = useState('');
-    const [goldOwner, setGoldOwner] = useState('Ben');
+    const [goldOwner, setGoldOwner] = useState('');
     const [goldNote, setGoldNote] = useState('');
 
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -61,7 +61,7 @@ export function PlannedVaultSection() {
         setAmountTL(record.amount.toString());
         setGoldType(record.vault_gold_type || 'Gram');
         setGoldAmount(record.vault_amount?.toString() || '');
-        setGoldOwner(record.vault_owner || 'Ben');
+        setGoldOwner(record.vault_owner || '');
         setGoldNote(record.vault_note || '');
         window.scrollTo({ top: document.getElementById('planned-vault-form')?.offsetTop || 0, behavior: 'smooth' });
     };
@@ -72,7 +72,7 @@ export function PlannedVaultSection() {
         setAmountTL('');
         setGoldType('Gram');
         setGoldAmount('');
-        setGoldOwner('Ben');
+        setGoldOwner('');
         setGoldNote('');
         setCustomCurrencyCode('');
     };
@@ -122,7 +122,7 @@ export function PlannedVaultSection() {
         // Add Vault Record
         await addVaultRecord({
             record_date: executeDate,
-            owner: record.vault_owner || 'Ben',
+            owner: record.vault_owner || 'Bilinmiyor',
             gold_type: vGoldType,
             amount: vAmount,
             note: finalVaultNote,
@@ -221,6 +221,7 @@ export function PlannedVaultSection() {
                             <input
                                 type="text"
                                 required
+                                placeholder="Örn: Ben, Eşim vb."
                                 value={goldOwner}
                                 onChange={(e) => setGoldOwner(e.target.value)}
                                 className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"

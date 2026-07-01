@@ -292,14 +292,32 @@ export default function Dashboard() {
     }))
     .sort((a, b) => a.title.localeCompare(b.title, 'tr'));
 
-  // Calculate daily expenses summary slice
-  const dailyCashSpentTotal = state.dailyExpenses
-      .filter(e => e.type === 'NAKIT' && e.amount < 0)
+  // Calculate daily expenses summary slices
+  const nakitExpenses = state.dailyExpenses.filter(e => e.type === 'NAKIT' && e.amount < 0);
+
+  // Separate Investment/Savings (Altın/Döviz Alımı) from regular daily expenses
+  const isInvestment = (desc: string | undefined | null) => {
+    if (!desc) return false;
+    const lower = desc.toLowerCase();
+    return lower.includes('altın alımı') ||
+           lower.includes('döviz alımı') ||
+           lower.includes(' alımı') ||
+           lower.includes('planlanan'); // Include "Planlanan Gram Alımı" etc
+  };
+
+  const investmentSpentTotal = nakitExpenses
+      .filter(e => isInvestment(e.description))
       .reduce((sum, e) => sum + Math.abs(e.amount), 0);
 
-  // The remaining pie slice is (Total Resources - ALL Fixed Expenses - Daily Spent)
+  const standardDailySpentTotal = nakitExpenses
+      .filter(e => !isInvestment(e.description))
+      .reduce((sum, e) => sum + Math.abs(e.amount), 0);
+
+  const totalDailyCashSpent = investmentSpentTotal + standardDailySpentTotal;
+
+  // The remaining pie slice is (Total Resources - ALL Fixed Expenses - Total Daily Spent)
   validFixedExpenses.forEach(e => totalBudgetedFixed += e.amount);
-  const trueRemaining = totalCashResources - totalBudgetedFixed - (isFuture ? 0 : dailyCashSpentTotal);
+  const trueRemaining = totalCashResources - totalBudgetedFixed - (isFuture ? 0 : totalDailyCashSpent);
 
   // 1. Kalan TL / Bütçe Açığı
   if (trueRemaining > 0) {
@@ -317,15 +335,24 @@ export default function Dashboard() {
   }
 
   // 2. Günlük Harcamalar
-  if (dailyCashSpentTotal > 0 && !isFuture) {
+  if (standardDailySpentTotal > 0 && !isFuture) {
       pieData.push({
           name: 'Günlük Harcamalar',
-          value: dailyCashSpentTotal,
+          value: standardDailySpentTotal,
           color: '#ef4444' // red-500
       });
   }
 
-  // 3. Sabit Giderler (Alphabetical)
+  // 3. Yatırım / Birikim (Altın & Döviz Alımları)
+  if (investmentSpentTotal > 0 && !isFuture) {
+      pieData.push({
+          name: 'Yatırım / Birikim',
+          value: investmentSpentTotal,
+          color: '#eab308' // yellow-500
+      });
+  }
+
+  // 4. Sabit Giderler (Alphabetical)
   let colorIndex = 0;
   validFixedExpenses.forEach(expense => {
       pieData.push({
