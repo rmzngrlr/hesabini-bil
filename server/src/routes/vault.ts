@@ -94,11 +94,11 @@ router.put('/:id', async (req, res) => {
         );
 
         if (secondary) {
-            const { amount: secAmount, transaction_type: secType, note: secNote } = secondary;
+            const { amount: secAmount, transaction_type: secType, note: secNote, record_date: secDate } = secondary;
             if (secAmount > 0 && secType) {
                 await db.run(
                     'INSERT INTO gold_records (user_id, record_date, owner, gold_type, amount, note, transaction_type) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                    [userId, record_date, owner, gold_type, secAmount, secNote || null, secType]
+                    [userId, secDate || record_date, owner, gold_type, secAmount, secNote || null, secType]
                 );
             }
         }

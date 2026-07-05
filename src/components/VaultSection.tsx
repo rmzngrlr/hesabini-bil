@@ -16,6 +16,7 @@ interface GoldRecord {
         amount: number;
         transaction_type: string;
         note?: string;
+        record_date?: string;
     };
 }
 
@@ -53,6 +54,7 @@ export function VaultSection() {
     // Secondary (Split) transaction states
     const [splitAction, setSplitAction] = useState<'none' | 'debt' | 'gift'>('none');
     const [secondaryNote, setSecondaryNote] = useState('');
+    const [secondaryDate, setSecondaryDate] = useState('');
 
     const [error, setError] = useState('');
 
@@ -122,6 +124,7 @@ export function VaultSection() {
         setEditTransactionType(record.transaction_type || 'Birikim');
         setSplitAction('none');
         setSecondaryNote('');
+        setSecondaryDate(new Date().toISOString().split('T')[0]);
     };
 
     const saveEdit = async () => {
@@ -135,7 +138,8 @@ export function VaultSection() {
             const secondaryData = splitAction !== 'none' && diff > 0 ? {
                 amount: diff,
                 transaction_type: splitAction === 'debt' ? 'Borç Verdim' : 'Düğün Hediyesi / Takı',
-                note: secondaryNote
+                note: secondaryNote,
+                record_date: secondaryDate
             } : undefined;
 
             await updateVaultRecord(editingId, {
@@ -157,6 +161,7 @@ export function VaultSection() {
         setEditingId(null);
         setSplitAction('none');
         setSecondaryNote('');
+        setSecondaryDate('');
     };
 
     if (!isAdmin) return null;
@@ -413,15 +418,26 @@ export function VaultSection() {
                                                                         </button>
                                                                     </div>
                                                                     {splitAction !== 'none' && (
-                                                                        <div className="space-y-1.5 mt-1 max-w-md transition-all duration-200">
-                                                                            <label className="text-xs font-semibold text-muted-foreground">İşlem Notu (Kime verildiği vb.)</label>
-                                                                            <input
-                                                                                type="text"
-                                                                                placeholder="Not yazın..."
-                                                                                value={secondaryNote}
-                                                                                onChange={e => setSecondaryNote(e.target.value)}
-                                                                                className="w-full px-3 py-2 rounded-lg bg-background text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary"
-                                                                            />
+                                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-1 w-full transition-all duration-200">
+                                                                            <div className="space-y-1.5">
+                                                                                <label className="text-xs font-semibold text-muted-foreground">İşlem Notu (Kime verildiği vb.)</label>
+                                                                                <input
+                                                                                    type="text"
+                                                                                    placeholder="Not yazın..."
+                                                                                    value={secondaryNote}
+                                                                                    onChange={e => setSecondaryNote(e.target.value)}
+                                                                                    className="w-full px-3 py-2 rounded-lg bg-background text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+                                                                                />
+                                                                            </div>
+                                                                            <div className="space-y-1.5">
+                                                                                <label className="text-xs font-semibold text-muted-foreground">İşlem Tarihi</label>
+                                                                                <input
+                                                                                    type="date"
+                                                                                    value={secondaryDate}
+                                                                                    onChange={e => setSecondaryDate(e.target.value)}
+                                                                                    className="w-full px-3 py-2 rounded-lg bg-background text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+                                                                                />
+                                                                            </div>
                                                                         </div>
                                                                     )}
                                                                 </div>
@@ -619,15 +635,26 @@ export function VaultSection() {
                                                                                     </button>
                                                                                 </div>
                                                                                 {splitAction !== 'none' && (
-                                                                                    <div className="space-y-1.5 mt-1 max-w-md transition-all duration-200">
-                                                                                        <label className="text-xs font-semibold text-muted-foreground">İşlem Notu (Kime verildiği vb.)</label>
-                                                                                        <input
-                                                                                            type="text"
-                                                                                            placeholder="Not yazın..."
-                                                                                            value={secondaryNote}
-                                                                                            onChange={e => setSecondaryNote(e.target.value)}
-                                                                                            className="w-full px-3 py-2 rounded-lg bg-background text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary"
-                                                                                        />
+                                                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-1 w-full transition-all duration-200">
+                                                                                        <div className="space-y-1.5">
+                                                                                            <label className="text-xs font-semibold text-muted-foreground">İşlem Notu (Kime verildiği vb.)</label>
+                                                                                            <input
+                                                                                                type="text"
+                                                                                                placeholder="Not yazın..."
+                                                                                                value={secondaryNote}
+                                                                                                onChange={e => setSecondaryNote(e.target.value)}
+                                                                                                className="w-full px-3 py-2 rounded-lg bg-background text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+                                                                                            />
+                                                                                        </div>
+                                                                                        <div className="space-y-1.5">
+                                                                                            <label className="text-xs font-semibold text-muted-foreground">İşlem Tarihi</label>
+                                                                                            <input
+                                                                                                type="date"
+                                                                                                value={secondaryDate}
+                                                                                                onChange={e => setSecondaryDate(e.target.value)}
+                                                                                                className="w-full px-3 py-2 rounded-lg bg-background text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+                                                                                            />
+                                                                                        </div>
                                                                                     </div>
                                                                                 )}
                                                                             </div>

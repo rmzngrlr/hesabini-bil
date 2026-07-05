@@ -10,6 +10,7 @@ export interface GoldRecord {
     amount: number;
     transaction_type: string;
     note?: string;
+    record_date?: string;
   };
 }
 
