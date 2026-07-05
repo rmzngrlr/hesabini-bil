@@ -378,7 +378,7 @@ export function VaultSection() {
                                                     {isEditing && diff > 0 && (
                                                         <tr className="border-b border-border bg-yellow-500/5 select-none">
                                                             <td colSpan={6} className="py-4 px-4">
-                                                                <div className="flex flex-col gap-3 p-3 bg-secondary/20 border border-yellow-500/10 rounded-xl max-w-2xl">
+                                                                <div className="flex flex-col gap-3 p-3 bg-secondary/20 border border-yellow-500/10 rounded-xl w-full">
                                                                     <div className="text-sm font-semibold text-foreground">
                                                                         Azalan {diff.toFixed(2)} {record.gold_type} miktarını nasıl kaydetmek istersiniz?
                                                                     </div>
@@ -595,7 +595,7 @@ export function VaultSection() {
                                                                 {isEditing && diff > 0 && (
                                                                     <tr className="border-b border-border bg-yellow-500/5 select-none">
                                                                         <td colSpan={6} className="py-4 px-4">
-                                                                            <div className="flex flex-col gap-3 p-3 bg-secondary/20 border border-yellow-500/10 rounded-xl max-w-2xl">
+                                                                            <div className="flex flex-col gap-3 p-3 bg-secondary/20 border border-yellow-500/10 rounded-xl w-full">
                                                                                 <div className="text-sm font-semibold text-foreground">
                                                                                     Azalan {diff.toFixed(2)} {record.gold_type} miktarını nasıl kaydetmek istersiniz?
                                                                                 </div>
