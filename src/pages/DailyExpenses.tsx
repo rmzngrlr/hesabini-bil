@@ -23,7 +23,9 @@ export default function DailyExpenses() {
     activeCurrencies,
     askConfirmation,
     addFixedExpense,
-    addCustomIncome
+    addCustomIncome,
+    deleteFixedExpense,
+    deleteCustomIncome
   } = useBudget();
 
   const getLocalMonth = () => {
@@ -400,8 +402,51 @@ export default function DailyExpenses() {
     if (viewDate === state.currentMonth) {
       return state.dailyExpenses;
     }
-    return [];
-  }, [viewDate, state.currentMonth, state.history, state.dailyExpenses]);
+
+    const plans: DailyExpense[] = [];
+    
+    // 1. Sabit Giderler altındaki PLANNED_VAULT (altın/döviz) planları ve NAKIT/YK sabit gider planları
+    (state.fixedExpenses || []).forEach(e => {
+      if (e.type === 'PLANNED_VAULT') {
+        if (e.vault_gold_type === activeTab) {
+          plans.push({
+            id: e.id,
+            date: `${viewDate}-01`,
+            description: e.title || 'Planlanan Birikim',
+            amount: e.vault_amount || 0,
+            type: e.vault_gold_type
+          });
+        }
+      } else {
+        const expenseType = e.type || 'NAKIT';
+        if (expenseType === activeTab) {
+          plans.push({
+            id: e.id,
+            date: `${viewDate}-01`,
+            description: e.title,
+            amount: -e.amount,
+            type: expenseType
+          });
+        }
+      }
+    });
+
+    // 2. Custom Gelir Planları
+    (state.customIncomes || []).forEach(e => {
+      const incomeType = e.type || 'NAKIT';
+      if (incomeType === activeTab) {
+        plans.push({
+          id: e.id,
+          date: `${viewDate}-01`,
+          description: e.title,
+          amount: e.amount,
+          type: incomeType
+        });
+      }
+    });
+
+    return plans;
+  }, [viewDate, state.currentMonth, state.history, state.dailyExpenses, state.fixedExpenses, state.customIncomes, activeTab]);
 
   const activeCurrenciesFiltered = useMemo(() => {
     if (isFuture) {
@@ -818,6 +863,15 @@ export default function DailyExpenses() {
   const handleDeleteClick = async (expense: DailyExpense) => {
     if (!await askConfirmation('Bu işlemi silmek istediğinize emin misiniz?')) return;
 
+    if (isFuture) {
+      if (state.fixedExpenses.some(ex => ex.id === expense.id)) {
+        await deleteFixedExpense(expense.id);
+      } else if (state.customIncomes.some(inc => inc.id === expense.id)) {
+        await deleteCustomIncome(expense.id);
+      }
+      return;
+    }
+
     if (expense.id.startsWith('vault-curr-')) {
       const vaultId = parseInt(expense.id.replace('vault-curr-', ''));
       if (!isNaN(vaultId)) {
@@ -1029,7 +1083,7 @@ export default function DailyExpenses() {
             <div className="space-y-3">
                <div className="space-y-1">
                   <label className="text-xs text-muted-foreground">Tarih</label>
-                  <input type="date" value={exchangeDate} onChange={e => setExchangeDate(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary" />
+                  <input type="date" value={exchangeDate} disabled={isFuture} onChange={e => setExchangeDate(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary disabled:opacity-60 disabled:cursor-not-allowed" />
                </div>
                <div className="space-y-1">
                   <label className="text-xs text-muted-foreground">Açıklama / Kur Bilgisi (İsteğe Bağlı)</label>
@@ -1052,8 +1106,9 @@ export default function DailyExpenses() {
               <input
                   type="date"
                   value={date}
+                  disabled={isFuture}
                   onChange={(e) => setDate(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60 disabled:cursor-not-allowed"
               />
               </div>
               <div className="space-y-1">
@@ -1183,8 +1238,9 @@ export default function DailyExpenses() {
               <input
                   type="date"
                   value={date}
+                  disabled={isFuture}
                   onChange={(e) => setDate(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60 disabled:cursor-not-allowed"
               />
               </div>
               <div className="space-y-1">
