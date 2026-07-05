@@ -410,13 +410,11 @@ export default function DailyExpenses() {
       if (e.type === 'PLANNED_VAULT') {
         if (e.vault_gold_type === activeTab) {
           const isSale = e.title?.toLowerCase().includes('satış') || e.title?.toLowerCase().includes('bozdurma');
-          const actionStr = isSale ? 'Satışı' : 'Alımı';
-          const displayDesc = `${e.vault_amount} ${e.vault_gold_type} ${actionStr}`;
 
           plans.push({
             id: e.id,
             date: `${viewDate}-01`,
-            description: displayDesc,
+            description: e.title || 'Planlanan Birikim',
             amount: isSale ? -(e.vault_amount || 0) : (e.vault_amount || 0),
             type: e.vault_gold_type
           });
@@ -740,7 +738,7 @@ export default function DailyExpenses() {
         if (isFuture) {
           if (finalType !== 'NAKIT' && finalType !== 'YK') {
             const actionStr = finalAmount >= 0 ? 'Alımı' : 'Satışı';
-            const title = description || `${Math.abs(finalAmount)} ${finalType} ${actionStr}`;
+            const title = `Planlanan ${finalType} ${actionStr}`;
 
             await addFixedExpense({
               title,
@@ -839,7 +837,8 @@ export default function DailyExpenses() {
       const plannedAssetAmount = isSale ? fAmount : tAmount;
       const tlAmount = isSale ? tAmount : (finalFromType === 'NAKIT' ? fAmount : 0);
       
-      const title = isSale ? fDesc : tDesc;
+      const actionStr = isSale ? 'Satışı' : 'Alımı';
+      const title = `Planlanan ${plannedAsset} ${actionStr}`;
       const desc = `Dönüşüm: ${fAmount} ${finalFromType} -> ${tAmount} ${finalToType}${note}`;
 
       await addFixedExpense({

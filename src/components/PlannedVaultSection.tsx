@@ -4,11 +4,6 @@ import { useBudget } from '../context/BudgetContext';
 import { CheckCircle, Trash2, Calendar, Edit2, X } from 'lucide-react';
 import type { FixedExpense } from '../types';
 
-const isGoldType = (type: string) => {
-    const lower = type.toLowerCase();
-    const goldKeywords = ['gram', 'çeyrek', 'yarım', 'tam', 'ata', 'reşat', 'ayar', 'bilezik', 'altın', 'has', 'külçe'];
-    return goldKeywords.some(kw => lower.includes(kw));
-};
 
 const getAssetFullTitle = (name: string) => {
     const lower = name.toLowerCase();
@@ -121,8 +116,9 @@ export function PlannedVaultSection() {
         const vGoldType = record.vault_gold_type || 'Bilinmiyor';
         const vAmount = record.vault_amount || 0;
 
-        const categoryStr = isGoldType(vGoldType) ? 'Altın' : 'Döviz';
-        const tlDesc = `${categoryStr} Alımı: ${vAmount} ${vGoldType}`;
+        const isSale = record.title?.toLowerCase().includes('satış') || record.title?.toLowerCase().includes('bozdurma');
+        const actionStr = isSale ? 'Satışı' : 'Alımı';
+        const approvedDesc = `${vAmount} ${vGoldType} ${actionStr}`;
 
         const finalVaultNote = record.amount ? `${record.vault_note ? record.vault_note + ' | ' : ''}Alış Fiyatı: ${record.amount} TL` : record.vault_note;
 
@@ -133,13 +129,13 @@ export function PlannedVaultSection() {
             gold_type: vGoldType,
             amount: vAmount,
             note: finalVaultNote,
-            transaction_type: 'Birikim'
+            transaction_type: isSale ? 'Bozdurma' : 'Birikim'
         });
 
         // Add Daily Expense for TL
         addDailyExpense({
             date: executeDate,
-            description: record.title || tlDesc,
+            description: approvedDesc,
             amount: -record.amount,
             type: 'NAKIT'
         });
