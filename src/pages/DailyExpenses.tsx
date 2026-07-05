@@ -22,7 +22,8 @@ export default function DailyExpenses() {
     deleteVaultRecord,
     activeCurrencies,
     askConfirmation,
-    addFixedExpense
+    addFixedExpense,
+    addCustomIncome
   } = useBudget();
 
   const getLocalMonth = () => {
@@ -396,7 +397,10 @@ export default function DailyExpenses() {
       const historyEntry = state.history.find(h => h.month === viewDate);
       return historyEntry ? historyEntry.dailyExpenses : [];
     }
-    return state.dailyExpenses;
+    if (viewDate === state.currentMonth) {
+      return state.dailyExpenses;
+    }
+    return [];
   }, [viewDate, state.currentMonth, state.history, state.dailyExpenses]);
 
   const activeCurrenciesFiltered = useMemo(() => {
@@ -684,12 +688,43 @@ export default function DailyExpenses() {
         }
         setEditingId(null);
       } else {
-        addDailyExpense({
-          date,
-          description,
-          amount: finalAmount,
-          type: finalType
-        });
+        if (isFuture) {
+          if (finalType !== 'NAKIT' && finalType !== 'YK') {
+            const actionStr = finalAmount >= 0 ? 'Alımı' : 'Satışı';
+            const title = `Planlanan ${finalType} ${actionStr}`;
+
+            await addFixedExpense({
+              title,
+              amount: 0,
+              type: 'PLANNED_VAULT',
+              vault_gold_type: finalType,
+              vault_amount: Math.abs(finalAmount),
+              vault_owner: 'Ortak',
+              vault_note: description
+            });
+          } else {
+            if (finalAmount < 0) {
+              await addFixedExpense({
+                title: description,
+                amount: Math.abs(finalAmount),
+                type: finalType
+              });
+            } else {
+              await addCustomIncome({
+                title: description,
+                amount: finalAmount,
+                type: finalType
+              });
+            }
+          }
+        } else {
+          addDailyExpense({
+            date,
+            description,
+            amount: finalAmount,
+            type: finalType
+          });
+        }
         setType(finalType);
         setActiveTab(finalType);
         setCustomCurrencyCode('');
