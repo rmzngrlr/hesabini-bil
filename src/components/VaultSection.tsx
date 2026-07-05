@@ -51,8 +51,7 @@ export function VaultSection() {
     const [editTransactionType, setEditTransactionType] = useState('Birikim');
 
     // Secondary (Split) transaction states
-    const [createSecondary, setCreateSecondary] = useState(false);
-    const [secondaryType, setSecondaryType] = useState('Borç Verdim');
+    const [splitAction, setSplitAction] = useState<'none' | 'debt' | 'gift'>('none');
     const [secondaryNote, setSecondaryNote] = useState('');
 
     const [error, setError] = useState('');
@@ -121,8 +120,7 @@ export function VaultSection() {
         setEditAmount(Number(record.amount).toString());
         setEditNote(record.note || '');
         setEditTransactionType(record.transaction_type || 'Birikim');
-        setCreateSecondary(false);
-        setSecondaryType('Borç Verdim');
+        setSplitAction('none');
         setSecondaryNote('');
     };
 
@@ -134,9 +132,9 @@ export function VaultSection() {
             const newAmount = parseFloat(editAmount);
             const diff = originalAmount - newAmount;
 
-            const secondaryData = createSecondary && diff > 0 ? {
+            const secondaryData = splitAction !== 'none' && diff > 0 ? {
                 amount: diff,
-                transaction_type: secondaryType,
+                transaction_type: splitAction === 'debt' ? 'Borç Verdim' : 'Düğün Hediyesi / Takı',
                 note: secondaryNote
             } : undefined;
 
@@ -157,8 +155,7 @@ export function VaultSection() {
 
     const cancelEdit = () => {
         setEditingId(null);
-        setCreateSecondary(false);
-        setSecondaryType('Borç Verdim');
+        setSplitAction('none');
         setSecondaryNote('');
     };
 
@@ -376,43 +373,55 @@ export function VaultSection() {
                                                     {isEditing && diff > 0 && (
                                                         <tr className="border-b border-border bg-yellow-500/5 select-none">
                                                             <td colSpan={6} className="py-4 px-4">
-                                                                <div className="flex flex-col gap-3">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            id={`create-secondary-${record.id}`}
-                                                                            checked={createSecondary}
-                                                                            onChange={e => setCreateSecondary(e.target.checked)}
-                                                                            className="rounded border-gray-300 text-primary focus:ring-primary h-4 w-4 cursor-pointer"
-                                                                        />
-                                                                        <label htmlFor={`create-secondary-${record.id}`} className="text-sm font-semibold text-foreground cursor-pointer select-none">
-                                                                            Azalan {diff.toFixed(2)} {record.gold_type} miktarını yeni bir işlem olarak kaydetmek ister misiniz?
-                                                                        </label>
+                                                                <div className="flex flex-col gap-3 p-3 bg-secondary/20 border border-yellow-500/10 rounded-xl max-w-2xl">
+                                                                    <div className="text-sm font-semibold text-foreground">
+                                                                        Azalan {diff.toFixed(2)} {record.gold_type} miktarını nasıl kaydetmek istersiniz?
                                                                     </div>
-                                                                    {createSecondary && (
-                                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2 max-w-xl">
-                                                                            <div className="space-y-1.5">
-                                                                                <label className="text-xs font-semibold text-muted-foreground">İşlem Türü</label>
-                                                                                <select
-                                                                                    value={secondaryType}
-                                                                                    onChange={e => setSecondaryType(e.target.value)}
-                                                                                    className="w-full px-3 py-2 rounded-lg bg-background text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary"
-                                                                                >
-                                                                                    <option value="Borç Verdim">Borç Verdim</option>
-                                                                                    <option value="Düğün Hediyesi / Takı">Düğün Hediyesi / Takı</option>
-                                                                                    <option value="Birikim">Birikim</option>
-                                                                                </select>
-                                                                            </div>
-                                                                            <div className="space-y-1.5">
-                                                                                <label className="text-xs font-semibold text-muted-foreground">Not</label>
-                                                                                <input
-                                                                                    type="text"
-                                                                                    placeholder="Not yazın..."
-                                                                                    value={secondaryNote}
-                                                                                    onChange={e => setSecondaryNote(e.target.value)}
-                                                                                    className="w-full px-3 py-2 rounded-lg bg-background text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary"
-                                                                                />
-                                                                            </div>
+                                                                    <div className="flex flex-wrap gap-2">
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => setSplitAction('none')}
+                                                                            className={`px-3.5 py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
+                                                                                splitAction === 'none'
+                                                                                    ? 'bg-secondary border-muted text-foreground'
+                                                                                    : 'bg-background border-border text-muted-foreground hover:bg-secondary/40'
+                                                                            }`}
+                                                                        >
+                                                                            Sadece Miktarı Azalt
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => setSplitAction('debt')}
+                                                                            className={`px-3.5 py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
+                                                                                splitAction === 'debt'
+                                                                                    ? 'bg-red-500/10 border-red-500/30 text-red-500'
+                                                                                    : 'bg-background border-border text-muted-foreground hover:bg-secondary/40'
+                                                                            }`}
+                                                                        >
+                                                                            Borç Verdim Olarak Ayır
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => setSplitAction('gift')}
+                                                                            className={`px-3.5 py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
+                                                                                splitAction === 'gift'
+                                                                                    ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-500'
+                                                                                    : 'bg-background border-border text-muted-foreground hover:bg-secondary/40'
+                                                                            }`}
+                                                                        >
+                                                                            Hediye/Takı Olarak Ayır
+                                                                        </button>
+                                                                    </div>
+                                                                    {splitAction !== 'none' && (
+                                                                        <div className="space-y-1.5 mt-1 max-w-md transition-all duration-200">
+                                                                            <label className="text-xs font-semibold text-muted-foreground">İşlem Notu (Kime verildiği vb.)</label>
+                                                                            <input
+                                                                                type="text"
+                                                                                placeholder="Not yazın..."
+                                                                                value={secondaryNote}
+                                                                                onChange={e => setSecondaryNote(e.target.value)}
+                                                                                className="w-full px-3 py-2 rounded-lg bg-background text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+                                                                            />
                                                                         </div>
                                                                     )}
                                                                 </div>
@@ -570,43 +579,55 @@ export function VaultSection() {
                                                                 {isEditing && diff > 0 && (
                                                                     <tr className="border-b border-border bg-yellow-500/5 select-none">
                                                                         <td colSpan={6} className="py-4 px-4">
-                                                                            <div className="flex flex-col gap-3">
-                                                                                <div className="flex items-center gap-2">
-                                                                                    <input
-                                                                                        type="checkbox"
-                                                                                        id={`create-secondary-${record.id}`}
-                                                                                        checked={createSecondary}
-                                                                                        onChange={e => setCreateSecondary(e.target.checked)}
-                                                                                        className="rounded border-gray-300 text-primary focus:ring-primary h-4 w-4 cursor-pointer"
-                                                                                    />
-                                                                                    <label htmlFor={`create-secondary-${record.id}`} className="text-sm font-semibold text-foreground cursor-pointer select-none">
-                                                                                        Azalan {diff.toFixed(2)} {record.gold_type} miktarını yeni bir işlem olarak kaydetmek ister misiniz?
-                                                                                    </label>
+                                                                            <div className="flex flex-col gap-3 p-3 bg-secondary/20 border border-yellow-500/10 rounded-xl max-w-2xl">
+                                                                                <div className="text-sm font-semibold text-foreground">
+                                                                                    Azalan {diff.toFixed(2)} {record.gold_type} miktarını nasıl kaydetmek istersiniz?
                                                                                 </div>
-                                                                                {createSecondary && (
-                                                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2 max-w-xl">
-                                                                                        <div className="space-y-1.5">
-                                                                                            <label className="text-xs font-semibold text-muted-foreground">İşlem Türü</label>
-                                                                                            <select
-                                                                                                value={secondaryType}
-                                                                                                onChange={e => setSecondaryType(e.target.value)}
-                                                                                                className="w-full px-3 py-2 rounded-lg bg-background text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary"
-                                                                                            >
-                                                                                                <option value="Borç Verdim">Borç Verdim</option>
-                                                                                                <option value="Düğün Hediyesi / Takı">Düğün Hediyesi / Takı</option>
-                                                                                                <option value="Birikim">Birikim</option>
-                                                                                            </select>
-                                                                                        </div>
-                                                                                        <div className="space-y-1.5">
-                                                                                            <label className="text-xs font-semibold text-muted-foreground">Not</label>
-                                                                                            <input
-                                                                                                type="text"
-                                                                                                placeholder="Not yazın..."
-                                                                                                value={secondaryNote}
-                                                                                                onChange={e => setSecondaryNote(e.target.value)}
-                                                                                                className="w-full px-3 py-2 rounded-lg bg-background text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary"
-                                                                                            />
-                                                                                        </div>
+                                                                                <div className="flex flex-wrap gap-2">
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => setSplitAction('none')}
+                                                                                        className={`px-3.5 py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
+                                                                                            splitAction === 'none'
+                                                                                                ? 'bg-secondary border-muted text-foreground'
+                                                                                                : 'bg-background border-border text-muted-foreground hover:bg-secondary/40'
+                                                                                        }`}
+                                                                                    >
+                                                                                        Sadece Miktarı Azalt
+                                                                                    </button>
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => setSplitAction('debt')}
+                                                                                        className={`px-3.5 py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
+                                                                                            splitAction === 'debt'
+                                                                                                ? 'bg-red-500/10 border-red-500/30 text-red-500'
+                                                                                                : 'bg-background border-border text-muted-foreground hover:bg-secondary/40'
+                                                                                        }`}
+                                                                                    >
+                                                                                        Borç Verdim Olarak Ayır
+                                                                                    </button>
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => setSplitAction('gift')}
+                                                                                        className={`px-3.5 py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
+                                                                                            splitAction === 'gift'
+                                                                                                ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-500'
+                                                                                                : 'bg-background border-border text-muted-foreground hover:bg-secondary/40'
+                                                                                        }`}
+                                                                                    >
+                                                                                        Hediye/Takı Olarak Ayır
+                                                                                    </button>
+                                                                                </div>
+                                                                                {splitAction !== 'none' && (
+                                                                                    <div className="space-y-1.5 mt-1 max-w-md transition-all duration-200">
+                                                                                        <label className="text-xs font-semibold text-muted-foreground">İşlem Notu (Kime verildiği vb.)</label>
+                                                                                        <input
+                                                                                            type="text"
+                                                                                            placeholder="Not yazın..."
+                                                                                            value={secondaryNote}
+                                                                                            onChange={e => setSecondaryNote(e.target.value)}
+                                                                                            className="w-full px-3 py-2 rounded-lg bg-background text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+                                                                                        />
                                                                                     </div>
                                                                                 )}
                                                                             </div>
