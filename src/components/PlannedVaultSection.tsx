@@ -150,123 +150,125 @@ export function PlannedVaultSection() {
 
     return (
         <div className="space-y-4">
-            <Card title="Planlanan Döviz/Altın İşlemleri">
-                <form id="planned-vault-form" onSubmit={handleSubmit} className="space-y-4 mt-2">
-                    <div className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-1">
-                            <label className="text-xs text-muted-foreground">İşlem Cinsi</label>
-                            <select
-                                value={goldType}
-                                onChange={(e) => setGoldType(e.target.value)}
-                                className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
-                            >
-                                <optgroup label="Altın Türleri (Kasa)">
-                                    {allFormTypes.golds.map(gold => (
-                                        <option key={gold} value={gold}>{getAssetFullTitle(gold)}</option>
-                                    ))}
-                                </optgroup>
-                                <optgroup label="Döviz Türleri (Kasa)">
-                                    {allFormTypes.currencies.map(currency => (
-                                        <option key={currency} value={currency}>{currency}</option>
-                                    ))}
-                                    <option value="NEW_CURRENCY">+ Yeni Ekle</option>
-                                </optgroup>
-                            </select>
-                        </div>
-                        {goldType === 'NEW_CURRENCY' && (
+            {editingId && (
+                <Card title="Planlanan Döviz/Altın İşlemini Düzenle">
+                    <form id="planned-vault-form" onSubmit={handleSubmit} className="space-y-4 mt-2">
+                        <div className="grid gap-4 md:grid-cols-2">
                             <div className="space-y-1">
-                                <label className="text-xs text-muted-foreground">Yeni Para Birimi</label>
+                                <label className="text-xs text-muted-foreground">İşlem Cinsi</label>
+                                <select
+                                    value={goldType}
+                                    onChange={(e) => setGoldType(e.target.value)}
+                                    className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+                                >
+                                    <optgroup label="Altın Türleri (Kasa)">
+                                        {allFormTypes.golds.map(gold => (
+                                            <option key={gold} value={gold}>{getAssetFullTitle(gold)}</option>
+                                        ))}
+                                    </optgroup>
+                                    <optgroup label="Döviz Türleri (Kasa)">
+                                        {allFormTypes.currencies.map(currency => (
+                                            <option key={currency} value={currency}>{currency}</option>
+                                        ))}
+                                        <option value="NEW_CURRENCY">+ Yeni Ekle</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+                            {goldType === 'NEW_CURRENCY' && (
+                                <div className="space-y-1">
+                                    <label className="text-xs text-muted-foreground">Yeni Para Birimi</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        placeholder="Örn: Dolar, $"
+                                        value={customCurrencyCode}
+                                        onChange={(e) => setCustomCurrencyCode(e.target.value)}
+                                        className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+                                    />
+                                </div>
+                            )}
+                            <div className="space-y-1">
+                                <label className="text-xs text-muted-foreground">Miktar (Altın/Döviz)</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    required
+                                    placeholder="Örn: 100"
+                                    value={goldAmount}
+                                    onChange={(e) => setGoldAmount(e.target.value)}
+                                    className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                />
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="text-xs text-muted-foreground">Tahmini TL Maliyeti (Rezerve Edilecek)</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    required
+                                    placeholder="Örn: 3300"
+                                    value={amountTL}
+                                    onChange={(e) => setAmountTL(e.target.value)}
+                                    className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                />
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="text-xs text-muted-foreground">Başlık (Opsiyonel)</label>
+                                <input
+                                    type="text"
+                                    placeholder="Örn: Ağustos Dolar Alımı"
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                    className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                />
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="text-xs text-muted-foreground">Sahibi</label>
                                 <input
                                     type="text"
                                     required
-                                    placeholder="Örn: Dolar, $"
-                                    value={customCurrencyCode}
-                                    onChange={(e) => setCustomCurrencyCode(e.target.value)}
-                                    className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+                                    placeholder="Örn: Ben, Eşim vb."
+                                    value={goldOwner}
+                                    onChange={(e) => setGoldOwner(e.target.value)}
+                                    className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                                 />
                             </div>
-                        )}
-                        <div className="space-y-1">
-                            <label className="text-xs text-muted-foreground">Miktar (Altın/Döviz)</label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                required
-                                placeholder="Örn: 100"
-                                value={goldAmount}
-                                onChange={(e) => setGoldAmount(e.target.value)}
-                                className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                            />
+
+                            <div className="space-y-1 md:col-span-2">
+                                <label className="text-xs text-muted-foreground">Not</label>
+                                <input
+                                    type="text"
+                                    placeholder="Not eklenebilir..."
+                                    value={goldNote}
+                                    onChange={(e) => setGoldNote(e.target.value)}
+                                    className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                />
+                            </div>
                         </div>
 
-                        <div className="space-y-1">
-                            <label className="text-xs text-muted-foreground">Tahmini TL Maliyeti (Rezerve Edilecek)</label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                required
-                                placeholder="Örn: 3300"
-                                value={amountTL}
-                                onChange={(e) => setAmountTL(e.target.value)}
-                                className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                            />
-                        </div>
-
-                        <div className="space-y-1">
-                            <label className="text-xs text-muted-foreground">Başlık (Opsiyonel)</label>
-                            <input
-                                type="text"
-                                placeholder="Örn: Ağustos Dolar Alımı"
-                                value={title}
-                                onChange={(e) => setTitle(e.target.value)}
-                                className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                            />
-                        </div>
-
-                        <div className="space-y-1">
-                            <label className="text-xs text-muted-foreground">Sahibi</label>
-                            <input
-                                type="text"
-                                required
-                                placeholder="Örn: Ben, Eşim vb."
-                                value={goldOwner}
-                                onChange={(e) => setGoldOwner(e.target.value)}
-                                className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                            />
-                        </div>
-
-                        <div className="space-y-1 md:col-span-2">
-                            <label className="text-xs text-muted-foreground">Not</label>
-                            <input
-                                type="text"
-                                placeholder="Not eklenebilir..."
-                                value={goldNote}
-                                onChange={(e) => setGoldNote(e.target.value)}
-                                className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="flex gap-2">
-                        {editingId && (
+                        <div className="flex gap-2">
+                            {editingId && (
+                                <button
+                                    type="button"
+                                    onClick={cancelEdit}
+                                    className="flex-1 py-3 bg-secondary text-foreground font-medium rounded-lg hover:bg-secondary/80 transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <X size={20} /> İptal
+                                </button>
+                            )}
                             <button
-                                type="button"
-                                onClick={cancelEdit}
-                                className="flex-1 py-3 bg-secondary text-foreground font-medium rounded-lg hover:bg-secondary/80 transition-colors flex items-center justify-center gap-2"
+                                type="submit"
+                                className="flex-[2] py-3 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
                             >
-                                <X size={20} /> İptal
+                                <Calendar size={20} />
+                                {editingId ? 'Planı Güncelle' : 'Plan Ekle'}
                             </button>
-                        )}
-                        <button
-                            type="submit"
-                            className="flex-[2] py-3 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
-                        >
-                            <Calendar size={20} />
-                            {editingId ? 'Planı Güncelle' : 'Plan Ekle'}
-                        </button>
-                    </div>
-                </form>
-            </Card>
+                        </div>
+                    </form>
+                </Card>
+            )}
 
             {plannedRecords.length > 0 && (
                 <Card title="Bekleyen Planlar">

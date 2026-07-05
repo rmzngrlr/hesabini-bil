@@ -21,8 +21,15 @@ export default function DailyExpenses() {
     updateVaultRecord,
     deleteVaultRecord,
     activeCurrencies,
-    askConfirmation
+    askConfirmation,
+    addFixedExpense
   } = useBudget();
+
+  const getLocalMonth = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  };
+  const isFuture = viewDate > getLocalMonth();
 
   const isGoldType = (type: string) => {
     const lower = type.toLowerCase();
@@ -444,6 +451,19 @@ export default function DailyExpenses() {
     }
   }, []);
 
+  // Sync date input with viewDate when viewDate changes
+  useEffect(() => {
+    const today = getLocalDate();
+    const todayMonth = today.substring(0, 7); // YYYY-MM
+    
+    if (viewDate === todayMonth) {
+      setDate(today);
+    } else {
+      // Set to first day of viewDate
+      setDate(`${viewDate}-01`);
+    }
+  }, [viewDate]);
+
   const currentMonthSpent = useMemo(() => {
     return activeExpenses
       .filter(e => e.type === activeTab && e.amount < 0)
@@ -537,33 +557,48 @@ export default function DailyExpenses() {
         // "Altın alış satış da TL karşılığını yazıyorum ya bunu kasa kısmında nota eklersen..."
         const finalVaultNote = goldPriceTL ? `${goldNote ? goldNote + ' | ' : ''}${goldTransactionType === 'Bozdurma' ? 'Satış' : 'Alış'} Fiyatı: ${goldPriceTL} TL` : goldNote;
 
-        // 1. Add to Vault only!
-        await addVaultRecord({
-          record_date: date,
-          owner: goldOwner,
-          gold_type: type,
-          amount: numAmount,
-          note: finalVaultNote,
-          transaction_type: goldTransactionType
-        });
+        if (isFuture) {
+          const actionStr = goldTransactionType === 'Bozdurma' ? 'Satışı' : 'Alımı';
+          const title = `Planlanan ${type} ${actionStr}`;
 
-        // 2. If purchase/sale price is provided, add corresponding TL daily expense
-        if (goldPriceTL && (goldTransactionType === 'Birikim' || goldTransactionType === 'Bozdurma')) {
-          const tlAmount = parseFloat(goldPriceTL);
-          if (!isNaN(tlAmount) && tlAmount > 0) {
-            const isSale = goldTransactionType === 'Bozdurma'; // Bozdurma is sale (gold EXPENSE, cash INCOME)
-            const tlFinalAmount = isSale ? tlAmount : -tlAmount;
+          await addFixedExpense({
+            title,
+            amount: goldPriceTL ? parseFloat(goldPriceTL) : 0,
+            type: 'PLANNED_VAULT',
+            vault_gold_type: type,
+            vault_amount: numAmount,
+            vault_owner: goldOwner,
+            vault_note: finalVaultNote
+          });
+        } else {
+          // 1. Add to Vault only!
+          await addVaultRecord({
+            record_date: date,
+            owner: goldOwner,
+            gold_type: type,
+            amount: numAmount,
+            note: finalVaultNote,
+            transaction_type: goldTransactionType
+          });
 
-            const actionStr = isSale ? 'Satışı' : 'Alımı';
-            const categoryStr = isGoldType(type) ? 'Altın' : 'Döviz';
-            const tlDesc = `${categoryStr} ${actionStr}: ${numAmount} ${type}`;
-            
-            addDailyExpense({
-              date,
-              description: tlDesc,
-              amount: tlFinalAmount,
-              type: 'NAKIT' // TL
-            });
+          // 2. If purchase/sale price is provided, add corresponding TL daily expense
+          if (goldPriceTL && (goldTransactionType === 'Birikim' || goldTransactionType === 'Bozdurma')) {
+            const tlAmount = parseFloat(goldPriceTL);
+            if (!isNaN(tlAmount) && tlAmount > 0) {
+              const isSale = goldTransactionType === 'Bozdurma'; // Bozdurma is sale (gold EXPENSE, cash INCOME)
+              const tlFinalAmount = isSale ? tlAmount : -tlAmount;
+
+              const actionStr = isSale ? 'Satışı' : 'Alımı';
+              const categoryStr = isGoldType(type) ? 'Altın' : 'Döviz';
+              const tlDesc = `${categoryStr} ${actionStr}: ${numAmount} ${type}`;
+              
+              addDailyExpense({
+                date,
+                description: tlDesc,
+                amount: tlFinalAmount,
+                type: 'NAKIT' // TL
+              });
+            }
           }
         }
       }
@@ -829,11 +864,6 @@ export default function DailyExpenses() {
     new Date(b).getTime() - new Date(a).getTime()
   );
 
-  const getLocalMonth = () => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-  };
-  const isFuture = viewDate > getLocalMonth();
   const formattedMonth = new Date(
       parseInt(viewDate.split('-')[0]),
       parseInt(viewDate.split('-')[1]) - 1
