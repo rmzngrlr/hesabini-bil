@@ -6,6 +6,11 @@ export interface GoldRecord {
   amount: number;
   note?: string;
   transaction_type?: string;
+  secondary?: {
+    amount: number;
+    transaction_type: string;
+    note?: string;
+  };
 }
 
 export interface FixedExpense {

@@ -12,6 +12,11 @@ interface GoldRecord {
     amount: number;
     note?: string;
     transaction_type?: string;
+    secondary?: {
+        amount: number;
+        transaction_type: string;
+        note?: string;
+    };
 }
 
 const isGoldType = (type: string) => {
@@ -44,6 +49,11 @@ export function VaultSection() {
     const [editAmount, setEditAmount] = useState('');
     const [editNote, setEditNote] = useState('');
     const [editTransactionType, setEditTransactionType] = useState('Birikim');
+
+    // Secondary (Split) transaction states
+    const [createSecondary, setCreateSecondary] = useState(false);
+    const [secondaryType, setSecondaryType] = useState('Borç Verdim');
+    const [secondaryNote, setSecondaryNote] = useState('');
 
     const [error, setError] = useState('');
 
@@ -111,19 +121,34 @@ export function VaultSection() {
         setEditAmount(Number(record.amount).toString());
         setEditNote(record.note || '');
         setEditTransactionType(record.transaction_type || 'Birikim');
+        setCreateSecondary(false);
+        setSecondaryType('Borç Verdim');
+        setSecondaryNote('');
     };
 
     const saveEdit = async () => {
         if (!editingId) return;
         try {
+            const originalRecord = vaultRecords.find(r => r.id === editingId);
+            const originalAmount = originalRecord ? Number(originalRecord.amount) : 0;
+            const newAmount = parseFloat(editAmount);
+            const diff = originalAmount - newAmount;
+
+            const secondaryData = createSecondary && diff > 0 ? {
+                amount: diff,
+                transaction_type: secondaryType,
+                note: secondaryNote
+            } : undefined;
+
             await updateVaultRecord(editingId, {
                 record_date: editDate,
                 owner: editOwner,
                 gold_type: editGoldType,
-                amount: parseFloat(editAmount),
+                amount: newAmount,
                 note: editNote,
-                transaction_type: editTransactionType
-            });
+                transaction_type: editTransactionType,
+                secondary: secondaryData
+            } as any);
             setEditingId(null);
         } catch (err) {
             setError(err instanceof Error ? err.message : String(err));
@@ -132,6 +157,9 @@ export function VaultSection() {
 
     const cancelEdit = () => {
         setEditingId(null);
+        setCreateSecondary(false);
+        setSecondaryType('Borç Verdim');
+        setSecondaryNote('');
     };
 
     if (!isAdmin) return null;
@@ -251,9 +279,13 @@ export function VaultSection() {
                                                 const isEditing = editingId === record.id;
                                                 const d = new Date(record.record_date);
                                                 const displayDate = !isNaN(d.getTime()) ? d.toLocaleDateString('tr-TR') : record.record_date;
+                                                const originalAmount = Number(record.amount);
+                                                const currentEditAmount = parseFloat(editAmount) || 0;
+                                                const diff = originalAmount - currentEditAmount;
 
                                                 return (
-                                                    <tr key={record.id} className="border-b border-border last:border-0 hover:bg-secondary/50 transition-colors">
+                                                    <React.Fragment key={record.id}>
+                                                        <tr className="border-b border-border last:border-0 hover:bg-secondary/50 transition-colors">
                                                         {isEditing ? (
                                                             <>
                                                                 <td className="py-3 px-4">
@@ -341,7 +373,54 @@ export function VaultSection() {
                                                             </>
                                                         )}
                                                     </tr>
-                                                );
+                                                    {isEditing && diff > 0 && (
+                                                        <tr className="border-b border-border bg-yellow-500/5 select-none">
+                                                            <td colSpan={6} className="py-4 px-4">
+                                                                <div className="flex flex-col gap-3">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            id={`create-secondary-${record.id}`}
+                                                                            checked={createSecondary}
+                                                                            onChange={e => setCreateSecondary(e.target.checked)}
+                                                                            className="rounded border-gray-300 text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                                                                        />
+                                                                        <label htmlFor={`create-secondary-${record.id}`} className="text-sm font-semibold text-foreground cursor-pointer select-none">
+                                                                            Azalan {diff.toFixed(2)} {record.gold_type} miktarını yeni bir işlem olarak kaydetmek ister misiniz?
+                                                                        </label>
+                                                                    </div>
+                                                                    {createSecondary && (
+                                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2 max-w-xl">
+                                                                            <div className="space-y-1.5">
+                                                                                <label className="text-xs font-semibold text-muted-foreground">İşlem Türü</label>
+                                                                                <select
+                                                                                    value={secondaryType}
+                                                                                    onChange={e => setSecondaryType(e.target.value)}
+                                                                                    className="w-full px-3 py-2 rounded-lg bg-background text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+                                                                                >
+                                                                                    <option value="Borç Verdim">Borç Verdim</option>
+                                                                                    <option value="Düğün Hediyesi / Takı">Düğün Hediyesi / Takı</option>
+                                                                                    <option value="Birikim">Birikim</option>
+                                                                                </select>
+                                                                            </div>
+                                                                            <div className="space-y-1.5">
+                                                                                <label className="text-xs font-semibold text-muted-foreground">Not</label>
+                                                                                <input
+                                                                                    type="text"
+                                                                                    placeholder="Not yazın..."
+                                                                                    value={secondaryNote}
+                                                                                    onChange={e => setSecondaryNote(e.target.value)}
+                                                                                    className="w-full px-3 py-2 rounded-lg bg-background text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+                                                                                />
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    )}
+                                                </React.Fragment>
+                                            );
                                             })}
                                         </tbody>
                                     </table>
@@ -398,9 +477,13 @@ export function VaultSection() {
                                                             const isEditing = editingId === record.id;
                                                             const d = new Date(record.record_date);
                                                             const displayDate = !isNaN(d.getTime()) ? d.toLocaleDateString('tr-TR') : record.record_date;
+                                                            const originalAmount = Number(record.amount);
+                                                            const currentEditAmount = parseFloat(editAmount) || 0;
+                                                            const diff = originalAmount - currentEditAmount;
 
                                                             return (
-                                                                <tr key={record.id} className="border-b border-border last:border-0 hover:bg-secondary/50 transition-colors">
+                                                                <React.Fragment key={record.id}>
+                                                                    <tr className="border-b border-border last:border-0 hover:bg-secondary/50 transition-colors">
                                                                     {isEditing ? (
                                                                         <>
                                                                             <td className="py-3 px-4">
@@ -484,7 +567,54 @@ export function VaultSection() {
                                                                         </>
                                                                     )}
                                                                 </tr>
-                                                            );
+                                                                {isEditing && diff > 0 && (
+                                                                    <tr className="border-b border-border bg-yellow-500/5 select-none">
+                                                                        <td colSpan={6} className="py-4 px-4">
+                                                                            <div className="flex flex-col gap-3">
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <input
+                                                                                        type="checkbox"
+                                                                                        id={`create-secondary-${record.id}`}
+                                                                                        checked={createSecondary}
+                                                                                        onChange={e => setCreateSecondary(e.target.checked)}
+                                                                                        className="rounded border-gray-300 text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                                                                                    />
+                                                                                    <label htmlFor={`create-secondary-${record.id}`} className="text-sm font-semibold text-foreground cursor-pointer select-none">
+                                                                                        Azalan {diff.toFixed(2)} {record.gold_type} miktarını yeni bir işlem olarak kaydetmek ister misiniz?
+                                                                                    </label>
+                                                                                </div>
+                                                                                {createSecondary && (
+                                                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2 max-w-xl">
+                                                                                        <div className="space-y-1.5">
+                                                                                            <label className="text-xs font-semibold text-muted-foreground">İşlem Türü</label>
+                                                                                            <select
+                                                                                                value={secondaryType}
+                                                                                                onChange={e => setSecondaryType(e.target.value)}
+                                                                                                className="w-full px-3 py-2 rounded-lg bg-background text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+                                                                                            >
+                                                                                                <option value="Borç Verdim">Borç Verdim</option>
+                                                                                                <option value="Düğün Hediyesi / Takı">Düğün Hediyesi / Takı</option>
+                                                                                                <option value="Birikim">Birikim</option>
+                                                                                            </select>
+                                                                                        </div>
+                                                                                        <div className="space-y-1.5">
+                                                                                            <label className="text-xs font-semibold text-muted-foreground">Not</label>
+                                                                                            <input
+                                                                                                type="text"
+                                                                                                placeholder="Not yazın..."
+                                                                                                value={secondaryNote}
+                                                                                                onChange={e => setSecondaryNote(e.target.value)}
+                                                                                                className="w-full px-3 py-2 rounded-lg bg-background text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+                                                                                            />
+                                                                                        </div>
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        </td>
+                                                                    </tr>
+                                                                )}
+                                                            </React.Fragment>
+                                                        );
                                                         })}
                                                     </tbody>
                                                     </table>

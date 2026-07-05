@@ -80,7 +80,7 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { record_date, owner, gold_type, amount, note, transaction_type } = req.body;
+        const { record_date, owner, gold_type, amount, note, transaction_type, secondary } = req.body;
 
         if (!record_date || !owner || !gold_type || amount === undefined) {
             return res.status(400).json({ error: 'Eksik veri.' });
@@ -92,6 +92,16 @@ router.put('/:id', async (req, res) => {
             'UPDATE gold_records SET record_date = ?, owner = ?, gold_type = ?, amount = ?, note = ?, transaction_type = ? WHERE id = ? AND user_id = ?',
             [record_date, owner, gold_type, amount, note || null, transaction_type || 'Giriş', id, userId]
         );
+
+        if (secondary) {
+            const { amount: secAmount, transaction_type: secType, note: secNote } = secondary;
+            if (secAmount > 0 && secType) {
+                await db.run(
+                    'INSERT INTO gold_records (user_id, record_date, owner, gold_type, amount, note, transaction_type) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                    [userId, record_date, owner, gold_type, secAmount, secNote || null, secType]
+                );
+            }
+        }
 
         res.json({ message: 'Kayıt güncellendi.' });
     } catch (error) {
