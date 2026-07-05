@@ -829,26 +829,47 @@ export default function DailyExpenses() {
       tDesc = `${tAmount} ${finalToType} Alımı (Takas)${note}`;
     }
 
-    addDailyExpense({
-      date: exchangeDate,
-      description: fDesc,
-      amount: -fAmount,
-      type: finalFromType
-    });
+    if (isFuture) {
+      const isSale = finalToType === 'NAKIT';
+      const plannedAsset = isSale ? finalFromType : finalToType;
+      const plannedAssetAmount = isSale ? fAmount : tAmount;
+      const tlAmount = isSale ? tAmount : (finalFromType === 'NAKIT' ? fAmount : 0);
+      
+      const actionStr = isSale ? 'Satışı' : 'Alımı';
+      const title = `Planlanan ${plannedAsset} ${actionStr}`;
+      const desc = `Dönüşüm: ${fAmount} ${finalFromType} -> ${tAmount} ${finalToType}${note}`;
 
-    if (isGoldType(finalFromType)) {
-      await addVaultRecord({ record_date: exchangeDate, owner: 'Ortak', amount: fAmount, note: fDesc, transaction_type: 'Bozdurma', gold_type: finalFromType });
-    }
+      await addFixedExpense({
+        title,
+        amount: tlAmount,
+        type: 'PLANNED_VAULT',
+        vault_gold_type: plannedAsset,
+        vault_amount: plannedAssetAmount,
+        vault_owner: 'Ortak',
+        vault_note: desc
+      });
+    } else {
+      addDailyExpense({
+        date: exchangeDate,
+        description: fDesc,
+        amount: -fAmount,
+        type: finalFromType
+      });
 
-    addDailyExpense({
-      date: exchangeDate,
-      description: tDesc,
-      amount: tAmount,
-      type: finalToType
-    });
+      if (isGoldType(finalFromType)) {
+        await addVaultRecord({ record_date: exchangeDate, owner: 'Ortak', amount: fAmount, note: fDesc, transaction_type: 'Bozdurma', gold_type: finalFromType });
+      }
 
-    if (isGoldType(finalToType)) {
-      await addVaultRecord({ record_date: exchangeDate, owner: 'Ortak', amount: tAmount, note: tDesc, transaction_type: 'Birikim', gold_type: finalToType });
+      addDailyExpense({
+        date: exchangeDate,
+        description: tDesc,
+        amount: tAmount,
+        type: finalToType
+      });
+
+      if (isGoldType(finalToType)) {
+        await addVaultRecord({ record_date: exchangeDate, owner: 'Ortak', amount: tAmount, note: tDesc, transaction_type: 'Birikim', gold_type: finalToType });
+      }
     }
 
     setShowExchangeForm(false);
