@@ -400,10 +400,13 @@ export default function DailyExpenses() {
   }, [viewDate, state.currentMonth, state.history, state.dailyExpenses]);
 
   const activeCurrenciesFiltered = useMemo(() => {
+    if (isFuture) {
+      return activeCurrencies;
+    }
     return activeCurrencies.filter(curr => {
       return activeExpenses.some(e => e.type === curr);
     });
-  }, [activeCurrencies, activeExpenses]);
+  }, [activeCurrencies, activeExpenses, isFuture]);
 
   const availableTabs = useMemo(() => {
     return ['NAKIT', ...(showMealCard ? ['YK'] : []), ...activeCurrenciesFiltered];
@@ -1241,8 +1244,106 @@ export default function DailyExpenses() {
         )}
         </div>
       ) : (
-        <div className="text-center p-4 bg-blue-500/10 rounded-lg text-blue-600 dark:text-blue-400 border border-blue-500/20">
-            Planlama modundasınız. Gelecek aylar için günlük harcama girilemez, sadece sabit gider planlaması yapılabilir.
+        <div className="space-y-4">
+          {activeTab === 'NAKIT' || activeTab === 'YK' ? (
+            <div className="text-center p-6 bg-blue-500/10 rounded-xl text-blue-600 dark:text-blue-400 border border-blue-500/20 space-y-2">
+              <p className="font-semibold">Planlama modundasınız.</p>
+              <p className="text-sm opacity-90">Gelecek aylar için nakit harcama girilemez. Altın veya Döviz planlaması yapmak için lütfen aşağıdaki sekmelerden bir altın veya döviz türü seçin.</p>
+            </div>
+          ) : (
+            <Card title={`Planlanan ${getAssetFullTitle(activeTab)} İşlemi Ekle`}>
+              <form onSubmit={handleSubmit} className="space-y-3 mt-2">
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Tarih</label>
+                    <input
+                      type="date"
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Miktar ({getAssetUnitLabel(activeTab)})</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      required
+                      placeholder="0.00"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-3 border border-border p-3 rounded-lg bg-secondary/20">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">Varlık Sahibi</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Kimin Adına?"
+                        value={goldOwner}
+                        onChange={(e) => setGoldOwner(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">Not</label>
+                      <input
+                        type="text"
+                        placeholder="İsteğe Bağlı"
+                        value={goldNote}
+                        onChange={(e) => setGoldNote(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">
+                      {goldTransactionType === 'Bozdurma' ? 'Hedef Satış Tutarı (TL) - İsteğe Bağlı' : 'Tahmini Alış Tutarı (TL) - İsteğe Bağlı'}
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={goldPriceTL}
+                      onChange={(e) => setGoldPriceTL(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => { setGoldTransactionType('Birikim'); setTransactionType('INCOME'); }}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${goldTransactionType === 'Birikim' ? 'bg-green-500/10 border-green-500 text-green-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
+                  >
+                    Birikim (Alım) Planı
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setGoldTransactionType('Bozdurma'); setTransactionType('EXPENSE'); }}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${goldTransactionType === 'Bozdurma' ? 'bg-red-500/10 border-red-500 text-red-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
+                  >
+                    Bozdurma (Satış) Planı
+                  </button>
+                </div>
+
+                <div className="flex gap-2 mt-4">
+                  <button
+                    type="submit"
+                    className="w-full py-3 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors"
+                  >
+                    Planı Kaydet
+                  </button>
+                </div>
+              </form>
+            </Card>
+          )}
         </div>
       )}
 
