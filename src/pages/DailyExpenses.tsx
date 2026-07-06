@@ -839,8 +839,6 @@ export default function DailyExpenses() {
       
       const actionStr = isSale ? 'Satışı' : 'Alımı';
       const title = `Planlanan ${plannedAsset} ${actionStr}`;
-      const desc = `Dönüşüm: ${fAmount} ${finalFromType} -> ${tAmount} ${finalToType}${note}`;
-
       await addFixedExpense({
         title,
         amount: tlAmount,
@@ -848,7 +846,7 @@ export default function DailyExpenses() {
         vault_gold_type: plannedAsset,
         vault_amount: plannedAssetAmount,
         vault_owner: 'Ortak',
-        vault_note: desc
+        vault_note: exchangeNote.trim()
       });
     } else {
       addDailyExpense({
