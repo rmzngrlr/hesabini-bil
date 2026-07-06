@@ -477,6 +477,14 @@ function migrateState(parsed: any): BudgetState {
     }
 
     if (parsed.version === 6) {
+      parsed = {
+        ...parsed,
+        version: 7
+      };
+    }
+
+    // Unconditional cleanup of PLANNED_VAULT daily expenses
+    if (parsed) {
       if (parsed.dailyExpenses) {
         parsed.dailyExpenses = parsed.dailyExpenses.filter((e: any) => e.type !== 'PLANNED_VAULT');
       }
@@ -491,10 +499,6 @@ function migrateState(parsed: any): BudgetState {
           return h;
         });
       }
-      parsed = {
-        ...parsed,
-        version: 7
-      };
     }
 
     return { ...initialState, ...parsed };
@@ -570,7 +574,8 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       const res = await fetchWithAuth('/vault');
       if (res.ok) {
         const data = await res.json();
-        setVaultRecords(data.records || []);
+        const cleanRecords = (data.records || []).filter((r: any) => r.gold_type !== 'PLANNED_VAULT');
+        setVaultRecords(cleanRecords);
         if (data.vaultOrder && Array.isArray(data.vaultOrder)) {
           setVaultOrder(data.vaultOrder);
         }
