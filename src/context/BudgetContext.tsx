@@ -330,7 +330,7 @@ function recalculateHistoryAndCurrent(state: BudgetState): BudgetState {
           .filter(e => e.type === 'NAKIT' && e.amount > 0)
           .reduce((sum, e) => sum + e.amount, 0);
         const paidFixed = hist.fixedExpenses
-          .filter(e => e.isPaid && (e.type === 'NAKIT' || !e.type))
+          .filter(e => e.isPaid && (e.type === 'NAKIT' || !e.type) && e.paymentMethod !== 'KK')
           .reduce((sum, e) => sum + e.amount, 0);
         const customIncomeTotal = (hist.customIncomes || [])
           .filter(i => i.type === 'NAKIT' || !i.type)
@@ -866,7 +866,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           .filter(e => e.type === 'NAKIT' && e.amount > 0)
           .reduce((sum, e) => sum + e.amount, 0);
         const paidFixed = prev.fixedExpenses
-          .filter(e => e.isPaid)
+          .filter(e => e.isPaid && (e.type === 'NAKIT' || !e.type) && e.paymentMethod !== 'KK')
           .reduce((sum, e) => sum + e.amount, 0);
         const customIncomeTotal = (prev.customIncomes || []).reduce((sum, e) => sum + e.amount, 0);
         const totalCash = prev.income + prev.rollover + cashDailyIncome + customIncomeTotal;
@@ -1068,7 +1068,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     let runningProjYkRollover = 0;
     const runningProjAssetBudgets: Record<string, { income: number; rollover: number }> = {};
 
-    const currentFixedTotal = realState.fixedExpenses.filter(e => e.isPaid && (e.type === 'NAKIT' || !e.type)).reduce((sum, e) => sum + e.amount, 0);
+    const currentFixedTotal = realState.fixedExpenses.filter(e => e.isPaid && (e.type === 'NAKIT' || !e.type) && e.paymentMethod !== 'KK').reduce((sum, e) => sum + e.amount, 0);
     const currentCustomIncomes = realState.customIncomes.filter(i => i.type === 'NAKIT' || !i.type).reduce((sum, i) => sum + i.amount, 0);
     const totalCashResources = realState.income + realState.rollover + currentCustomIncomes;
 
