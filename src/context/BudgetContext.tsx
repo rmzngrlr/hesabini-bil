@@ -476,6 +476,27 @@ function migrateState(parsed: any): BudgetState {
       };
     }
 
+    if (parsed.version === 6) {
+      if (parsed.dailyExpenses) {
+        parsed.dailyExpenses = parsed.dailyExpenses.filter((e: any) => e.type !== 'PLANNED_VAULT');
+      }
+      if (parsed.history && Array.isArray(parsed.history)) {
+        parsed.history = parsed.history.map((h: any) => {
+          if (h.dailyExpenses) {
+            return {
+              ...h,
+              dailyExpenses: h.dailyExpenses.filter((e: any) => e.type !== 'PLANNED_VAULT')
+            };
+          }
+          return h;
+        });
+      }
+      parsed = {
+        ...parsed,
+        version: 7
+      };
+    }
+
     return { ...initialState, ...parsed };
 }
 
@@ -741,8 +762,18 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                const vaultRes = await fetchWithAuth('/vault');
                if (vaultRes.ok) {
                  const vaultData = await vaultRes.json();
-                 setVaultRecords(vaultData.records || []);
-                 globalVaultRecords = vaultData.records || [];
+                 const cleanRecords = (vaultData.records || []).filter((r: any) => r.gold_type !== 'PLANNED_VAULT');
+                 setVaultRecords(cleanRecords);
+                 globalVaultRecords = cleanRecords;
+
+                 // Delete corrupt vault records from database
+                 const corruptRecords = (vaultData.records || []).filter((r: any) => r.gold_type === 'PLANNED_VAULT');
+                 for (const r of corruptRecords) {
+                   if (r.id) {
+                     fetchWithAuth(`/vault/${r.id}`, { method: 'DELETE' }).catch(err => console.error(err));
+                   }
+                 }
+
                  if (vaultData.vaultOrder && Array.isArray(vaultData.vaultOrder)) {
                    setVaultOrder(vaultData.vaultOrder);
                  }
