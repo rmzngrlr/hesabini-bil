@@ -1214,8 +1214,17 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             }
         });
 
-        // Combine Manual + Projected for Total Calculation and Display
-        allCCDebts = [...projectedCCDebts, ...allCCDebts];
+        // Gather paid KK bills for this iteration month
+        const monthlyKKBillDebts: CCDebt[] = monthFixedExpenses
+          .filter(e => e.isBill && e.paymentMethod === 'KK' && e.isPaid)
+          .map(e => ({
+            id: `proj-bill-cc-${e.id}`,
+            description: `Fatura: ${e.title}`,
+            amount: -Math.abs(e.amount)
+          }));
+
+        // Combine Manual + Projected + Monthly KK Bills for Total Calculation and Display
+        allCCDebts = [...projectedCCDebts, ...allCCDebts, ...monthlyKKBillDebts];
 
         // Calculate total CC Debt for THIS month (to become Fixed Expense in NEXT month)
         lastMonthCCDebt = Math.abs(allCCDebts.reduce((sum, d) => sum + d.amount, 0));
@@ -1426,11 +1435,32 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const toggleFixedExpense = (id: string) => {
     setRealState(prev => {
         if (viewDate === prev.currentMonth) {
+            const target = prev.fixedExpenses.find(ex => ex.id === id);
+            let updatedCCDebts = [...prev.ccDebts];
+            
+            if (target && target.isBill && target.paymentMethod === 'KK') {
+                const newPaidStatus = !target.isPaid;
+                const ccDebtId = `bill-cc-${target.id}`;
+                if (newPaidStatus) {
+                    if (!updatedCCDebts.some(d => d.id === ccDebtId)) {
+                        updatedCCDebts.push({
+                            id: ccDebtId,
+                            description: `Fatura: ${target.title}`,
+                            amount: -Math.abs(target.amount),
+                            date: new Date().toISOString().split('T')[0]
+                        });
+                    }
+                } else {
+                    updatedCCDebts = updatedCCDebts.filter(d => d.id !== ccDebtId);
+                }
+            }
+
             return {
               ...prev,
               fixedExpenses: prev.fixedExpenses.map(ex =>
                 ex.id === id ? { ...ex, isPaid: !ex.isPaid } : ex
               ),
+              ccDebts: updatedCCDebts
             };
         } else if (viewDate > prev.currentMonth) {
              const future = prev.futureData[viewDate] || {};
@@ -1475,9 +1505,15 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const deleteFixedExpense = (id: string) => {
     setRealState(prev => {
         if (viewDate === prev.currentMonth) {
+            const target = prev.fixedExpenses.find(ex => ex.id === id);
+            let updatedCCDebts = [...prev.ccDebts];
+            if (target && target.isBill && target.paymentMethod === 'KK' && target.isPaid) {
+                updatedCCDebts = updatedCCDebts.filter(d => d.id !== `bill-cc-${target.id}`);
+            }
             return {
               ...prev,
               fixedExpenses: prev.fixedExpenses.filter(ex => ex.id !== id),
+              ccDebts: updatedCCDebts
             };
         } else if (viewDate > prev.currentMonth) {
             const future = prev.futureData[viewDate] || {};
@@ -1770,11 +1806,46 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const updateFixedExpense = (id: string, expense: Partial<FixedExpense>) => {
     setRealState(prev => {
         if (viewDate === prev.currentMonth) {
+            const oldExpense = prev.fixedExpenses.find(ex => ex.id === id);
+            let updatedCCDebts = [...prev.ccDebts];
+            
+            const newFixedExpenses = prev.fixedExpenses.map(ex =>
+              ex.id === id ? { ...ex, ...expense } : ex
+            );
+            
+            const updatedExpense = newFixedExpenses.find(ex => ex.id === id);
+            
+            if (oldExpense && updatedExpense) {
+              const ccDebtId = `bill-cc-${updatedExpense.id}`;
+              const wasKK = oldExpense.isBill && oldExpense.paymentMethod === 'KK' && oldExpense.isPaid;
+              const isKK = updatedExpense.isBill && updatedExpense.paymentMethod === 'KK' && updatedExpense.isPaid;
+              
+              if (wasKK && !isKK) {
+                updatedCCDebts = updatedCCDebts.filter(d => d.id !== ccDebtId);
+              } else if (!wasKK && isKK) {
+                if (!updatedCCDebts.some(d => d.id === ccDebtId)) {
+                  updatedCCDebts.push({
+                    id: ccDebtId,
+                    description: `Fatura: ${updatedExpense.title}`,
+                    amount: -Math.abs(updatedExpense.amount),
+                    date: new Date().toISOString().split('T')[0]
+                  });
+                }
+              } else if (isKK) {
+                updatedCCDebts = updatedCCDebts.map(d =>
+                  d.id === ccDebtId ? {
+                    ...d,
+                    description: `Fatura: ${updatedExpense.title}`,
+                    amount: -Math.abs(updatedExpense.amount)
+                  } : d
+                );
+              }
+            }
+
             return {
               ...prev,
-              fixedExpenses: prev.fixedExpenses.map(ex =>
-                ex.id === id ? { ...ex, ...expense } : ex
-              ),
+              fixedExpenses: newFixedExpenses,
+              ccDebts: updatedCCDebts
             };
         } else if (viewDate > prev.currentMonth) {
             const future = prev.futureData[viewDate] || {};

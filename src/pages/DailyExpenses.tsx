@@ -2,11 +2,12 @@ import { useDraftState } from '../hooks/useDraftState';
 import { useBudget } from '../context/BudgetContext';
 import type { DailyExpense } from '../types';
 import { Card } from '../components/ui/Card';
-import { Trash2, Banknote, CreditCard, Pencil, X, Calendar, ArrowRightLeft } from 'lucide-react';
+import { Trash2, Banknote, CreditCard, Pencil, X, Calendar, ArrowRightLeft, ChevronDown, ChevronUp, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import React, { useMemo, useEffect, useState } from 'react';
 import { tr } from 'date-fns/locale';
 import { cn, scrollToElement } from '../lib/utils';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 
 export default function DailyExpenses() {
   const {
@@ -33,6 +34,45 @@ export default function DailyExpenses() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   };
   const isFuture = viewDate > getLocalMonth();
+
+  const [isBillsExpanded, setIsBillsExpanded] = useState(() => {
+    const stored = localStorage.getItem('daily_bills_expanded');
+    return stored !== null ? stored === 'true' : true;
+  });
+
+  const toggleBillsExpanded = () => {
+    setIsBillsExpanded(prev => {
+      const next = !prev;
+      localStorage.setItem('daily_bills_expanded', String(next));
+      return next;
+    });
+  };
+
+  const currentMonthBills = useMemo(() => {
+    return (state.fixedExpenses || []).filter(e => e.isBill && e.type !== 'PLANNED_VAULT');
+  }, [state.fixedExpenses]);
+
+  const totalBillsAmount = useMemo(() => {
+    return currentMonthBills.reduce((sum, e) => sum + e.amount, 0);
+  }, [currentMonthBills]);
+
+  const paidBillsAmount = useMemo(() => {
+    return currentMonthBills.filter(e => e.isPaid).reduce((sum, e) => sum + e.amount, 0);
+  }, [currentMonthBills]);
+
+  const unpaidBillsAmount = useMemo(() => {
+    return currentMonthBills.filter(e => !e.isPaid).reduce((sum, e) => sum + e.amount, 0);
+  }, [currentMonthBills]);
+
+  const billsChartData = useMemo(() => {
+    return currentMonthBills.map(e => ({
+      name: e.title.length > 10 ? e.title.substring(0, 10) + '..' : e.title,
+      fullName: e.title,
+      Tutar: e.amount,
+      Durum: e.isPaid ? 'Ödendi' : 'Ödenmedi',
+      Yontem: e.paymentMethod === 'KK' ? 'Kredi Kartı' : 'Nakit'
+    }));
+  }, [currentMonthBills]);
 
   const isGoldType = (type: string) => {
     const lower = type.toLowerCase();
@@ -422,6 +462,9 @@ export default function DailyExpenses() {
       } else {
         const expenseType = e.type || 'NAKIT';
         if (expenseType === activeTab) {
+          if (expenseType === 'NAKIT' && e.paymentMethod === 'KK') {
+            return;
+          }
           plans.push({
             id: e.id,
             date: `${viewDate}-01`,
@@ -1398,6 +1441,112 @@ export default function DailyExpenses() {
               </div>
             </Card>
         </div>
+      )}
+
+      {/* Fatura Takibi & Analizi Kartı */}
+      {currentMonthBills.length > 0 && (
+        <Card
+          title={
+            <div className="flex items-center justify-between w-full pr-2">
+              <div className="flex items-center gap-2">
+                <FileText className="text-blue-500" size={20} />
+                <span>Fatura Takibi & Analizi</span>
+              </div>
+              <button
+                type="button"
+                onClick={toggleBillsExpanded}
+                className="p-1 hover:bg-secondary rounded-lg text-muted-foreground transition-colors"
+              >
+                {isBillsExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+              </button>
+            </div>
+          }
+        >
+          {isBillsExpanded && (
+            <div className="space-y-6 pt-2">
+              {/* Özet Kartları */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="bg-secondary/40 border border-border/60 p-3.5 rounded-xl">
+                  <div className="text-xs text-muted-foreground font-medium">Toplam Fatura</div>
+                  <div className="text-xl font-bold text-foreground mt-1">
+                    {totalBillsAmount.toLocaleString('tr-TR')} ₺
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-1">
+                    {currentMonthBills.length} adet fatura
+                  </div>
+                </div>
+                
+                <div className="bg-green-500/5 border border-green-500/10 p-3.5 rounded-xl">
+                  <div className="text-xs text-green-500/80 font-medium">Ödenen Faturalar</div>
+                  <div className="text-xl font-bold text-green-500 mt-1">
+                    {paidBillsAmount.toLocaleString('tr-TR')} ₺
+                  </div>
+                  <div className="text-[10px] text-green-600 dark:text-green-400 mt-1">
+                    {currentMonthBills.filter(e => e.isPaid).length} adet ödendi
+                  </div>
+                </div>
+
+                <div className="bg-red-500/5 border border-red-500/10 p-3.5 rounded-xl">
+                  <div className="text-xs text-red-500/80 font-medium">Kalan / Ödenmeyen</div>
+                  <div className="text-xl font-bold text-red-500 mt-1">
+                    {unpaidBillsAmount.toLocaleString('tr-TR')} ₺
+                  </div>
+                  <div className="text-[10px] text-red-600 dark:text-red-400 mt-1">
+                    {currentMonthBills.filter(e => !e.isPaid).length} adet ödenmedi
+                  </div>
+                </div>
+              </div>
+
+              {/* Fatura Çizgi Grafiği */}
+              <div className="bg-secondary/20 border border-border/40 p-4 rounded-xl">
+                <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4">
+                  Fatura Tutarları Grafiği
+                </div>
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={billsChartData} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.5} />
+                      <XAxis
+                        dataKey="name"
+                        stroke="var(--muted-foreground)"
+                        fontSize={11}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <YAxis
+                        stroke="var(--muted-foreground)"
+                        fontSize={11}
+                        tickLine={false}
+                        axisLine={false}
+                        tickFormatter={(val) => val.toLocaleString('tr-TR') + ' ₺'}
+                      />
+                      <Tooltip
+                        formatter={(value: any, _name: any, props: any) => [
+                          `${value.toLocaleString('tr-TR')} ₺ (${props.payload.Yontem} - ${props.payload.Durum})`,
+                          props.payload.fullName
+                        ]}
+                        contentStyle={{
+                          borderRadius: '8px',
+                          border: '1px solid var(--border)',
+                          background: 'var(--card)',
+                          color: 'var(--foreground)'
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="Tutar"
+                        stroke="var(--primary)"
+                        strokeWidth={3}
+                        dot={{ r: 4, strokeWidth: 2, fill: 'var(--card)' }}
+                        activeDot={{ r: 7, strokeWidth: 0 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+          )}
+        </Card>
       )}
 
       {availableTabs.length > 1 && (

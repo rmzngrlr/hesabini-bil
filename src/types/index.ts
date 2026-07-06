@@ -24,6 +24,8 @@ export interface FixedExpense {
   vault_amount?: number;
   vault_owner?: string;
   vault_note?: string;
+  isBill?: boolean;
+  paymentMethod?: 'NAKIT' | 'KK';
 }
 
 export interface CustomIncome {

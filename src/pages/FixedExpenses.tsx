@@ -3,7 +3,7 @@ import { useDraftState } from '../hooks/useDraftState';
 import { useBudget } from '../context/BudgetContext';
 import { useAuth } from '../context/AuthContext';
 import { Card } from '../components/ui/Card';
-import { Plus, Trash2, CheckCircle, Circle, Pencil, X, Calendar } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, Circle, Pencil, X, Calendar, FileText, CreditCard, Wallet } from 'lucide-react';
 import { cn, scrollToElement } from '../lib/utils';
 import type { FixedExpense } from '../types';
 import { VaultSection } from '../components/VaultSection';
@@ -52,6 +52,8 @@ export default function FixedExpenses() {
   const [amount, setAmount] = useDraftState('fixed_draft_amount', '');
   const [expenseType, setExpenseType] = useState('NAKIT');
   const [editingId, setEditingId] = useDraftState<string | null>('fixed_draft_editing_id', null);
+  const [isBill, setIsBill] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'NAKIT' | 'KK'>('NAKIT');
 
   const [incomeTitle, setIncomeTitle] = useDraftState('fixed_draft_inc_title', '');
   const [incomeAmount, setIncomeAmount] = useDraftState('fixed_draft_inc_amount', '');
@@ -90,6 +92,8 @@ export default function FixedExpenses() {
     setTitle(expense.title);
     setAmount(expense.amount.toString());
     setExpenseType(expense.type || 'NAKIT');
+    setIsBill(expense.isBill || false);
+    setPaymentMethod(expense.paymentMethod || 'NAKIT');
     scrollToElement('main-form-container');
   };
 
@@ -98,6 +102,8 @@ export default function FixedExpenses() {
     setTitle('');
     setAmount('');
     setExpenseType('NAKIT');
+    setIsBill(false);
+    setPaymentMethod('NAKIT');
 
     sessionStorage.removeItem('fixed_draft_title');
     sessionStorage.removeItem('fixed_draft_amount');
@@ -129,16 +135,26 @@ export default function FixedExpenses() {
       updateFixedExpense(editingId, {
         title,
         amount: parseFloat(amount),
-        type: expenseType
+        type: expenseType,
+        isBill,
+        paymentMethod: isBill ? paymentMethod : undefined
       });
       setEditingId(null);
     } else {
-      addFixedExpense({ title, amount: parseFloat(amount), type: expenseType });
+      addFixedExpense({
+        title,
+        amount: parseFloat(amount),
+        type: expenseType,
+        isBill,
+        paymentMethod: isBill ? paymentMethod : undefined
+      });
     }
 
     setTitle('');
     setAmount('');
     setExpenseType('NAKIT');
+    setIsBill(false);
+    setPaymentMethod('NAKIT');
   };
 
   const getLocalDateMonth = () => {
@@ -343,50 +359,83 @@ export default function FixedExpenses() {
         </div>
       </Card>
 
-      <form id="edit-form-card" onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2 w-full">
-        <input
-          type="text"
-          placeholder="Gider Adı (örn: Kira)"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          className="w-full sm:flex-[2] min-w-0 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-        />
-        <div className="flex gap-2 w-full sm:w-auto">
+      <form id="edit-form-card" onSubmit={handleSubmit} className="w-full space-y-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full">
           <input
-            type="number"
-            placeholder="Tutar"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className="flex-1 min-w-0 sm:flex-none sm:w-24 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            type="text"
+            placeholder="Gider Adı (örn: Kira)"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="w-full sm:flex-[2] min-w-0 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
           />
-          <select
-            value={expenseType}
-            onChange={(e) => setExpenseType(e.target.value)}
-            className="flex-1 min-w-0 sm:flex-none sm:w-28 px-2 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
-          >
-            <option value="NAKIT">TL</option>
-            {activeCurrencies.map(curr => (
-              <option key={curr} value={curr}>{curr}</option>
-            ))}
-          </select>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <input
+              type="number"
+              placeholder="Tutar"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="flex-1 min-w-0 sm:flex-none sm:w-24 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+            <select
+              value={expenseType}
+              onChange={(e) => setExpenseType(e.target.value)}
+              className="flex-1 min-w-0 sm:flex-none sm:w-28 px-2 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+            >
+              <option value="NAKIT">TL</option>
+              {activeCurrencies.map(curr => (
+                <option key={curr} value={curr}>{curr}</option>
+              ))}
+            </select>
 
-          {editingId && (
-             <button
-               type="button"
-               onClick={cancelEdit}
-               className="p-2 rounded-lg bg-secondary text-foreground hover:bg-secondary/80 shrink-0"
-             >
-               <X size={24} />
-             </button>
-          )}
+            {editingId && (
+               <button
+                 type="button"
+                 onClick={cancelEdit}
+                 className="p-2 rounded-lg bg-secondary text-foreground hover:bg-secondary/80 shrink-0"
+               >
+                 <X size={24} />
+               </button>
+            )}
 
-          <button
-            type="submit"
-            className="p-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 shrink-0"
-          >
-            {editingId ? <Pencil size={24} /> : <Plus size={24} />}
-          </button>
+            <button
+              type="submit"
+              className="p-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 shrink-0"
+            >
+              {editingId ? <Pencil size={24} /> : <Plus size={24} />}
+            </button>
+          </div>
         </div>
+        
+        {expenseType === 'NAKIT' && (
+          <div className="flex flex-wrap items-center gap-4 text-sm bg-secondary/30 p-2.5 rounded-lg border border-border">
+            <label className="flex items-center gap-2 cursor-pointer font-medium select-none">
+              <input
+                type="checkbox"
+                checked={isBill}
+                onChange={(e) => {
+                  setIsBill(e.target.checked);
+                  if (!e.target.checked) setPaymentMethod('NAKIT');
+                }}
+                className="w-4 h-4 rounded text-primary focus:ring-primary bg-secondary border-border"
+              />
+              <span>Fatura mı?</span>
+            </label>
+            
+            {isBill && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Ödeme Yöntemi:</span>
+                <select
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value as 'NAKIT' | 'KK')}
+                  className="px-2 py-1 rounded bg-secondary text-foreground border border-border focus:outline-none text-xs font-semibold"
+                >
+                  <option value="NAKIT">Nakit (TL)</option>
+                  <option value="KK">Kredi Kartı</option>
+                </select>
+              </div>
+            )}
+          </div>
+        )}
       </form>
 
       <div className="space-y-3">
@@ -408,8 +457,25 @@ export default function FixedExpenses() {
                 <Circle className="text-muted-foreground flex-shrink-0" size={24} />
               )}
               <div className="text-left min-w-0 flex-1">
-                <div className={cn("font-medium truncate", expense.isPaid && "line-through")}>{expense.title}</div>
-                <div className="text-sm text-muted-foreground whitespace-nowrap">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className={cn("font-medium truncate", expense.isPaid && "line-through")}>{expense.title}</span>
+                  {expense.isBill && (
+                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-500 border border-blue-500/20 uppercase tracking-wider">
+                      <FileText size={10} /> Fatura
+                    </span>
+                  )}
+                  {expense.isBill && expense.paymentMethod === 'KK' && (
+                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-500 border border-purple-500/20 uppercase tracking-wider">
+                      <CreditCard size={10} /> Kart
+                    </span>
+                  )}
+                  {expense.isBill && expense.paymentMethod === 'NAKIT' && (
+                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-500/10 text-green-500 border border-green-500/20 uppercase tracking-wider">
+                      <Wallet size={10} /> Nakit
+                    </span>
+                  )}
+                </div>
+                <div className="text-sm text-muted-foreground whitespace-nowrap mt-0.5">
                   {expense.amount.toLocaleString('tr-TR')}{expense.type && isGoldType(expense.type) ? ' ' : ''}{expense.type === 'NAKIT' || !expense.type ? '₺' : expense.type}
                 </div>
               </div>
