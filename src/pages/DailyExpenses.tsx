@@ -2,12 +2,13 @@ import { useDraftState } from '../hooks/useDraftState';
 import { useBudget } from '../context/BudgetContext';
 import type { DailyExpense } from '../types';
 import { Card } from '../components/ui/Card';
-import { Trash2, Banknote, CreditCard, Pencil, X, Calendar, ArrowRightLeft, ChevronDown, ChevronUp, FileText } from 'lucide-react';
+import { Trash2, Banknote, CreditCard, Pencil, X, Calendar, ArrowRightLeft, CheckCircle, Circle, Wallet } from 'lucide-react';
 import { format } from 'date-fns';
 import React, { useMemo, useEffect, useState } from 'react';
 import { tr } from 'date-fns/locale';
 import { cn, scrollToElement } from '../lib/utils';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+
+const billColors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f43f5e', '#06b6d4'];
 
 export default function DailyExpenses() {
   const {
@@ -24,6 +25,8 @@ export default function DailyExpenses() {
     activeCurrencies,
     askConfirmation,
     addFixedExpense,
+    updateFixedExpense,
+    toggleFixedExpense,
     addCustomIncome,
     deleteFixedExpense,
     deleteCustomIncome
@@ -35,18 +38,7 @@ export default function DailyExpenses() {
   };
   const isFuture = viewDate > getLocalMonth();
 
-  const [isBillsExpanded, setIsBillsExpanded] = useState(() => {
-    const stored = localStorage.getItem('daily_bills_expanded');
-    return stored !== null ? stored === 'true' : true;
-  });
 
-  const toggleBillsExpanded = () => {
-    setIsBillsExpanded(prev => {
-      const next = !prev;
-      localStorage.setItem('daily_bills_expanded', String(next));
-      return next;
-    });
-  };
 
   const currentMonthBills = useMemo(() => {
     return (state.fixedExpenses || []).filter(e => e.isBill && e.type !== 'PLANNED_VAULT');
@@ -64,15 +56,7 @@ export default function DailyExpenses() {
     return currentMonthBills.filter(e => !e.isPaid).reduce((sum, e) => sum + e.amount, 0);
   }, [currentMonthBills]);
 
-  const billsChartData = useMemo(() => {
-    return currentMonthBills.map(e => ({
-      name: e.title.length > 10 ? e.title.substring(0, 10) + '..' : e.title,
-      fullName: e.title,
-      Tutar: e.amount,
-      Durum: e.isPaid ? 'Ödendi' : 'Ödenmedi',
-      Yontem: e.paymentMethod === 'KK' ? 'Kredi Kartı' : 'Nakit'
-    }));
-  }, [currentMonthBills]);
+
 
   const isGoldType = (type: string) => {
     const lower = type.toLowerCase();
@@ -407,13 +391,17 @@ export default function DailyExpenses() {
   const [goldPriceTL, setGoldPriceTL] = useDraftState('daily_draft_gold_price_tl', '');
   const [goldTransactionType, setGoldTransactionType] = useDraftState<'Birikim' | 'Bozdurma'>('daily_draft_gold_tx_type', 'Birikim');
 
-  const [showExchangeForm, setShowExchangeForm] = useState(false);
+  const [activeSubTab, setActiveSubTab] = useState<'NORMAL' | 'EXCHANGE' | 'BILLS'>('NORMAL');
+  const [billTitle, setBillTitle] = useState('');
+  const [billAmount, setBillAmount] = useState('');
+  const [billPaymentMethod, setBillPaymentMethod] = useState<'NAKIT' | 'KK'>('NAKIT');
+  const [editingBillId, setEditingBillId] = useState<string | null>(null);
   const [exchangeTabMode, setExchangeTabMode] = useState<'CURRENCY' | 'GOLD'>('CURRENCY');
   const [exchangeFromType, setExchangeFromType] = useState('NAKIT');
   const [exchangeToType, setExchangeToType] = useState('NAKIT');
   const [exchangeFromAmount, setExchangeFromAmount] = useState('');
   const [exchangeToAmount, setExchangeToAmount] = useState('');
-  const [exchangeDate, setExchangeDate] = useState(new Date().toISOString().split('T')[0]);
+  const exchangeDate = new Date().toISOString().split('T')[0];
   const [exchangeNote, setExchangeNote] = useState('');
   const [exchangeFromCustomCode, setExchangeFromCustomCode] = useState('');
   const [exchangeToCustomCode, setExchangeToCustomCode] = useState('');
@@ -503,13 +491,19 @@ export default function DailyExpenses() {
   }, [activeCurrencies, activeExpenses, isFuture]);
 
   const availableTabs = useMemo(() => {
-    return ['NAKIT', ...(showMealCard ? ['YK'] : []), ...activeCurrenciesFiltered];
-  }, [showMealCard, activeCurrenciesFiltered]);
+    if (activeSubTab === 'NORMAL') {
+      return ['NAKIT', ...(showMealCard ? ['YK'] : [])];
+    }
+    if (activeSubTab === 'EXCHANGE') {
+      return activeCurrenciesFiltered;
+    }
+    return [];
+  }, [showMealCard, activeCurrenciesFiltered, activeSubTab]);
 
   // Fallback if active tab disappears (e.g. settings changed)
   useEffect(() => {
     if (!availableTabs.includes(activeTab)) {
-      setActiveTab('NAKIT');
+      setActiveTab(availableTabs[0] || 'NAKIT');
     }
     if (type !== 'NEW_CURRENCY' && !allFormTypes.currencies.includes(type) && !allFormTypes.golds.includes(type)) {
       setType('NAKIT');
@@ -915,7 +909,7 @@ export default function DailyExpenses() {
       }
     }
 
-    setShowExchangeForm(false);
+
     setExchangeFromAmount('');
     setExchangeToAmount('');
     setExchangeNote('');
@@ -1029,7 +1023,15 @@ export default function DailyExpenses() {
     }
   };
 
-  const filteredExpenses = activeExpenses.filter(e => e.type === activeTab);
+  const filteredExpenses = useMemo(() => {
+    let list = activeExpenses.filter(e => e.type === activeTab);
+    
+    if (activeSubTab === 'NORMAL') {
+      list = list.filter(e => !e.description?.startsWith('Dönüşüm:') && !e.description?.includes('Dönüşüm:'));
+    }
+    
+    return list;
+  }, [activeExpenses, activeTab, activeSubTab]);
 
   const groupedExpenses = filteredExpenses.reduce((groups, expense) => {
     const date = expense.date;
@@ -1039,6 +1041,49 @@ export default function DailyExpenses() {
     groups[date].push(expense);
     return groups;
   }, {} as Record<string, DailyExpense[]>);
+
+  const handleBillSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!billTitle || !billAmount) return;
+
+    const numAmount = parseFloat(billAmount);
+    
+    if (editingBillId) {
+      updateFixedExpense(editingBillId, {
+        title: billTitle,
+        amount: numAmount,
+        paymentMethod: billPaymentMethod,
+        isBill: true
+      });
+      setEditingBillId(null);
+    } else {
+      addFixedExpense({
+        title: billTitle,
+        amount: numAmount,
+        paymentMethod: billPaymentMethod,
+        isBill: true
+      });
+    }
+
+    setBillTitle('');
+    setBillAmount('');
+    setBillPaymentMethod('NAKIT');
+  };
+
+  const handleEditBill = (bill: any) => {
+    setEditingBillId(bill.id);
+    setBillTitle(bill.title);
+    setBillAmount(bill.amount.toString());
+    setBillPaymentMethod(bill.paymentMethod || 'NAKIT');
+    scrollToElement('main-form-container');
+  };
+
+  const handleCancelEditBill = () => {
+    setEditingBillId(null);
+    setBillTitle('');
+    setBillAmount('');
+    setBillPaymentMethod('NAKIT');
+  };
 
   const sortedDates = Object.keys(groupedExpenses).sort((a, b) =>
     new Date(b).getTime() - new Date(a).getTime()
@@ -1076,28 +1121,38 @@ export default function DailyExpenses() {
       )}
 
       <div className="space-y-4">
-        <div className="flex gap-2">
+        {/* Sekme Seçici */}
+        <div className="flex gap-2 p-1 bg-secondary rounded-lg">
            <button
-              onClick={() => setShowExchangeForm(false)}
+              onClick={() => setActiveSubTab('NORMAL')}
               className={cn(
-                 "flex-1 py-2 text-sm font-medium rounded-lg transition-all",
-                 !showExchangeForm ? "bg-primary text-primary-foreground shadow" : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+                 "flex-1 py-1.5 text-sm font-semibold rounded-md transition-all",
+                 activeSubTab === 'NORMAL' ? "bg-background text-foreground shadow" : "text-muted-foreground hover:bg-secondary/80"
               )}
            >
               Normal İşlem
            </button>
            <button
-              onClick={() => setShowExchangeForm(true)}
+              onClick={() => setActiveSubTab('EXCHANGE')}
               className={cn(
-                 "flex-1 py-2 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2",
-                 showExchangeForm ? "bg-primary text-primary-foreground shadow" : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+                 "flex-1 py-1.5 text-sm font-semibold rounded-md transition-all flex items-center justify-center gap-2",
+                 activeSubTab === 'EXCHANGE' ? "bg-background text-foreground shadow" : "text-muted-foreground hover:bg-secondary/80"
               )}
            >
               Döviz/Altın İşlemleri
            </button>
+           <button
+              onClick={() => setActiveSubTab('BILLS')}
+              className={cn(
+                 "flex-1 py-1.5 text-sm font-semibold rounded-md transition-all",
+                 activeSubTab === 'BILLS' ? "bg-background text-foreground shadow" : "text-muted-foreground hover:bg-secondary/80"
+              )}
+           >
+              Faturalar
+           </button>
         </div>
 
-      {showExchangeForm ? (
+      {activeSubTab === 'EXCHANGE' && (
         <Card title="Varlık Dönüştür (Takas)">
           <div className="flex gap-2 mb-4 bg-secondary p-1 rounded-lg">
              <button
@@ -1168,87 +1223,38 @@ export default function DailyExpenses() {
                </div>
             )}
 
-            <div className="space-y-3">
-               <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Tarih</label>
-                  <input type="date" value={exchangeDate} disabled={isFuture} onChange={e => setExchangeDate(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary disabled:opacity-60 disabled:cursor-not-allowed" />
-               </div>
-               <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Açıklama / Kur Bilgisi (İsteğe Bağlı)</label>
-                  <input type="text" placeholder="Örn: 1 Dolar = 35 TL" value={exchangeNote} onChange={e => setExchangeNote(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary" />
-               </div>
+            <div className="space-y-1">
+               <label className="text-xs text-muted-foreground">Not</label>
+               <input type="text" placeholder="Özel not veya kur bilgisi (İsteğe bağlı)" value={exchangeNote} onChange={e => setExchangeNote(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary font-medium" />
             </div>
 
-            <button
-              type="submit"
-              className="w-full py-3 mt-4 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors"
-            >
-              Dönüştür
-            </button>
+            <div className="flex gap-2 pt-2">
+              <button type="submit" className="w-full py-3 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/95 transition-colors">
+                {isFuture ? 'Döviz Takası Planla' : 'Döviz Takası Kaydet'}
+              </button>
+            </div>
           </form>
           ) : (
           <form onSubmit={handleSubmit} className="space-y-3 mt-2">
-          <div className="space-y-3">
-              <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Tarih</label>
-              <input
-                  type="date"
-                  value={date}
-                  disabled={isFuture}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60 disabled:cursor-not-allowed"
-              />
+            <div className="flex gap-2 items-center">
+              <div className="flex-[2] space-y-1">
+                 <label className="text-xs text-muted-foreground">Birim Fiyat (TL)</label>
+                 <input type="number" step="0.01" required placeholder="Örn: 2450.50" value={goldPriceTL} onChange={e => setGoldPriceTL(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary font-medium" />
               </div>
-              <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Miktar</label>
-              <input
-                  type="number"
-                  step="0.01"
-                  required
-                  placeholder="0.00"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              />
+              <div className="flex-1 space-y-1">
+                 <label className="text-xs text-muted-foreground">Miktar (Adet/Gram)</label>
+                 <input type="number" step="0.001" required placeholder="Örn: 1 veya 0.75" value={amount} onChange={e => setAmount(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary" />
               </div>
-          </div>
+            </div>
 
-            <div className="space-y-3 border border-border p-3 rounded-lg bg-secondary/20">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Altın Sahibi</label>
-                  <input
-                    type="text"
-                    placeholder="Kimin Adına?"
-                    value={goldOwner}
-                    onChange={(e) => setGoldOwner(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Not</label>
-                  <input
-                    type="text"
-                    placeholder="İsteğe Bağlı"
-                    value={goldNote}
-                    onChange={(e) => setGoldNote(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-              </div>
-                <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">
-                    {goldTransactionType === 'Bozdurma' ? 'Satış Tutarı (TL) - İsteğe Bağlı' : 'Alış Tutarı (TL) - İsteğe Bağlı'}
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={goldPriceTL}
-                    onChange={(e) => setGoldPriceTL(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
+            <div className="space-y-1">
+               <label className="text-xs text-muted-foreground">Kime Ait (Kasa Sahibi)</label>
+               <input type="text" required placeholder="Örn: Ahmet, Ayşe veya Ortak" value={goldOwner} onChange={e => setGoldOwner(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary font-medium" />
+            </div>
+
+            <div className="space-y-1">
+               <label className="text-xs text-muted-foreground">Not</label>
+               <input type="text" placeholder="Özel not (İsteğe bağlı)" value={goldNote} onChange={e => setGoldNote(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary font-medium" />
             </div>
 
             <div className="flex gap-2 pt-1">
@@ -1317,7 +1323,9 @@ export default function DailyExpenses() {
           </form>
           )}
         </Card>
-      ) : (
+      )}
+
+      {activeSubTab === 'NORMAL' && (
       <Card title={editingId ? "Kayıt Düzenle" : "Yeni İşlem Ekle"}>
           <form onSubmit={handleSubmit} className="space-y-3 mt-2">
           <div className="space-y-3">
@@ -1426,6 +1434,66 @@ export default function DailyExpenses() {
           </form>
       </Card>
       )}
+
+      {activeSubTab === 'BILLS' && (
+        <Card title={editingBillId ? "Faturayı Düzenle" : "Yeni Fatura Ekle"}>
+          <form onSubmit={handleBillSubmit} className="space-y-4 mt-2">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-[2] space-y-1">
+                <label className="text-xs text-muted-foreground font-medium">Fatura Adı</label>
+                <input
+                  type="text"
+                  placeholder="Elektrik, Su, İnternet vb."
+                  value={billTitle}
+                  onChange={(e) => setBillTitle(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+                  required
+                />
+              </div>
+              <div className="flex-1 space-y-1">
+                <label className="text-xs text-muted-foreground font-medium">Tutar (TL)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={billAmount}
+                  onChange={(e) => setBillAmount(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+                  required
+                />
+              </div>
+              <div className="flex-1 space-y-1">
+                <label className="text-xs text-muted-foreground font-medium">Ödeme Yöntemi</label>
+                <select
+                  value={billPaymentMethod}
+                  onChange={(e) => setBillPaymentMethod(e.target.value as 'NAKIT' | 'KK')}
+                  className="w-full px-2 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+                >
+                  <option value="NAKIT">Nakit (TL)</option>
+                  <option value="KK">Kredi Kartı</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end pt-1">
+              {editingBillId && (
+                <button
+                  type="button"
+                  onClick={handleCancelEditBill}
+                  className="px-4 py-2 rounded-lg bg-secondary text-foreground hover:bg-secondary/80 font-medium transition-colors"
+                >
+                  İptal
+                </button>
+              )}
+              <button
+                type="submit"
+                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/95 font-medium transition-colors"
+              >
+                {editingBillId ? 'Güncelle' : 'Fatura Ekle'}
+              </button>
+            </div>
+          </form>
+        </Card>
+      )}
       </div>
 
       {viewDate <= state.currentMonth && (
@@ -1443,188 +1511,235 @@ export default function DailyExpenses() {
         </div>
       )}
 
-      {/* Fatura Takibi & Analizi Kartı */}
-      {currentMonthBills.length > 0 && (
-        <Card
-          title={
-            <div className="flex items-center justify-between w-full pr-2">
-              <div className="flex items-center gap-2">
-                <FileText className="text-blue-500" size={20} />
-                <span>Fatura Takibi & Analizi</span>
+      {/* Faturalar Sekmesi İçeriği */}
+      {activeSubTab === 'BILLS' && (
+        <div className="space-y-6">
+          {/* Fatura Özet Kartları */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="bg-secondary/40 border border-border/60 p-4 rounded-xl shadow-sm">
+              <div className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Toplam Fatura</div>
+              <div className="text-2xl font-black text-foreground mt-1">
+                {totalBillsAmount.toLocaleString('tr-TR')} ₺
               </div>
-              <button
-                type="button"
-                onClick={toggleBillsExpanded}
-                className="p-1 hover:bg-secondary rounded-lg text-muted-foreground transition-colors"
-              >
-                {isBillsExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-              </button>
-            </div>
-          }
-        >
-          {isBillsExpanded && (
-            <div className="space-y-6 pt-2">
-              {/* Özet Kartları */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="bg-secondary/40 border border-border/60 p-3.5 rounded-xl">
-                  <div className="text-xs text-muted-foreground font-medium">Toplam Fatura</div>
-                  <div className="text-xl font-bold text-foreground mt-1">
-                    {totalBillsAmount.toLocaleString('tr-TR')} ₺
-                  </div>
-                  <div className="text-[10px] text-muted-foreground mt-1">
-                    {currentMonthBills.length} adet fatura
-                  </div>
-                </div>
-                
-                <div className="bg-green-500/5 border border-green-500/10 p-3.5 rounded-xl">
-                  <div className="text-xs text-green-500/80 font-medium">Ödenen Faturalar</div>
-                  <div className="text-xl font-bold text-green-500 mt-1">
-                    {paidBillsAmount.toLocaleString('tr-TR')} ₺
-                  </div>
-                  <div className="text-[10px] text-green-600 dark:text-green-400 mt-1">
-                    {currentMonthBills.filter(e => e.isPaid).length} adet ödendi
-                  </div>
-                </div>
-
-                <div className="bg-red-500/5 border border-red-500/10 p-3.5 rounded-xl">
-                  <div className="text-xs text-red-500/80 font-medium">Kalan / Ödenmeyen</div>
-                  <div className="text-xl font-bold text-red-500 mt-1">
-                    {unpaidBillsAmount.toLocaleString('tr-TR')} ₺
-                  </div>
-                  <div className="text-[10px] text-red-600 dark:text-red-400 mt-1">
-                    {currentMonthBills.filter(e => !e.isPaid).length} adet ödenmedi
-                  </div>
-                </div>
-              </div>
-
-              {/* Fatura Çizgi Grafiği */}
-              <div className="bg-secondary/20 border border-border/40 p-4 rounded-xl">
-                <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4">
-                  Fatura Tutarları Grafiği
-                </div>
-                <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={billsChartData} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.5} />
-                      <XAxis
-                        dataKey="name"
-                        stroke="var(--muted-foreground)"
-                        fontSize={11}
-                        tickLine={false}
-                        axisLine={false}
-                      />
-                      <YAxis
-                        stroke="var(--muted-foreground)"
-                        fontSize={11}
-                        tickLine={false}
-                        axisLine={false}
-                        tickFormatter={(val) => val.toLocaleString('tr-TR') + ' ₺'}
-                      />
-                      <Tooltip
-                        formatter={(value: any, _name: any, props: any) => [
-                          `${value.toLocaleString('tr-TR')} ₺ (${props.payload.Yontem} - ${props.payload.Durum})`,
-                          props.payload.fullName
-                        ]}
-                        contentStyle={{
-                          borderRadius: '8px',
-                          border: '1px solid var(--border)',
-                          background: 'var(--card)',
-                          color: 'var(--foreground)'
-                        }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="Tutar"
-                        stroke="var(--primary)"
-                        strokeWidth={3}
-                        dot={{ r: 4, strokeWidth: 2, fill: 'var(--card)' }}
-                        activeDot={{ r: 7, strokeWidth: 0 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
+              <div className="text-xs text-muted-foreground mt-1">
+                {currentMonthBills.length} adet fatura planı
               </div>
             </div>
-          )}
-        </Card>
-      )}
+            
+            <div className="bg-green-500/5 border border-green-500/10 p-4 rounded-xl shadow-sm">
+              <div className="text-xs text-green-500/80 font-semibold uppercase tracking-wider">Ödenen Faturalar</div>
+              <div className="text-2xl font-black text-green-500 mt-1">
+                {paidBillsAmount.toLocaleString('tr-TR')} ₺
+              </div>
+              <div className="text-xs text-green-600 dark:text-green-400 mt-1">
+                {currentMonthBills.filter(e => e.isPaid).length} adet ödendi
+              </div>
+            </div>
 
-      {availableTabs.length > 1 && (
-        <div className="flex p-1 bg-secondary rounded-xl overflow-x-auto whitespace-nowrap scrollbar-none gap-1">
-            {availableTabs.map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
+            <div className="bg-red-500/5 border border-red-500/10 p-4 rounded-xl shadow-sm">
+              <div className="text-xs text-red-500/80 font-semibold uppercase tracking-wider">Kalan / Ödenmeyen</div>
+              <div className="text-2xl font-black text-red-500 mt-1">
+                {unpaidBillsAmount.toLocaleString('tr-TR')} ₺
+              </div>
+              <div className="text-xs text-red-600 dark:text-red-400 mt-1">
+                {currentMonthBills.filter(e => !e.isPaid).length} adet ödenmedi
+              </div>
+            </div>
+          </div>
+
+          {/* Segmentli Fatura Çubuğu (Grafik) */}
+          <Card title="Fatura Dağılım Grafiği">
+            <div className="space-y-4">
+              <div className="h-4 w-full rounded-full bg-secondary overflow-hidden flex shadow-inner border border-border/20">
+                {currentMonthBills.length === 0 ? (
+                  <div className="w-full h-full bg-secondary/50" />
+                ) : (
+                  currentMonthBills.map((bill, index) => {
+                    const percentage = totalBillsAmount > 0 ? (bill.amount / totalBillsAmount) * 100 : 0;
+                    return (
+                      <div
+                        key={bill.id}
+                        style={{ width: `${percentage}%`, backgroundColor: billColors[index % billColors.length] }}
+                        className="h-full transition-all hover:opacity-85"
+                        title={`${bill.title}: ${bill.amount.toLocaleString('tr-TR')} ₺`}
+                      />
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Renkli Lejant Listesi */}
+              <div className="flex flex-wrap gap-x-4 gap-y-2 pt-1 text-xs">
+                {currentMonthBills.map((bill, index) => (
+                  <div key={bill.id} className="flex items-center gap-1.5 font-medium">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full inline-block shrink-0"
+                      style={{ backgroundColor: billColors[index % billColors.length] }}
+                    />
+                    <span className="text-foreground">{bill.title}</span>
+                    <span className="text-muted-foreground">({bill.amount.toLocaleString('tr-TR')} ₺)</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
+
+          {/* Fatura Listesi */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider ml-1">
+              Fatura Listesi
+            </h3>
+            {currentMonthBills.map((bill) => (
+              <div
+                key={bill.id}
                 className={cn(
-                    "flex-1 min-w-[100px] py-2 text-sm font-medium rounded-lg transition-all",
-                    activeTab === tab ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                  "flex items-center justify-between p-4 rounded-xl border border-border bg-card transition-all",
+                  bill.isPaid && "opacity-60 bg-secondary/50"
                 )}
               >
-                {getAssetFullTitle(tab)}
-              </button>
+                <button
+                  onClick={() => toggleFixedExpense(bill.id)}
+                  className="flex items-center gap-3 flex-1 min-w-0"
+                >
+                  {bill.isPaid ? (
+                    <CheckCircle className="text-green-500 flex-shrink-0" size={24} />
+                  ) : (
+                    <Circle className="text-muted-foreground flex-shrink-0" size={24} />
+                  )}
+                  <div className="text-left min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className={cn("font-medium truncate", bill.isPaid && "line-through")}>
+                        {bill.title}
+                      </span>
+                      {bill.paymentMethod === 'KK' ? (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-500 border border-purple-500/20 uppercase tracking-wider">
+                          <CreditCard size={10} /> Kart
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-500/10 text-green-500 border border-green-500/20 uppercase tracking-wider">
+                          <Wallet size={10} /> Nakit
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-sm text-muted-foreground whitespace-nowrap mt-0.5">
+                      {bill.amount.toLocaleString('tr-TR')} ₺
+                    </div>
+                  </div>
+                </button>
+                
+                <div className="flex items-center">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleEditBill(bill); }}
+                    className="p-2 text-primary hover:text-primary/80 transition-colors"
+                  >
+                    <Pencil size={20} />
+                  </button>
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      if (await askConfirmation('Bu fatura kaydını silmek istediğinize emin misiniz?')) {
+                        deleteFixedExpense(bill.id);
+                        if (editingBillId === bill.id) handleCancelEditBill();
+                      }
+                    }}
+                    className="p-2 text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    <Trash2 size={20} />
+                  </button>
+                </div>
+              </div>
             ))}
+
+            {currentMonthBills.length === 0 && (
+              <div className="text-center text-muted-foreground py-12 bg-secondary/30 rounded-xl border border-dashed">
+                Bu ay için eklenmiş fatura bulunmuyor.
+              </div>
+            )}
+          </div>
         </div>
       )}
 
-      <div className="space-y-6">
-        {sortedDates.map((date) => {
-          const dailyTotal = groupedExpenses[date].reduce((sum, item) => sum + item.amount, 0);
-          return (
-          <div key={date} className="space-y-3">
-            <div className="flex justify-between items-center ml-1 pr-1">
-              <h3 className="text-sm font-medium text-muted-foreground">
-                {format(new Date(date), 'd MMMM yyyy, EEEE', { locale: tr })}
-              </h3>
-              <span className={`text-sm font-bold ${dailyTotal >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                 {dailyTotal > 0 ? '+' : ''}{dailyTotal.toLocaleString('tr-TR')}{isGoldType(activeTab) ? ' ' : ''}{getAssetUnitLabel(activeTab)}
-              </span>
+      {/* Normal / Döviz Altın Sekmeleri ve Listeleri */}
+      {activeSubTab !== 'BILLS' && (
+        <>
+          {availableTabs.length > 1 && (
+            <div className="flex p-1 bg-secondary rounded-xl overflow-x-auto whitespace-nowrap scrollbar-none gap-1">
+                {availableTabs.map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={cn(
+                        "flex-1 min-w-[100px] py-2 text-sm font-medium rounded-lg transition-all",
+                        activeTab === tab ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {getAssetFullTitle(tab)}
+                  </button>
+                ))}
             </div>
-            {groupedExpenses[date].map((expense) => {
-              const isGold = isGoldType(expense.type);
-              return (
-              <div key={expense.id} className="flex items-center justify-between p-4 rounded-xl bg-card border border-border">
-                <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-full ${expense.type === 'NAKIT' ? 'bg-green-500/10 text-green-500' : isGold ? 'bg-yellow-500/10 text-yellow-500' : 'bg-blue-500/10 text-blue-500'}`}>
-                      {expense.type === 'NAKIT' ? <Banknote size={20} /> : <CreditCard size={20} />}
-                    </div>
-                    <div>
-                      <div className="font-medium">{expense.description}</div>
-                    </div>
-                </div>
+          )}
 
-                <div className="text-right">
-                    <div className={`font-bold whitespace-nowrap ${expense.amount > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                      {expense.amount > 0 ? '+' : ''}
-                      {expense.amount.toLocaleString('tr-TR')}{isGoldType(expense.type) ? ' ' : ''}{getAssetUnitLabel(expense.type)}
-                    </div>
-                    <div className="flex justify-end gap-3 mt-1">
-                      <button
-                        onClick={() => handleEdit(expense)}
-                        className="text-xs text-primary hover:underline flex items-center gap-1"
-                      >
-                        <Pencil size={12} /> Düzenle
-                      </button>
-                      <button
-                        onClick={() => handleDeleteClick(expense)}
-                        className="text-xs text-destructive hover:underline flex items-center gap-1"
-                      >
-                        <Trash2 size={12} /> Sil
-                      </button>
-                    </div>
+          <div className="space-y-6">
+            {sortedDates.map((date) => {
+              const dailyTotal = groupedExpenses[date].reduce((sum, item) => sum + item.amount, 0);
+              return (
+              <div key={date} className="space-y-3">
+                <div className="flex justify-between items-center ml-1 pr-1">
+                  <h3 className="text-sm font-medium text-muted-foreground">
+                    {format(new Date(date), 'd MMMM yyyy, EEEE', { locale: tr })}
+                  </h3>
+                  <span className={`text-sm font-bold ${dailyTotal >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                     {dailyTotal > 0 ? '+' : ''}{dailyTotal.toLocaleString('tr-TR')}{isGoldType(activeTab) ? ' ' : ''}{getAssetUnitLabel(activeTab)}
+                  </span>
                 </div>
+                {groupedExpenses[date].map((expense) => {
+                  const isGold = isGoldType(expense.type);
+                  return (
+                  <div key={expense.id} className="flex items-center justify-between p-4 rounded-xl bg-card border border-border">
+                    <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-full ${expense.type === 'NAKIT' ? 'bg-green-500/10 text-green-500' : isGold ? 'bg-yellow-500/10 text-yellow-500' : 'bg-blue-500/10 text-blue-500'}`}>
+                          {expense.type === 'NAKIT' ? <Banknote size={20} /> : <CreditCard size={20} />}
+                        </div>
+                        <div>
+                          <div className="font-medium">{expense.description}</div>
+                        </div>
+                    </div>
+
+                    <div className="text-right">
+                        <div className={`font-bold whitespace-nowrap ${expense.amount > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                          {expense.amount > 0 ? '+' : ''}
+                          {expense.amount.toLocaleString('tr-TR')}{isGoldType(expense.type) ? ' ' : ''}{getAssetUnitLabel(expense.type)}
+                        </div>
+                        <div className="flex justify-end gap-3 mt-1">
+                          <button
+                            onClick={() => handleEdit(expense)}
+                            className="text-xs text-primary hover:underline flex items-center gap-1"
+                          >
+                            <Pencil size={12} /> Düzenle
+                          </button>
+                          <button
+                            onClick={() => handleDeleteClick(expense)}
+                            className="text-xs text-destructive hover:underline flex items-center gap-1"
+                          >
+                            <Trash2 size={12} /> Sil
+                          </button>
+                        </div>
+                    </div>
+                  </div>
+                  );
+                })}
               </div>
               );
             })}
-          </div>
-          );
-        })}
 
-        {sortedDates.length === 0 && (
-          <div className="text-center text-muted-foreground py-12 bg-secondary/30 rounded-xl border border-dashed">
-            {getAssetFullTitle(activeTab)} için kayıt bulunmuyor.
+            {sortedDates.length === 0 && (
+              <div className="text-center text-muted-foreground py-12 bg-secondary/30 rounded-xl border border-dashed">
+                {getAssetFullTitle(activeTab)} için kayıt bulunmuyor.
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </>
+      )}
     </div>
   );
 }
