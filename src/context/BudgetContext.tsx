@@ -169,12 +169,20 @@ const getActiveCurrencies = (state: BudgetState, vaultRecs: GoldRecord[]) => {
         }
       });
       (h.fixedExpenses || []).forEach(e => {
-        if (e.type && e.type !== 'NAKIT' && e.type !== 'YK' && !isGoldType(e.type)) {
+        if (e.type === 'PLANNED_VAULT') {
+          if (e.vault_gold_type && e.vault_gold_type !== 'NAKIT' && e.vault_gold_type !== 'YK' && !isGoldType(e.vault_gold_type)) {
+            found.add(e.vault_gold_type);
+          }
+        } else if (e.type && e.type !== 'NAKIT' && e.type !== 'YK' && !isGoldType(e.type)) {
           found.add(e.type);
         }
       });
       (h.customIncomes || []).forEach(i => {
-        if (i.type && i.type !== 'NAKIT' && i.type !== 'YK' && !isGoldType(i.type)) {
+        if (i.type === 'PLANNED_VAULT') {
+          if (i.vault_gold_type && i.vault_gold_type !== 'NAKIT' && i.vault_gold_type !== 'YK' && !isGoldType(i.vault_gold_type)) {
+            found.add(i.vault_gold_type);
+          }
+        } else if (i.type && i.type !== 'NAKIT' && i.type !== 'YK' && !isGoldType(i.type)) {
           found.add(i.type);
         }
       });
@@ -182,12 +190,20 @@ const getActiveCurrencies = (state: BudgetState, vaultRecs: GoldRecord[]) => {
 
     // Scan current month fixed expenses and custom incomes
     (state.fixedExpenses || []).forEach(e => {
-      if (e.type && e.type !== 'NAKIT' && e.type !== 'YK' && !isGoldType(e.type)) {
+      if (e.type === 'PLANNED_VAULT') {
+        if (e.vault_gold_type && e.vault_gold_type !== 'NAKIT' && e.vault_gold_type !== 'YK' && !isGoldType(e.vault_gold_type)) {
+          found.add(e.vault_gold_type);
+        }
+      } else if (e.type && e.type !== 'NAKIT' && e.type !== 'YK' && !isGoldType(e.type)) {
         found.add(e.type);
       }
     });
     (state.customIncomes || []).forEach(i => {
-      if (i.type && i.type !== 'NAKIT' && i.type !== 'YK' && !isGoldType(i.type)) {
+      if (i.type === 'PLANNED_VAULT') {
+        if (i.vault_gold_type && i.vault_gold_type !== 'NAKIT' && i.vault_gold_type !== 'YK' && !isGoldType(i.vault_gold_type)) {
+          found.add(i.vault_gold_type);
+        }
+      } else if (i.type && i.type !== 'NAKIT' && i.type !== 'YK' && !isGoldType(i.type)) {
         found.add(i.type);
       }
     });
@@ -196,14 +212,22 @@ const getActiveCurrencies = (state: BudgetState, vaultRecs: GoldRecord[]) => {
     Object.values(state.futureData || {}).forEach((f: any) => {
       if (f.fixedExpenses) {
         f.fixedExpenses.forEach((e: any) => {
-          if (e.type && e.type !== 'NAKIT' && e.type !== 'YK' && !isGoldType(e.type)) {
+          if (e.type === 'PLANNED_VAULT') {
+            if (e.vault_gold_type && e.vault_gold_type !== 'NAKIT' && e.vault_gold_type !== 'YK' && !isGoldType(e.vault_gold_type)) {
+              found.add(e.vault_gold_type);
+            }
+          } else if (e.type && e.type !== 'NAKIT' && e.type !== 'YK' && !isGoldType(e.type)) {
             found.add(e.type);
           }
         });
       }
       if (f.customIncomes) {
         f.customIncomes.forEach((i: any) => {
-          if (i.type && i.type !== 'NAKIT' && i.type !== 'YK' && !isGoldType(i.type)) {
+          if (i.type === 'PLANNED_VAULT') {
+            if (i.vault_gold_type && i.vault_gold_type !== 'NAKIT' && i.vault_gold_type !== 'YK' && !isGoldType(i.vault_gold_type)) {
+              found.add(i.vault_gold_type);
+            }
+          } else if (i.type && i.type !== 'NAKIT' && i.type !== 'YK' && !isGoldType(i.type)) {
             found.add(i.type);
           }
         });
