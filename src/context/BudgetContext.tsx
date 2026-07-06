@@ -145,6 +145,21 @@ const getCurrencyVaultExpenses = (records: GoldRecord[]): DailyExpense[] => {
     });
 };
 
+const syncCCDebtsForList = (fixedExpenses: FixedExpense[], ccDebts: CCDebt[]): CCDebt[] => {
+  let newCCDebts = (ccDebts || []).filter(d => !d.id.startsWith('bill-cc-'));
+  (fixedExpenses || []).forEach(e => {
+    if (e.isBill && e.paymentMethod === 'KK' && e.isPaid) {
+      newCCDebts.push({
+        id: `bill-cc-${e.id}`,
+        description: `Fatura: ${e.title}`,
+        amount: -Math.abs(e.amount),
+        date: new Date().toISOString().split('T')[0]
+      });
+    }
+  });
+  return newCCDebts;
+};
+
 const getActiveCurrencies = (state: BudgetState, vaultRecs: GoldRecord[]) => {
   const found = new Set<string>();
   
@@ -1435,31 +1450,13 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const toggleFixedExpense = (id: string) => {
     setRealState(prev => {
         if (viewDate === prev.currentMonth) {
-            const target = prev.fixedExpenses.find(ex => ex.id === id);
-            let updatedCCDebts = [...prev.ccDebts];
-            
-            if (target && target.isBill && target.paymentMethod === 'KK') {
-                const newPaidStatus = !target.isPaid;
-                const ccDebtId = `bill-cc-${target.id}`;
-                if (newPaidStatus) {
-                    if (!updatedCCDebts.some(d => d.id === ccDebtId)) {
-                        updatedCCDebts.push({
-                            id: ccDebtId,
-                            description: `Fatura: ${target.title}`,
-                            amount: -Math.abs(target.amount),
-                            date: new Date().toISOString().split('T')[0]
-                        });
-                    }
-                } else {
-                    updatedCCDebts = updatedCCDebts.filter(d => d.id !== ccDebtId);
-                }
-            }
-
+            const newFixedExpenses = prev.fixedExpenses.map(ex =>
+              ex.id === id ? { ...ex, isPaid: !ex.isPaid } : ex
+            );
+            const updatedCCDebts = syncCCDebtsForList(newFixedExpenses, prev.ccDebts);
             return {
               ...prev,
-              fixedExpenses: prev.fixedExpenses.map(ex =>
-                ex.id === id ? { ...ex, isPaid: !ex.isPaid } : ex
-              ),
+              fixedExpenses: newFixedExpenses,
               ccDebts: updatedCCDebts
             };
         } else if (viewDate > prev.currentMonth) {
@@ -1474,13 +1471,15 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                  return prev;
              }
 
+             const updatedCCDebts = syncCCDebtsForList(newList, future.ccDebts || []);
              return {
                 ...prev,
                 futureData: {
                     ...prev.futureData,
                     [viewDate]: {
                         ...future,
-                        fixedExpenses: newList
+                        fixedExpenses: newList,
+                        ccDebts: updatedCCDebts
                     }
                 }
              };
@@ -1488,11 +1487,14 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             const histIndex = prev.history.findIndex(h => h.month === viewDate);
             if (histIndex !== -1) {
                 const newHistory = [...prev.history];
+                const newFixedExpenses = newHistory[histIndex].fixedExpenses.map(ex =>
+                    ex.id === id ? { ...ex, isPaid: !ex.isPaid } : ex
+                );
+                const updatedCCDebts = syncCCDebtsForList(newFixedExpenses, newHistory[histIndex].ccDebts || []);
                 newHistory[histIndex] = {
                     ...newHistory[histIndex],
-                    fixedExpenses: newHistory[histIndex].fixedExpenses.map(ex =>
-                        ex.id === id ? { ...ex, isPaid: !ex.isPaid } : ex
-                    )
+                    fixedExpenses: newFixedExpenses,
+                    ccDebts: updatedCCDebts
                 };
                 return recalculateHistoryAndCurrent({ ...prev, history: newHistory });
             }
@@ -1505,20 +1507,18 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const deleteFixedExpense = (id: string) => {
     setRealState(prev => {
         if (viewDate === prev.currentMonth) {
-            const target = prev.fixedExpenses.find(ex => ex.id === id);
-            let updatedCCDebts = [...prev.ccDebts];
-            if (target && target.isBill && target.paymentMethod === 'KK' && target.isPaid) {
-                updatedCCDebts = updatedCCDebts.filter(d => d.id !== `bill-cc-${target.id}`);
-            }
+            const newFixedExpenses = prev.fixedExpenses.filter(ex => ex.id !== id);
+            const updatedCCDebts = syncCCDebtsForList(newFixedExpenses, prev.ccDebts);
             return {
               ...prev,
-              fixedExpenses: prev.fixedExpenses.filter(ex => ex.id !== id),
+              fixedExpenses: newFixedExpenses,
               ccDebts: updatedCCDebts
             };
         } else if (viewDate > prev.currentMonth) {
             const future = prev.futureData[viewDate] || {};
             const projectedExpenses = derivedState.fixedExpenses || [];
             const newList = projectedExpenses.filter(ex => ex.id !== id);
+            const updatedCCDebts = syncCCDebtsForList(newList, future.ccDebts || []);
 
             return {
                 ...prev,
@@ -1526,7 +1526,8 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                     ...prev.futureData,
                     [viewDate]: {
                         ...future,
-                        fixedExpenses: newList
+                        fixedExpenses: newList,
+                        ccDebts: updatedCCDebts
                     }
                 }
             };
@@ -1534,9 +1535,12 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             const histIndex = prev.history.findIndex(h => h.month === viewDate);
             if (histIndex !== -1) {
                 const newHistory = [...prev.history];
+                const newFixedExpenses = newHistory[histIndex].fixedExpenses.filter(ex => ex.id !== id);
+                const updatedCCDebts = syncCCDebtsForList(newFixedExpenses, newHistory[histIndex].ccDebts || []);
                 newHistory[histIndex] = {
                     ...newHistory[histIndex],
-                    fixedExpenses: newHistory[histIndex].fixedExpenses.filter(ex => ex.id !== id)
+                    fixedExpenses: newFixedExpenses,
+                    ccDebts: updatedCCDebts
                 };
                 return recalculateHistoryAndCurrent({ ...prev, history: newHistory });
             }
@@ -1806,42 +1810,10 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const updateFixedExpense = (id: string, expense: Partial<FixedExpense>) => {
     setRealState(prev => {
         if (viewDate === prev.currentMonth) {
-            const oldExpense = prev.fixedExpenses.find(ex => ex.id === id);
-            let updatedCCDebts = [...prev.ccDebts];
-            
             const newFixedExpenses = prev.fixedExpenses.map(ex =>
               ex.id === id ? { ...ex, ...expense } : ex
             );
-            
-            const updatedExpense = newFixedExpenses.find(ex => ex.id === id);
-            
-            if (oldExpense && updatedExpense) {
-              const ccDebtId = `bill-cc-${updatedExpense.id}`;
-              const wasKK = oldExpense.isBill && oldExpense.paymentMethod === 'KK' && oldExpense.isPaid;
-              const isKK = updatedExpense.isBill && updatedExpense.paymentMethod === 'KK' && updatedExpense.isPaid;
-              
-              if (wasKK && !isKK) {
-                updatedCCDebts = updatedCCDebts.filter(d => d.id !== ccDebtId);
-              } else if (!wasKK && isKK) {
-                if (!updatedCCDebts.some(d => d.id === ccDebtId)) {
-                  updatedCCDebts.push({
-                    id: ccDebtId,
-                    description: `Fatura: ${updatedExpense.title}`,
-                    amount: -Math.abs(updatedExpense.amount),
-                    date: new Date().toISOString().split('T')[0]
-                  });
-                }
-              } else if (isKK) {
-                updatedCCDebts = updatedCCDebts.map(d =>
-                  d.id === ccDebtId ? {
-                    ...d,
-                    description: `Fatura: ${updatedExpense.title}`,
-                    amount: -Math.abs(updatedExpense.amount)
-                  } : d
-                );
-              }
-            }
-
+            const updatedCCDebts = syncCCDebtsForList(newFixedExpenses, prev.ccDebts);
             return {
               ...prev,
               fixedExpenses: newFixedExpenses,
@@ -1882,13 +1854,15 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 return prev;
             }
 
+            const updatedCCDebts = syncCCDebtsForList(newList, future.ccDebts || []);
             return {
                 ...prev,
                 futureData: {
                     ...prev.futureData,
                     [viewDate]: {
                         ...future,
-                        fixedExpenses: newList
+                        fixedExpenses: newList,
+                        ccDebts: updatedCCDebts
                     }
                 }
             };
@@ -1896,24 +1870,15 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             const histIndex = prev.history.findIndex(h => h.month === viewDate);
             if (histIndex !== -1) {
                 const newHistory = [...prev.history];
-
-                // If it's a CC Debt update in history, we should allow it but note that
-                // it might be overwritten by recalculateHistoryAndCurrent unless we treat it as an adjustment there too.
-                // For simplicity, let's just update the list and let the engine recalculate.
-                // Wait! If they edit CC Debt in history, it shouldn't be recalculated/overwritten?
-                // The prompt says "Geçtiğimiz aylarda ... düzenleme yapmama fırsat ver. O bugünü de etkilesin".
-                // If I edit "Rent", the rollover changes.
-                // If I edit "CC Debt" in history, well, CC Debt in history is calculated from the *previous* month.
-                // If they manually edit it, and then the recalculation engine runs, it will overwrite it based on the previous month.
-                // Is this desired? Usually yes, because CC debt is strictly derived from transactions.
-                // If they want to change CC debt, they should add a transaction in the previous month.
-                // However, we allow editing Fixed Expenses.
+                const newFixedExpenses = newHistory[histIndex].fixedExpenses.map(ex =>
+                    ex.id === id ? { ...ex, ...expense } : ex
+                );
+                const updatedCCDebts = syncCCDebtsForList(newFixedExpenses, newHistory[histIndex].ccDebts || []);
 
                 newHistory[histIndex] = {
                     ...newHistory[histIndex],
-                    fixedExpenses: newHistory[histIndex].fixedExpenses.map(ex =>
-                        ex.id === id ? { ...ex, ...expense } : ex
-                    )
+                    fixedExpenses: newFixedExpenses,
+                    ccDebts: updatedCCDebts
                 };
                 return recalculateHistoryAndCurrent({ ...prev, history: newHistory });
             }
