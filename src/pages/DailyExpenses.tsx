@@ -957,6 +957,30 @@ export default function DailyExpenses() {
              }
           }
         }
+
+        // Check and delete twin currency transaction (Nakit <-> Currency)
+        if (expense.type === 'NAKIT' || expense.type === 'YK') {
+          const twin = activeExpenses.find(e => 
+            e.id !== expense.id &&
+            e.date === expense.date && 
+            e.description === expense.description && 
+            e.type !== 'NAKIT' && 
+            e.type !== 'YK'
+          );
+          if (twin) {
+            deleteDailyExpense(twin.id);
+          }
+        } else {
+          const twin = activeExpenses.find(e => 
+            e.id !== expense.id &&
+            e.date === expense.date && 
+            e.description === expense.description && 
+            (e.type === 'NAKIT' || e.type === 'YK')
+          );
+          if (twin) {
+            deleteDailyExpense(twin.id);
+          }
+        }
       }
       deleteDailyExpense(expense.id);
     }
