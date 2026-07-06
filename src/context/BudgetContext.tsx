@@ -160,6 +160,29 @@ const syncCCDebtsForList = (fixedExpenses: FixedExpense[], ccDebts: CCDebt[]): C
   return newCCDebts;
 };
 
+const syncDailyExpensesForList = (
+  fixedExpenses: FixedExpense[],
+  dailyExpenses: DailyExpense[],
+  viewDate: string,
+  currentMonth: string
+): DailyExpense[] => {
+  let newDaily = (dailyExpenses || []).filter(d => !d.id.startsWith('bill-cash-'));
+  (fixedExpenses || []).forEach(e => {
+    if (e.isBill && e.paymentMethod === 'NAKIT' && e.isPaid) {
+      const today = new Date().toISOString().split('T')[0];
+      const targetDate = viewDate === currentMonth ? today : `${viewDate}-01`;
+      newDaily.push({
+        id: `bill-cash-${e.id}`,
+        description: `Fatura: ${e.title}`,
+        amount: -Math.abs(e.amount),
+        type: 'NAKIT',
+        date: targetDate
+      });
+    }
+  });
+  return newDaily;
+};
+
 const getActiveCurrencies = (state: BudgetState, vaultRecs: GoldRecord[]) => {
   const found = new Set<string>();
   
@@ -345,7 +368,7 @@ function recalculateHistoryAndCurrent(state: BudgetState): BudgetState {
           .filter(e => e.type === 'NAKIT' && e.amount > 0)
           .reduce((sum, e) => sum + e.amount, 0);
         const paidFixed = hist.fixedExpenses
-          .filter(e => e.isPaid && (e.type === 'NAKIT' || !e.type) && e.paymentMethod !== 'KK')
+          .filter(e => e.isPaid && (e.type === 'NAKIT' || !e.type) && !e.isBill)
           .reduce((sum, e) => sum + e.amount, 0);
         const customIncomeTotal = (hist.customIncomes || [])
           .filter(i => i.type === 'NAKIT' || !i.type)
@@ -385,7 +408,7 @@ function recalculateHistoryAndCurrent(state: BudgetState): BudgetState {
               .filter(e => e.type === curr && e.amount < 0)
               .reduce((sum, e) => sum + Math.abs(e.amount), 0);
             const assetFixedSpent = hist.fixedExpenses
-              .filter(e => e.isPaid && e.type === curr)
+              .filter(e => e.isPaid && e.type === curr && !e.isBill)
               .reduce((sum, e) => sum + e.amount, 0);
 
             const totalAsset = startRollover + kasaChanges + monthIncome + assetCustomIncome + assetDailyIncome;
@@ -881,7 +904,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           .filter(e => e.type === 'NAKIT' && e.amount > 0)
           .reduce((sum, e) => sum + e.amount, 0);
         const paidFixed = prev.fixedExpenses
-          .filter(e => e.isPaid && (e.type === 'NAKIT' || !e.type) && e.paymentMethod !== 'KK')
+          .filter(e => e.isPaid && (e.type === 'NAKIT' || !e.type) && !e.isBill)
           .reduce((sum, e) => sum + e.amount, 0);
         const customIncomeTotal = (prev.customIncomes || []).reduce((sum, e) => sum + e.amount, 0);
         const totalCash = prev.income + prev.rollover + cashDailyIncome + customIncomeTotal;
@@ -1083,7 +1106,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     let runningProjYkRollover = 0;
     const runningProjAssetBudgets: Record<string, { income: number; rollover: number }> = {};
 
-    const currentFixedTotal = realState.fixedExpenses.filter(e => e.isPaid && (e.type === 'NAKIT' || !e.type) && e.paymentMethod !== 'KK').reduce((sum, e) => sum + e.amount, 0);
+    const currentFixedTotal = realState.fixedExpenses.filter(e => e.isPaid && (e.type === 'NAKIT' || !e.type) && !e.isBill).reduce((sum, e) => sum + e.amount, 0);
     const currentCustomIncomes = realState.customIncomes.filter(i => i.type === 'NAKIT' || !i.type).reduce((sum, i) => sum + i.amount, 0);
     const totalCashResources = realState.income + realState.rollover + currentCustomIncomes;
 
@@ -1121,7 +1144,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           .filter(e => e.type === curr && e.amount < 0)
           .reduce((sum, e) => sum + Math.abs(e.amount), 0);
         const assetFixedSpent = realState.fixedExpenses
-          .filter(e => e.isPaid && e.type === curr)
+          .filter(e => e.isPaid && e.type === curr && !e.isBill)
           .reduce((sum, e) => sum + e.amount, 0);
 
         const totalAsset = startRollover + kasaChanges + monthInc + assetCustomIncome + assetDailyIncome;
@@ -1454,10 +1477,12 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
               ex.id === id ? { ...ex, isPaid: !ex.isPaid } : ex
             );
             const updatedCCDebts = syncCCDebtsForList(newFixedExpenses, prev.ccDebts);
+            const updatedDaily = syncDailyExpensesForList(newFixedExpenses, prev.dailyExpenses, viewDate, prev.currentMonth);
             return {
               ...prev,
               fixedExpenses: newFixedExpenses,
-              ccDebts: updatedCCDebts
+              ccDebts: updatedCCDebts,
+              dailyExpenses: updatedDaily
             };
         } else if (viewDate > prev.currentMonth) {
              const future = prev.futureData[viewDate] || {};
@@ -1491,10 +1516,12 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                     ex.id === id ? { ...ex, isPaid: !ex.isPaid } : ex
                 );
                 const updatedCCDebts = syncCCDebtsForList(newFixedExpenses, newHistory[histIndex].ccDebts || []);
+                const updatedDaily = syncDailyExpensesForList(newFixedExpenses, newHistory[histIndex].dailyExpenses || [], viewDate, prev.currentMonth);
                 newHistory[histIndex] = {
                     ...newHistory[histIndex],
                     fixedExpenses: newFixedExpenses,
-                    ccDebts: updatedCCDebts
+                    ccDebts: updatedCCDebts,
+                    dailyExpenses: updatedDaily
                 };
                 return recalculateHistoryAndCurrent({ ...prev, history: newHistory });
             }
@@ -1509,10 +1536,12 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         if (viewDate === prev.currentMonth) {
             const newFixedExpenses = prev.fixedExpenses.filter(ex => ex.id !== id);
             const updatedCCDebts = syncCCDebtsForList(newFixedExpenses, prev.ccDebts);
+            const updatedDaily = syncDailyExpensesForList(newFixedExpenses, prev.dailyExpenses, viewDate, prev.currentMonth);
             return {
               ...prev,
               fixedExpenses: newFixedExpenses,
-              ccDebts: updatedCCDebts
+              ccDebts: updatedCCDebts,
+              dailyExpenses: updatedDaily
             };
         } else if (viewDate > prev.currentMonth) {
             const future = prev.futureData[viewDate] || {};
@@ -1537,10 +1566,12 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 const newHistory = [...prev.history];
                 const newFixedExpenses = newHistory[histIndex].fixedExpenses.filter(ex => ex.id !== id);
                 const updatedCCDebts = syncCCDebtsForList(newFixedExpenses, newHistory[histIndex].ccDebts || []);
+                const updatedDaily = syncDailyExpensesForList(newFixedExpenses, newHistory[histIndex].dailyExpenses || [], viewDate, prev.currentMonth);
                 newHistory[histIndex] = {
                     ...newHistory[histIndex],
                     fixedExpenses: newFixedExpenses,
-                    ccDebts: updatedCCDebts
+                    ccDebts: updatedCCDebts,
+                    dailyExpenses: updatedDaily
                 };
                 return recalculateHistoryAndCurrent({ ...prev, history: newHistory });
             }
@@ -1814,10 +1845,12 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
               ex.id === id ? { ...ex, ...expense } : ex
             );
             const updatedCCDebts = syncCCDebtsForList(newFixedExpenses, prev.ccDebts);
+            const updatedDaily = syncDailyExpensesForList(newFixedExpenses, prev.dailyExpenses, viewDate, prev.currentMonth);
             return {
               ...prev,
               fixedExpenses: newFixedExpenses,
-              ccDebts: updatedCCDebts
+              ccDebts: updatedCCDebts,
+              dailyExpenses: updatedDaily
             };
         } else if (viewDate > prev.currentMonth) {
             const future = prev.futureData[viewDate] || {};
@@ -1874,11 +1907,13 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                     ex.id === id ? { ...ex, ...expense } : ex
                 );
                 const updatedCCDebts = syncCCDebtsForList(newFixedExpenses, newHistory[histIndex].ccDebts || []);
+                const updatedDaily = syncDailyExpensesForList(newFixedExpenses, newHistory[histIndex].dailyExpenses || [], viewDate, prev.currentMonth);
 
                 newHistory[histIndex] = {
                     ...newHistory[histIndex],
                     fixedExpenses: newFixedExpenses,
-                    ccDebts: updatedCCDebts
+                    ccDebts: updatedCCDebts,
+                    dailyExpenses: updatedDaily
                 };
                 return recalculateHistoryAndCurrent({ ...prev, history: newHistory });
             }
