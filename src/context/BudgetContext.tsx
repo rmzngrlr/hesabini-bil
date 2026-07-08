@@ -987,6 +987,21 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             { id: generateId(), title: 'Aidat', amount: 0, isPaid: false }
         ];
 
+        // Carry over bills with amount 0
+        (prev.fixedExpenses || []).forEach(e => {
+            if (e.isBill) {
+                nextFixedExpenses.push({
+                    id: generateId(),
+                    title: e.title,
+                    amount: 0,
+                    isPaid: false,
+                    isBill: true,
+                    paymentMethod: e.paymentMethod || 'NAKIT',
+                    type: e.type
+                });
+            }
+        });
+
         // 2. Check for Future Plan (Overrides)
         const futurePlan = prev.futureData[nextMonthStr] || {};
 
@@ -1217,7 +1232,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         if (future.fixedExpenses) {
              monthFixedExpenses = future.fixedExpenses.map(e => ({ ...e }));
         } else {
-             // Default Projection: Only Rent and Dues, reset to 0
+             // Default Projection: Rent, Dues, and all active bills with 0 amount
              monthFixedExpenses = [
                 {
                     id: `proj-rent-${iterMonth}`,
@@ -1232,6 +1247,20 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                     isPaid: false
                 }
              ];
+
+             (realState.fixedExpenses || []).forEach(e => {
+                 if (e.isBill) {
+                     monthFixedExpenses.push({
+                         id: `proj-bill-${e.id}-${iterMonth}`,
+                         title: e.title,
+                         amount: 0,
+                         isPaid: false,
+                         isBill: true,
+                         paymentMethod: e.paymentMethod || 'NAKIT',
+                         type: e.type
+                     });
+                 }
+             });
         }
 
         // Apply CC Debt Adjustment if exists
