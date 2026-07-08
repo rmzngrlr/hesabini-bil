@@ -41,7 +41,15 @@ export default function DailyExpenses() {
 
 
   const currentMonthBills = useMemo(() => {
-    return (state.fixedExpenses || []).filter(e => e.isBill && e.type !== 'PLANNED_VAULT');
+    const list = (state.fixedExpenses || []).filter(e => e.isBill && e.type !== 'PLANNED_VAULT');
+    return [...list].sort((a, b) => {
+      const dateA = a.date || '';
+      const dateB = b.date || '';
+      if (dateA !== dateB) {
+        return dateA.localeCompare(dateB);
+      }
+      return a.title.localeCompare(b.title, 'tr');
+    });
   }, [state.fixedExpenses]);
 
   const totalBillsAmount = useMemo(() => {
