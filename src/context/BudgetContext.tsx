@@ -146,18 +146,35 @@ const getCurrencyVaultExpenses = (records: GoldRecord[]): DailyExpense[] => {
 };
 
 const syncCCDebtsForList = (fixedExpenses: FixedExpense[], ccDebts: CCDebt[]): CCDebt[] => {
-  let newCCDebts = (ccDebts || []).filter(d => !d.id.startsWith('bill-cc-'));
-  (fixedExpenses || []).forEach(e => {
-    if (e.isBill && e.paymentMethod === 'KK' && e.isPaid) {
-      newCCDebts.push({
-        id: `bill-cc-${e.id}`,
+  const activePaidBills = (fixedExpenses || []).filter(e => e.isBill && e.paymentMethod === 'KK' && e.isPaid);
+  const activeBillIds = new Set(activePaidBills.map(e => `bill-cc-${e.id}`));
+
+  let updatedDebts = (ccDebts || []).filter(d => {
+    if (!d.id.startsWith('bill-cc-')) return true;
+    return activeBillIds.has(d.id);
+  });
+
+  activePaidBills.forEach(e => {
+    const debtId = `bill-cc-${e.id}`;
+    const existingIndex = updatedDebts.findIndex(d => d.id === debtId);
+
+    if (existingIndex !== -1) {
+      updatedDebts[existingIndex] = {
+        ...updatedDebts[existingIndex],
+        description: `Fatura: ${e.title}`,
+        amount: -Math.abs(e.amount)
+      };
+    } else {
+      updatedDebts.push({
+        id: debtId,
         description: `Fatura: ${e.title}`,
         amount: -Math.abs(e.amount),
         date: new Date().toISOString().split('T')[0]
       });
     }
   });
-  return newCCDebts;
+
+  return updatedDebts;
 };
 
 const syncDailyExpensesForList = (
@@ -166,13 +183,29 @@ const syncDailyExpensesForList = (
   viewDate: string,
   currentMonth: string
 ): DailyExpense[] => {
-  let newDaily = (dailyExpenses || []).filter(d => !d.id.startsWith('bill-cash-'));
-  (fixedExpenses || []).forEach(e => {
-    if (e.isBill && e.paymentMethod === 'NAKIT' && e.isPaid) {
+  const activePaidBills = (fixedExpenses || []).filter(e => e.isBill && e.paymentMethod === 'NAKIT' && e.isPaid);
+  const activeBillIds = new Set(activePaidBills.map(e => `bill-cash-${e.id}`));
+
+  let updatedDaily = (dailyExpenses || []).filter(d => {
+    if (!d.id.startsWith('bill-cash-')) return true;
+    return activeBillIds.has(d.id);
+  });
+
+  activePaidBills.forEach(e => {
+    const dailyId = `bill-cash-${e.id}`;
+    const existingIndex = updatedDaily.findIndex(d => d.id === dailyId);
+
+    if (existingIndex !== -1) {
+      updatedDaily[existingIndex] = {
+        ...updatedDaily[existingIndex],
+        description: `Fatura: ${e.title}`,
+        amount: -Math.abs(e.amount)
+      };
+    } else {
       const today = new Date().toISOString().split('T')[0];
       const targetDate = viewDate === currentMonth ? today : `${viewDate}-01`;
-      newDaily.push({
-        id: `bill-cash-${e.id}`,
+      updatedDaily.push({
+        id: dailyId,
         description: `Fatura: ${e.title}`,
         amount: -Math.abs(e.amount),
         type: 'NAKIT',
@@ -180,7 +213,8 @@ const syncDailyExpensesForList = (
       });
     }
   });
-  return newDaily;
+
+  return updatedDaily;
 };
 
 const getActiveCurrencies = (state: BudgetState, vaultRecs: GoldRecord[]) => {
