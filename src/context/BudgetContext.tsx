@@ -1752,20 +1752,36 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const deleteCCDebt = (id: string) => {
     setRealState(prev => {
         if (viewDate === prev.currentMonth) {
+            let updatedFixed = prev.fixedExpenses;
+            if (id.startsWith('bill-cc-')) {
+                const billId = id.replace('bill-cc-', '');
+                updatedFixed = prev.fixedExpenses.map(ex =>
+                    ex.id === billId ? { ...ex, isPaid: false } : ex
+                );
+            }
             return {
               ...prev,
               ccDebts: prev.ccDebts.filter(d => d.id !== id),
+              fixedExpenses: updatedFixed
             };
         } else if (viewDate > prev.currentMonth) {
             const future = prev.futureData[viewDate] || {};
             const currentDebts = future.ccDebts || [];
+            let updatedFixed = future.fixedExpenses || [];
+            if (id.startsWith('bill-cc-')) {
+                const billId = id.replace('bill-cc-', '');
+                updatedFixed = updatedFixed.map(ex =>
+                    ex.id === billId ? { ...ex, isPaid: false } : ex
+                );
+            }
             return {
                 ...prev,
                 futureData: {
                     ...prev.futureData,
                     [viewDate]: {
                         ...future,
-                        ccDebts: currentDebts.filter(d => d.id !== id)
+                        ccDebts: currentDebts.filter(d => d.id !== id),
+                        fixedExpenses: updatedFixed
                     }
                 }
             };
@@ -1773,9 +1789,17 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             const histIndex = prev.history.findIndex(h => h.month === viewDate);
             if (histIndex !== -1) {
                 const newHistory = [...prev.history];
+                let updatedFixed = newHistory[histIndex].fixedExpenses;
+                if (id.startsWith('bill-cc-')) {
+                    const billId = id.replace('bill-cc-', '');
+                    updatedFixed = newHistory[histIndex].fixedExpenses.map(ex =>
+                        ex.id === billId ? { ...ex, isPaid: false } : ex
+                    );
+                }
                 newHistory[histIndex] = {
                     ...newHistory[histIndex],
-                    ccDebts: newHistory[histIndex].ccDebts.filter(d => d.id !== id)
+                    ccDebts: newHistory[histIndex].ccDebts.filter(d => d.id !== id),
+                    fixedExpenses: updatedFixed
                 };
                 return recalculateHistoryAndCurrent({ ...prev, history: newHistory });
             }
