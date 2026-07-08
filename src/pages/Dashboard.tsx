@@ -287,7 +287,7 @@ export default function Dashboard() {
   // Prepare fixed expenses alphabetically
   // Include PLANNED_VAULT as they are fixed expenses (budgeted)
   const validFixedExpenses = state.fixedExpenses
-    .filter(e => e.amount > 0 && (e.type === 'NAKIT' || e.type === 'PLANNED_VAULT' || !e.type))
+    .filter(e => e.amount > 0 && (e.type === 'NAKIT' || e.type === 'PLANNED_VAULT' || !e.type) && !e.isBill)
     .map(e => ({
       ...e,
       title: e.type === 'PLANNED_VAULT' ? (e.title || `Planlanan ${e.vault_gold_type} Alımı`) : e.title
