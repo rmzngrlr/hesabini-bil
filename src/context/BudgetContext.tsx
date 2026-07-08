@@ -161,15 +161,16 @@ const syncCCDebtsForList = (fixedExpenses: FixedExpense[], ccDebts: CCDebt[]): C
     if (existingIndex !== -1) {
       updatedDebts[existingIndex] = {
         ...updatedDebts[existingIndex],
-        description: `Fatura: ${e.title}`,
-        amount: -Math.abs(e.amount)
+        description: e.title,
+        amount: -Math.abs(e.amount),
+        date: e.date || updatedDebts[existingIndex].date || new Date().toISOString().split('T')[0]
       };
     } else {
       updatedDebts.push({
         id: debtId,
-        description: `Fatura: ${e.title}`,
+        description: e.title,
         amount: -Math.abs(e.amount),
-        date: new Date().toISOString().split('T')[0]
+        date: e.date || new Date().toISOString().split('T')[0]
       });
     }
   });
@@ -198,15 +199,16 @@ const syncDailyExpensesForList = (
     if (existingIndex !== -1) {
       updatedDaily[existingIndex] = {
         ...updatedDaily[existingIndex],
-        description: `Fatura: ${e.title}`,
-        amount: -Math.abs(e.amount)
+        description: e.title,
+        amount: -Math.abs(e.amount),
+        date: e.date || updatedDaily[existingIndex].date || (viewDate === currentMonth ? new Date().toISOString().split('T')[0] : `${viewDate}-01`)
       };
     } else {
       const today = new Date().toISOString().split('T')[0];
-      const targetDate = viewDate === currentMonth ? today : `${viewDate}-01`;
+      const targetDate = e.date || (viewDate === currentMonth ? today : `${viewDate}-01`);
       updatedDaily.push({
         id: dailyId,
-        description: `Fatura: ${e.title}`,
+        description: e.title,
         amount: -Math.abs(e.amount),
         type: 'NAKIT',
         date: targetDate

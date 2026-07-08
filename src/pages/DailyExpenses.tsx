@@ -395,6 +395,7 @@ export default function DailyExpenses() {
   const [billTitle, setBillTitle] = useState('');
   const [billAmount, setBillAmount] = useState('');
   const [billPaymentMethod, setBillPaymentMethod] = useState<'NAKIT' | 'KK'>('NAKIT');
+  const [billDate, setBillDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [editingBillId, setEditingBillId] = useState<string | null>(null);
   const [exchangeTabMode, setExchangeTabMode] = useState<'CURRENCY' | 'GOLD'>('CURRENCY');
   const [exchangeFromType, setExchangeFromType] = useState('NAKIT');
@@ -1053,7 +1054,8 @@ export default function DailyExpenses() {
         title: billTitle,
         amount: numAmount,
         paymentMethod: billPaymentMethod,
-        isBill: true
+        isBill: true,
+        date: billDate
       });
       setEditingBillId(null);
     } else {
@@ -1061,13 +1063,15 @@ export default function DailyExpenses() {
         title: billTitle,
         amount: numAmount,
         paymentMethod: billPaymentMethod,
-        isBill: true
+        isBill: true,
+        date: billDate
       });
     }
 
     setBillTitle('');
     setBillAmount('');
     setBillPaymentMethod('NAKIT');
+    setBillDate(new Date().toISOString().split('T')[0]);
   };
 
   const handleEditBill = (bill: any) => {
@@ -1075,6 +1079,7 @@ export default function DailyExpenses() {
     setBillTitle(bill.title);
     setBillAmount(bill.amount.toString());
     setBillPaymentMethod(bill.paymentMethod || 'NAKIT');
+    setBillDate(bill.date || new Date().toISOString().split('T')[0]);
     scrollToElement('main-form-container');
   };
 
@@ -1083,6 +1088,7 @@ export default function DailyExpenses() {
     setBillTitle('');
     setBillAmount('');
     setBillPaymentMethod('NAKIT');
+    setBillDate(new Date().toISOString().split('T')[0]);
   };
 
   const sortedDates = Object.keys(groupedExpenses).sort((a, b) =>
@@ -1472,6 +1478,16 @@ export default function DailyExpenses() {
                   <option value="NAKIT">Nakit (TL)</option>
                   <option value="KK">Kredi Kartı</option>
                 </select>
+              </div>
+              <div className="flex-1 space-y-1">
+                <label className="text-xs text-muted-foreground font-medium">Tarih</label>
+                <input
+                  type="date"
+                  value={billDate}
+                  onChange={(e) => setBillDate(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+                  required
+                />
               </div>
             </div>
             <div className="flex gap-2 justify-end pt-1">

@@ -26,6 +26,7 @@ export interface FixedExpense {
   vault_note?: string;
   isBill?: boolean;
   paymentMethod?: 'NAKIT' | 'KK';
+  date?: string;
 }
 
 export interface CustomIncome {
