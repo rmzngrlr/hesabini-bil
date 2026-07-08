@@ -987,30 +987,30 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             { id: generateId(), title: 'Aidat', amount: 0, isPaid: false }
         ];
 
-        // Carry over bills with amount 0
-        (prev.fixedExpenses || []).forEach(e => {
-            if (e.isBill) {
-                nextFixedExpenses.push({
-                    id: generateId(),
-                    title: e.title,
-                    amount: 0,
-                    isPaid: false,
-                    isBill: true,
-                    paymentMethod: e.paymentMethod || 'NAKIT',
-                    type: e.type
-                });
-            }
-        });
-
         // 2. Check for Future Plan (Overrides)
         const futurePlan = prev.futureData[nextMonthStr] || {};
 
         if (futurePlan.fixedExpenses) {
-            // Use the planned expenses if available (user edited specific items)
-            // Note: If user planned, the list might already include Rent/Dues with modified values.
-            // We should trust the plan.
             nextFixedExpenses = futurePlan.fixedExpenses.map(e => ({ ...e, isPaid: false }));
         }
+
+        // 3. Self-healing: Inject any missing bills into nextFixedExpenses
+        (prev.fixedExpenses || []).forEach(e => {
+            if (e.isBill) {
+                const exists = nextFixedExpenses.some(ne => ne.title === e.title && ne.isBill);
+                if (!exists) {
+                    nextFixedExpenses.push({
+                        id: generateId(),
+                        title: e.title,
+                        amount: 0,
+                        isPaid: false,
+                        isBill: true,
+                        paymentMethod: e.paymentMethod || 'NAKIT',
+                        type: e.type
+                    });
+                }
+            }
+        });
 
         // 3. Handle CC Debt (Calculated + Adjustment)
         // Check if there is an adjustment in the plan
@@ -1247,21 +1247,25 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                     isPaid: false
                 }
              ];
-
-             (realState.fixedExpenses || []).forEach(e => {
-                 if (e.isBill) {
-                     monthFixedExpenses.push({
-                         id: `proj-bill-${e.id}-${iterMonth}`,
-                         title: e.title,
-                         amount: 0,
-                         isPaid: false,
-                         isBill: true,
-                         paymentMethod: e.paymentMethod || 'NAKIT',
-                         type: e.type
-                     });
-                 }
-             });
         }
+
+        // Self-healing: Inject any missing bills into monthFixedExpenses
+        (realState.fixedExpenses || []).forEach(e => {
+            if (e.isBill) {
+                const exists = monthFixedExpenses.some(ne => ne.title === e.title && ne.isBill);
+                if (!exists) {
+                    monthFixedExpenses.push({
+                        id: `proj-bill-${e.id}-${iterMonth}`,
+                        title: e.title,
+                        amount: 0,
+                        isPaid: false,
+                        isBill: true,
+                        paymentMethod: e.paymentMethod || 'NAKIT',
+                        type: e.type
+                    });
+                }
+            }
+        });
 
         // Apply CC Debt Adjustment if exists
         const ccDebtAdjustment = future.ccDebtAdjustment || 0;
