@@ -1610,17 +1610,33 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const deleteDailyExpense = (id: string) => {
     setRealState(prev => {
         if (viewDate === prev.currentMonth) {
+            let updatedFixed = prev.fixedExpenses;
+            if (id.startsWith('bill-cash-')) {
+                const billId = id.replace('bill-cash-', '');
+                updatedFixed = prev.fixedExpenses.map(ex =>
+                    ex.id === billId ? { ...ex, isPaid: false } : ex
+                );
+            }
             return {
               ...prev,
               dailyExpenses: prev.dailyExpenses.filter(ex => ex.id !== id),
+              fixedExpenses: updatedFixed
             };
         } else if (viewDate < prev.currentMonth) {
             const histIndex = prev.history.findIndex(h => h.month === viewDate);
             if (histIndex !== -1) {
                 const newHistory = [...prev.history];
+                let updatedFixed = newHistory[histIndex].fixedExpenses;
+                if (id.startsWith('bill-cash-')) {
+                    const billId = id.replace('bill-cash-', '');
+                    updatedFixed = newHistory[histIndex].fixedExpenses.map(ex =>
+                        ex.id === billId ? { ...ex, isPaid: false } : ex
+                    );
+                }
                 newHistory[histIndex] = {
                     ...newHistory[histIndex],
-                    dailyExpenses: newHistory[histIndex].dailyExpenses.filter(ex => ex.id !== id)
+                    dailyExpenses: newHistory[histIndex].dailyExpenses.filter(ex => ex.id !== id),
+                    fixedExpenses: updatedFixed
                 };
                 return recalculateHistoryAndCurrent({ ...prev, history: newHistory });
             }
