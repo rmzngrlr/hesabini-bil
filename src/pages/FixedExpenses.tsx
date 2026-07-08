@@ -316,6 +316,7 @@ export default function FixedExpenses() {
             fixedExpenseCurrencies.map(curr => {
               // Calculate total and paid. If curr is NAKIT, also add PLANNED_VAULT amounts.
               const expensesForCurr = state.fixedExpenses.filter(e => {
+                  if (e.isBill) return false;
                   const type = e.type || 'NAKIT';
                   if (curr === 'NAKIT' && type === 'PLANNED_VAULT') return true;
                   return type === curr;

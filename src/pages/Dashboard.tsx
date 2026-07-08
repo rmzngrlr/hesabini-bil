@@ -241,7 +241,9 @@ export default function Dashboard() {
       // Future Projection Mode
       // Assume all fixed expenses will be paid
       // PLANNED_VAULT is a cash expense. So we include it in totalCashSpent.
-      const totalFixed = state.fixedExpenses.reduce((sum, e) => sum + e.amount, 0);
+      const totalFixed = state.fixedExpenses
+        .filter(e => e.paymentMethod !== 'KK')
+        .reduce((sum, e) => sum + e.amount, 0);
       totalCashSpent = totalFixed;
       // No daily expenses in future
       spendingLabel = "Planlanan Gider";
@@ -254,7 +256,7 @@ export default function Dashboard() {
       // So while they exist, should they reduce the "Kalan TL" in Dashboard? Yes, they reserve money.
       // So we should add ALL PLANNED_VAULT expenses to `paidFixed` (or treat them as reserved).
       const paidFixed = state.fixedExpenses
-        .filter(e => e.isPaid || e.type === 'PLANNED_VAULT')
+        .filter(e => (e.isPaid || e.type === 'PLANNED_VAULT') && !e.isBill)
         .reduce((sum, e) => sum + e.amount, 0);
 
       const cashSpent = state.dailyExpenses
