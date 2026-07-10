@@ -1108,6 +1108,13 @@ export default function DailyExpenses() {
       parseInt(viewDate.split('-')[1]) - 1
   ).toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
 
+  const formatBillDate = (dateStr?: string) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
+  };
+
   const assetOptions = (
     <>
       <option value="NAKIT">Türk Lirası</option>
@@ -1645,8 +1652,14 @@ export default function DailyExpenses() {
                         </span>
                       )}
                     </div>
-                    <div className="text-sm text-muted-foreground whitespace-nowrap mt-0.5">
-                      {bill.amount.toLocaleString('tr-TR')} ₺
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap mt-0.5">
+                      <span className="font-semibold text-foreground/95">{bill.amount.toLocaleString('tr-TR')} ₺</span>
+                      {bill.date && (
+                        <>
+                          <span className="text-border/60 select-none">•</span>
+                          <span className="text-[11px] bg-secondary/85 px-1.5 py-0.5 rounded font-medium text-muted-foreground">{formatBillDate(bill.date)}</span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </button>
