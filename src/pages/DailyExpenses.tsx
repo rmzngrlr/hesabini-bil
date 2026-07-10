@@ -52,6 +52,26 @@ export default function DailyExpenses() {
     });
   }, [state.fixedExpenses]);
 
+  const groupedBills = useMemo(() => {
+    const groups: Record<string, typeof currentMonthBills> = {};
+    const noDateGroup: typeof currentMonthBills = [];
+
+    currentMonthBills.forEach(bill => {
+      if (bill.date) {
+        if (!groups[bill.date]) {
+          groups[bill.date] = [];
+        }
+        groups[bill.date].push(bill);
+      } else {
+        noDateGroup.push(bill);
+      }
+    });
+
+    const sortedKeys = Object.keys(groups).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+
+    return { groups, noDateGroup, sortedKeys };
+  }, [currentMonthBills]);
+
   const totalBillsAmount = useMemo(() => {
     return currentMonthBills.reduce((sum, e) => sum + e.amount, 0);
   }, [currentMonthBills]);
@@ -1108,13 +1128,6 @@ export default function DailyExpenses() {
       parseInt(viewDate.split('-')[1]) - 1
   ).toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
 
-  const formatBillDate = (dateStr?: string) => {
-    if (!dateStr) return '';
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return dateStr;
-    return d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
-  };
-
   const assetOptions = (
     <>
       <option value="NAKIT">Türk Lirası</option>
@@ -1616,76 +1629,159 @@ export default function DailyExpenses() {
           </Card>
 
           {/* Fatura Listesi */}
-          <div className="space-y-3">
+          <div className="space-y-6">
             <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider ml-1">
               Fatura Listesi
             </h3>
-            {currentMonthBills.map((bill) => (
-              <div
-                key={bill.id}
-                className={cn(
-                  "flex items-center justify-between p-4 rounded-xl border border-border bg-card transition-all",
-                  bill.isPaid && "opacity-60 bg-secondary/50"
-                )}
-              >
-                <button
-                  onClick={() => toggleFixedExpense(bill.id)}
-                  className="flex items-center gap-3 flex-1 min-w-0"
-                >
-                  {bill.isPaid ? (
-                    <CheckCircle className="text-green-500 flex-shrink-0" size={24} />
-                  ) : (
-                    <Circle className="text-muted-foreground flex-shrink-0" size={24} />
-                  )}
-                  <div className="text-left min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <span className={cn("font-medium truncate", bill.isPaid && "line-through")}>
-                        {bill.title}
-                      </span>
-                      {bill.paymentMethod === 'KK' ? (
-                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-500 border border-purple-500/20 uppercase tracking-wider">
-                          <CreditCard size={10} /> Kart
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-500/10 text-green-500 border border-green-500/20 uppercase tracking-wider">
-                          <Wallet size={10} /> Nakit
-                        </span>
+
+            {groupedBills.sortedKeys.map((date) => {
+              const dailyTotal = groupedBills.groups[date].reduce((sum, item) => sum + item.amount, 0);
+              return (
+                <div key={date} className="space-y-3">
+                  <div className="flex justify-between items-center ml-1 pr-1">
+                    <h3 className="text-sm font-medium text-muted-foreground">
+                      {format(new Date(date), 'd MMMM yyyy, EEEE', { locale: tr })}
+                    </h3>
+                    <span className="text-sm font-bold text-muted-foreground">
+                      {dailyTotal.toLocaleString('tr-TR')} ₺
+                    </span>
+                  </div>
+
+                  {groupedBills.groups[date].map((bill) => (
+                    <div
+                      key={bill.id}
+                      className={cn(
+                        "flex items-center justify-between p-4 rounded-xl border border-border bg-card transition-all",
+                        bill.isPaid && "opacity-60 bg-secondary/50"
                       )}
+                    >
+                      <button
+                        onClick={() => toggleFixedExpense(bill.id)}
+                        className="flex items-center gap-3 flex-1 min-w-0"
+                      >
+                        {bill.isPaid ? (
+                          <CheckCircle className="text-green-500 flex-shrink-0" size={24} />
+                        ) : (
+                          <Circle className="text-muted-foreground flex-shrink-0" size={24} />
+                        )}
+                        <div className="text-left min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <span className={cn("font-medium truncate", bill.isPaid && "line-through")}>
+                              {bill.title}
+                            </span>
+                            {bill.paymentMethod === 'KK' ? (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-500 border border-purple-500/20 uppercase tracking-wider">
+                                <CreditCard size={10} /> Kart
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-500/10 text-green-500 border border-green-500/20 uppercase tracking-wider">
+                                <Wallet size={10} /> Nakit
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-sm text-muted-foreground whitespace-nowrap mt-0.5">
+                            <span className="font-semibold text-foreground/95">{bill.amount.toLocaleString('tr-TR')} ₺</span>
+                          </div>
+                        </div>
+                      </button>
+
+                      <div className="flex items-center">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleEditBill(bill); }}
+                          className="p-2 text-primary hover:text-primary/80 transition-colors"
+                        >
+                          <Pencil size={20} />
+                        </button>
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            if (await askConfirmation('Bu fatura kaydını silmek istediğinize emin misiniz?')) {
+                              deleteFixedExpense(bill.id);
+                              if (editingBillId === bill.id) handleCancelEditBill();
+                            }
+                          }}
+                          className="p-2 text-muted-foreground hover:text-destructive transition-colors"
+                        >
+                          <Trash2 size={20} />
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap mt-0.5">
-                      <span className="font-semibold text-foreground/95">{bill.amount.toLocaleString('tr-TR')} ₺</span>
-                      {bill.date && (
-                        <>
-                          <span className="text-border/60 select-none">•</span>
-                          <span className="text-[11px] bg-secondary/85 px-1.5 py-0.5 rounded font-medium text-muted-foreground">{formatBillDate(bill.date)}</span>
-                        </>
+                  ))}
+                </div>
+              );
+            })}
+
+            {groupedBills.noDateGroup.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex justify-between items-center ml-1 pr-1">
+                  <h3 className="text-sm font-medium text-muted-foreground">Tarihsiz Faturalar</h3>
+                  <span className="text-sm font-bold text-muted-foreground">
+                    {groupedBills.noDateGroup.reduce((sum, item) => sum + item.amount, 0).toLocaleString('tr-TR')} ₺
+                  </span>
+                </div>
+
+                {groupedBills.noDateGroup.map((bill) => (
+                  <div
+                    key={bill.id}
+                    className={cn(
+                      "flex items-center justify-between p-4 rounded-xl border border-border bg-card transition-all",
+                      bill.isPaid && "opacity-60 bg-secondary/50"
+                    )}
+                  >
+                    <button
+                      onClick={() => toggleFixedExpense(bill.id)}
+                      className="flex items-center gap-3 flex-1 min-w-0"
+                    >
+                      {bill.isPaid ? (
+                        <CheckCircle className="text-green-500 flex-shrink-0" size={24} />
+                      ) : (
+                        <Circle className="text-muted-foreground flex-shrink-0" size={24} />
                       )}
+                      <div className="text-left min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <span className={cn("font-medium truncate", bill.isPaid && "line-through")}>
+                            {bill.title}
+                          </span>
+                          {bill.paymentMethod === 'KK' ? (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-500 border border-purple-500/20 uppercase tracking-wider">
+                              <CreditCard size={10} /> Kart
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-500/10 text-green-500 border border-green-500/20 uppercase tracking-wider">
+                              <Wallet size={10} /> Nakit
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-sm text-muted-foreground whitespace-nowrap mt-0.5">
+                          <span className="font-semibold text-foreground/95">{bill.amount.toLocaleString('tr-TR')} ₺</span>
+                        </div>
+                      </div>
+                    </button>
+
+                    <div className="flex items-center">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleEditBill(bill); }}
+                        className="p-2 text-primary hover:text-primary/80 transition-colors"
+                      >
+                        <Pencil size={20} />
+                      </button>
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (await askConfirmation('Bu fatura kaydını silmek istediğinize emin misiniz?')) {
+                            deleteFixedExpense(bill.id);
+                            if (editingBillId === bill.id) handleCancelEditBill();
+                          }
+                        }}
+                        className="p-2 text-muted-foreground hover:text-destructive transition-colors"
+                      >
+                        <Trash2 size={20} />
+                      </button>
                     </div>
                   </div>
-                </button>
-                
-                <div className="flex items-center">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleEditBill(bill); }}
-                    className="p-2 text-primary hover:text-primary/80 transition-colors"
-                  >
-                    <Pencil size={20} />
-                  </button>
-                  <button
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      if (await askConfirmation('Bu fatura kaydını silmek istediğinize emin misiniz?')) {
-                        deleteFixedExpense(bill.id);
-                        if (editingBillId === bill.id) handleCancelEditBill();
-                      }
-                    }}
-                    className="p-2 text-muted-foreground hover:text-destructive transition-colors"
-                  >
-                    <Trash2 size={20} />
-                  </button>
-                </div>
+                ))}
               </div>
-            ))}
+            )}
 
             {currentMonthBills.length === 0 && (
               <div className="text-center text-muted-foreground py-12 bg-secondary/30 rounded-xl border border-dashed">
