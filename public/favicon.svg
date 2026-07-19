@@ -1,11 +1,18 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20" width="512" height="512">
   <!-- Panel basligindaki (Layout.tsx) lucide "layout-dashboard" ikonunun favicon surumu.
-       24x24'luk ikon, 512'lik tuvale ortalanacak sekilde 12 kat buyutuldu:
-       translate(112) + 24*12=288 => 112..400 arasi, her yandan esit bosluk. -->
-  <rect width="512" height="512" rx="64" fill="#0f172a" />
-  <g transform="translate(112 112) scale(12)"
+       Renk, index.css'teki primary CSS degiskeniyle ayni deger: acik temada koyu
+       lacivert, koyu temada beyaza yakin. Boylece sekme cubugu hangi temadaysa ona uyar.
+       viewBox 2..22: lucide'in 3..21 arasindaki cizimine 1 birim bosluk birakir;
+       kucuk boyutta (16px) daha okunakli olsun diye fazla dolgu kirpildi.
+       NOT: XML yorumlarinda cift tire kullanilamaz, o yuzden degisken adi tiresiz yazildi. -->
+  <style>
+    .mark { stroke: hsl(222.2 47.4% 11.2%); }
+    @media (prefers-color-scheme: dark) {
+      .mark { stroke: hsl(210 40% 98%); }
+    }
+  </style>
+  <g class="mark"
      fill="none"
-     stroke="#ffffff"
      stroke-width="2"
      stroke-linecap="round"
      stroke-linejoin="round">
