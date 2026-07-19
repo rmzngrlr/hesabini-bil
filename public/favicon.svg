@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Panel basligindaki (Layout.tsx) lucide "layout-dashboard" ikonunun favicon surumu.
+       24x24'luk ikon, 512'lik tuvale ortalanacak sekilde 12 kat buyutuldu:
+       translate(112) + 24*12=288 => 112..400 arasi, her yandan esit bosluk. -->
+  <rect width="512" height="512" rx="64" fill="#0f172a" />
+  <g transform="translate(112 112) scale(12)"
+     fill="none"
+     stroke="#ffffff"
+     stroke-width="2"
+     stroke-linecap="round"
+     stroke-linejoin="round">
+    <rect width="7" height="9" x="3" y="3" rx="1" />
+    <rect width="7" height="5" x="14" y="3" rx="1" />
+    <rect width="7" height="9" x="14" y="12" rx="1" />
+    <rect width="7" height="5" x="3" y="16" rx="1" />
+  </g>
+</svg>
