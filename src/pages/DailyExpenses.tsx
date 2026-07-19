@@ -4,9 +4,9 @@ import type { DailyExpense } from '../types';
 import { Card } from '../components/ui/Card';
 import { Trash2, Banknote, CreditCard, Pencil, X, Calendar, ArrowRightLeft, CheckCircle, Circle, Wallet, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
-import React, { useMemo, useEffect, useState } from 'react';
+import React, { useMemo, useEffect, useState, useRef } from 'react';
 import { tr } from 'date-fns/locale';
-import { cn, scrollToElement } from '../lib/utils';
+import { cn, scrollToElement, getTodayStr } from '../lib/utils';
 
 const billColors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f43f5e', '#06b6d4'];
 
@@ -30,7 +30,8 @@ export default function DailyExpenses() {
     addCustomIncome,
     deleteFixedExpense,
     deleteCustomIncome,
-    dueBillsCount
+    dueBillsCount,
+    todayStr
   } = useBudget();
 
   const getLocalMonth = () => {
@@ -397,16 +398,7 @@ export default function DailyExpenses() {
     };
   }, [showMealCard, activeCurrencies, vaultRecords]);
 
-  // Get local date YYYY-MM-DD
-  const getLocalDate = () => {
-      const d = new Date();
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${y}-${m}-${day}`;
-  };
-
-  const [date, setDate] = useDraftState('daily_draft_date', getLocalDate());
+  const [date, setDate] = useDraftState('daily_draft_date', getTodayStr());
   const [description, setDescription] = useDraftState('daily_draft_desc', '');
   const [amount, setAmount] = useDraftState('daily_draft_amount', '');
   const [type, setType] = useDraftState<string>('daily_draft_type', 'NAKIT');
@@ -424,14 +416,14 @@ export default function DailyExpenses() {
   const [billTitle, setBillTitle] = useState('');
   const [billAmount, setBillAmount] = useState('');
   const [billPaymentMethod, setBillPaymentMethod] = useState<'NAKIT' | 'KK'>('NAKIT');
-  const [billDate, setBillDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [billDate, setBillDate] = useState(() => getTodayStr());
   const [editingBillId, setEditingBillId] = useState<string | null>(null);
   const [exchangeTabMode, setExchangeTabMode] = useState<'CURRENCY' | 'GOLD'>('CURRENCY');
   const [exchangeFromType, setExchangeFromType] = useState('NAKIT');
   const [exchangeToType, setExchangeToType] = useState('NAKIT');
   const [exchangeFromAmount, setExchangeFromAmount] = useState('');
   const [exchangeToAmount, setExchangeToAmount] = useState('');
-  const exchangeDate = new Date().toISOString().split('T')[0];
+  const exchangeDate = getTodayStr();
   const [exchangeNote, setExchangeNote] = useState('');
   const [exchangeFromCustomCode, setExchangeFromCustomCode] = useState('');
   const [exchangeToCustomCode, setExchangeToCustomCode] = useState('');
@@ -554,9 +546,10 @@ export default function DailyExpenses() {
     }
   }, [exchangeTabMode, allFormTypes.golds, type, setType, setActiveTab, isGoldType]);
 
-  // Reset date draft if it belongs to a past day
+  // Reset date draft if it belongs to a past day.
+  // todayStr'e bağlı: uygulama açıkken gece yarısı geçse de yeniden çalışır.
   useEffect(() => {
-    const today = getLocalDate();
+    const today = todayStr;
     const cached = sessionStorage.getItem('daily_draft_date');
     if (cached) {
       try {
@@ -570,11 +563,22 @@ export default function DailyExpenses() {
         setDate(today);
       }
     }
-  }, []);
+  }, [todayStr]);
+
+  // Gece yarısı geçtiğinde fatura formunun tarihi de ilerlesin.
+  // Yalnızca hâlâ "dünkü bugün"ü gösteren alan güncellenir; kullanıcının elle
+  // seçtiği tarih veya düzenleme modundaki fatura tarihi korunur.
+  const prevTodayRef = useRef(todayStr);
+  useEffect(() => {
+    const prevToday = prevTodayRef.current;
+    if (prevToday === todayStr) return;
+    prevTodayRef.current = todayStr;
+    setBillDate(current => (current === prevToday ? todayStr : current));
+  }, [todayStr]);
 
   // Sync date input with viewDate when viewDate changes
   useEffect(() => {
-    const today = getLocalDate();
+    const today = getTodayStr();
     const todayMonth = today.substring(0, 7); // YYYY-MM
     
     if (viewDate === todayMonth) {
@@ -1102,7 +1106,7 @@ export default function DailyExpenses() {
     setBillTitle('');
     setBillAmount('');
     setBillPaymentMethod('NAKIT');
-    setBillDate(new Date().toISOString().split('T')[0]);
+    setBillDate(getTodayStr());
   };
 
   const handleEditBill = (bill: any) => {
@@ -1110,7 +1114,7 @@ export default function DailyExpenses() {
     setBillTitle(bill.title);
     setBillAmount(bill.amount.toString());
     setBillPaymentMethod(bill.paymentMethod || 'NAKIT');
-    setBillDate(bill.date || new Date().toISOString().split('T')[0]);
+    setBillDate(bill.date || getTodayStr());
     scrollToElement('main-form-container');
   };
 
@@ -1119,7 +1123,7 @@ export default function DailyExpenses() {
     setBillTitle('');
     setBillAmount('');
     setBillPaymentMethod('NAKIT');
-    setBillDate(new Date().toISOString().split('T')[0]);
+    setBillDate(getTodayStr());
   };
 
   const sortedDates = Object.keys(groupedExpenses).sort((a, b) =>

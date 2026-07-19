@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getTodayStr } from '../lib/utils';
 import { Card } from './ui/Card';
 import { useBudget } from '../context/BudgetContext';
 import { useAuth } from '../context/AuthContext';
@@ -124,7 +125,7 @@ export function VaultSection() {
         setEditTransactionType(record.transaction_type || 'Birikim');
         setSplitAction('none');
         setSecondaryNote('');
-        setSecondaryDate(new Date().toISOString().split('T')[0]);
+        setSecondaryDate(getTodayStr());
     };
 
     const saveEdit = async () => {

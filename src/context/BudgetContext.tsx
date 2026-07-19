@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useMemo, useRef, type ReactNode } from 'react';
+import { getTodayStr, toLocalMonthStr } from '../lib/utils';
 import type { BudgetState, FixedExpense, CustomIncome, DailyExpense, CCDebt, Installment, MonthlyHistory, GoldRecord } from '../types';
 import { fetchWithAuth } from '../services/api';
 import { useAuth } from './AuthContext';
@@ -69,6 +70,8 @@ interface BudgetContextType {
   updateAssetRollover: (assetType: string, amount: number) => void;
   activeCurrencies: string[];
   dueBillsCount: number;
+  /** Yerel "bugün" (YYYY-MM-DD). Gece yarısı geçince canlı olarak güncellenir. */
+  todayStr: string;
   askConfirmation: (message: string, title?: string) => Promise<boolean>;
 }
 
@@ -164,14 +167,14 @@ const syncCCDebtsForList = (fixedExpenses: FixedExpense[], ccDebts: CCDebt[]): C
         ...updatedDebts[existingIndex],
         description: e.title,
         amount: -Math.abs(e.amount),
-        date: e.date || updatedDebts[existingIndex].date || new Date().toISOString().split('T')[0]
+        date: e.date || updatedDebts[existingIndex].date || getTodayStr()
       };
     } else {
       updatedDebts.push({
         id: debtId,
         description: e.title,
         amount: -Math.abs(e.amount),
-        date: e.date || new Date().toISOString().split('T')[0]
+        date: e.date || getTodayStr()
       });
     }
   });
@@ -202,10 +205,10 @@ const syncDailyExpensesForList = (
         ...updatedDaily[existingIndex],
         description: e.title,
         amount: -Math.abs(e.amount),
-        date: e.date || updatedDaily[existingIndex].date || (viewDate === currentMonth ? new Date().toISOString().split('T')[0] : `${viewDate}-01`)
+        date: e.date || updatedDaily[existingIndex].date || (viewDate === currentMonth ? getTodayStr() : `${viewDate}-01`)
       };
     } else {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getTodayStr();
       const targetDate = e.date || (viewDate === currentMonth ? today : `${viewDate}-01`);
       updatedDaily.push({
         id: dailyId,
@@ -2157,7 +2160,9 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
         const [year, month] = (prev.currentMonth || getCurrentMonth()).split('-').map(Number);
         const nextDate = new Date(year, month, 1);
-        const nextMonthStr = nextDate.toISOString().slice(0, 7);
+        // nextDate yerel saatte oluşturuluyor; toISOString() UTC'ye çevirdiği için
+        // UTC+3'te bir önceki ayı döndürüyordu. Yerel ay hesabı kullanılmalı.
+        const nextMonthStr = toLocalMonthStr(nextDate);
 
         // New Fixed Expenses list
         // Remove old 'Kredi Kartı Borcu (Geçen Ay)' entries to prevent accumulation
@@ -2199,14 +2204,31 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     return getActiveCurrencies(realState, vaultRecords);
   }, [realState, vaultRecords]);
 
+  // "Bugün"ü canlı tut: uygulama (PWA) gece yarısını geçerek açık kalabildiği için
+  // sabit bir değer kullanılamaz. Dakikada bir ve sekmeye geri dönüldüğünde tazelenir.
+  const [todayStr, setTodayStr] = useState(getTodayStr);
+  useEffect(() => {
+    const sync = () => setTodayStr(prev => {
+      const now = getTodayStr();
+      return prev === now ? prev : now; // aynıysa referansı koru, gereksiz render olmasın
+    });
+    const id = setInterval(sync, 60_000);
+    document.addEventListener('visibilitychange', sync);
+    window.addEventListener('focus', sync);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', sync);
+      window.removeEventListener('focus', sync);
+    };
+  }, []);
+
   // Vakti gelmiş (bugün veya öncesi) ve hâlâ ödenmemiş fatura sayısı.
   // Gerçek içinde bulunulan aya (realState) göre hesaplanır; görüntülenen aydan bağımsızdır.
   const dueBillsCount = useMemo(() => {
-    const todayStr = new Date().toISOString().split('T')[0];
     return (realState.fixedExpenses || []).filter(
       e => e.isBill && e.type !== 'PLANNED_VAULT' && !e.isPaid && !!e.date && e.date <= todayStr
     ).length;
-  }, [realState.fixedExpenses]);
+  }, [realState.fixedExpenses, todayStr]);
 
   if (loadError) {
     return (
@@ -2270,6 +2292,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             updateAssetRollover,
             activeCurrencies,
             dueBillsCount,
+            todayStr,
             askConfirmation
         }}
     >

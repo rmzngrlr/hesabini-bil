@@ -3,7 +3,7 @@ import { useBudget } from '../context/BudgetContext';
 import { Card } from '../components/ui/Card';
 import React, { useMemo } from 'react';
 import { Plus, Trash2, CalendarClock, CreditCard, Pencil, X } from 'lucide-react';
-import { cn, scrollToElement } from '../lib/utils';
+import { cn, scrollToElement, getTodayStr } from '../lib/utils';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import type { CCDebt } from '../types';
@@ -12,7 +12,7 @@ export default function Debt() {
   const { state, viewDate, addCCDebt, updateCCDebt, deleteCCDebt, addInstallment, deleteInstallment, addDailyExpense, askConfirmation } = useBudget();
   const [description, setDescription] = useDraftState('debt_draft_desc', '');
   const [amount, setAmount] = useDraftState('debt_draft_amount', '');
-  const [date, setDate] = useDraftState('debt_draft_date', new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useDraftState('debt_draft_date', getTodayStr());
 
   // Taksit modu
   const [isInstallment, setIsInstallment] = useDraftState('debt_draft_is_inst', false);
@@ -46,7 +46,7 @@ export default function Debt() {
     if (debt.date) {
         setDate(debt.date);
     } else {
-        setDate(new Date().toISOString().split('T')[0]);
+        setDate(getTodayStr());
     }
 
     // Scroll to top
@@ -57,7 +57,7 @@ export default function Debt() {
     setEditingId(null);
     setDescription('');
     setAmount('');
-    setDate(new Date().toISOString().split('T')[0]);
+    setDate(getTodayStr());
     setTransactionType('SPEND');
     setIsInstallment(false);
 
@@ -89,7 +89,9 @@ export default function Debt() {
             addCCDebt({ description, amount: Math.abs(numAmount), date });
             // Otomatik olarak nakitten de düşmesini sağlıyoruz (Nakit gider olarak eklenir)
             addDailyExpense({
-                date: new Date(date).toISOString(),
+                // `date` zaten yerel "YYYY-MM-DD"; ISO'ya çevrilirse tam zaman damgası
+                // olur ve İşlemler listesinde aynı gün ayrı bir grup olarak bölünür.
+                date,
                 description: description,
                 amount: -Math.abs(numAmount),
                 type: 'NAKIT'
@@ -116,7 +118,7 @@ export default function Debt() {
 
     setDescription('');
     setAmount('');
-    setDate(new Date().toISOString().split('T')[0]);
+    setDate(getTodayStr());
     setIsInstallment(false);
     setInstallmentCount('2');
 

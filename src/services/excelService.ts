@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx';
+import { getTodayStr, toLocalMonthStr } from '../lib/utils';
 import type { BudgetState, MonthlyHistory, FixedExpense, DailyExpense, CCDebt, Installment } from '../types';
 
 interface SheetData {
@@ -166,7 +167,7 @@ export const exportToExcel = (state: BudgetState) => {
   });
 
   // Generate file name
-  const dateStr = new Date().toISOString().split('T')[0];
+  const dateStr = getTodayStr();
   XLSX.writeFile(wb, `Butce_Yedek_${dateStr}.xlsx`);
 };
 
@@ -180,7 +181,7 @@ export const importFromExcel = (file: File): Promise<BudgetState> => {
 
         const newState: BudgetState = {
             version: 6,
-            currentMonth: new Date().toISOString().slice(0, 7),
+            currentMonth: toLocalMonthStr(),
             income: 0,
             rollover: 0,
             ykIncome: 0,

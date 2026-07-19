@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getTodayStr } from '../lib/utils';
 import { Card } from '../components/ui/Card';
 import { fetchWithAuth } from '../services/api';
 import { Plus, Trash2, Edit2, Check, X, Coins } from 'lucide-react';
@@ -30,7 +31,7 @@ export default function Vault() {
         return stored !== null ? stored === 'true' : true;
     });
 
-    const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
+    const [formDate, setFormDate] = useState(getTodayStr());
     const [formOwner, setFormOwner] = useState('');
     const [formGoldType, setFormGoldType] = useState('');
     const [formAmount, setFormAmount] = useState('');
