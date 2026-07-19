@@ -35,12 +35,14 @@ export function Layout({ children }: LayoutProps) {
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-64 border-r border-border bg-card p-6 space-y-8 fixed h-full left-0 top-0 overflow-y-auto">
         <div className="flex items-center gap-3 px-2">
-          <div className="p-2 bg-primary/10 rounded-lg">
-            {/* Favicon'daki (public/icon.svg) marka isareti.
-                text-primary sayesinde acik/koyu temaya gore rengi degisir. */}
+          {/* Favicon'daki (public/icon.svg) marka isareti: dolu rozet gorunumu.
+              Renkler bilerek acikca yazildi (bg-primary + text-primary-foreground),
+              saydamlik ekine bagli degil; boylece temaya gore tam ters cevrilir:
+              acik temada koyu kutu + beyaz TL, koyu temada beyaz kutu + koyu TL. */}
+          <div className="p-2 bg-primary rounded-lg">
             <span
               aria-hidden="true"
-              className="text-primary w-6 h-6 flex items-center justify-center text-2xl font-bold leading-none"
+              className="text-primary-foreground w-6 h-6 flex items-center justify-center text-2xl font-bold leading-none"
             >
               ₺
             </span>
