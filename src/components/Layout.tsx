@@ -36,7 +36,14 @@ export function Layout({ children }: LayoutProps) {
       <aside className="hidden md:flex flex-col w-64 border-r border-border bg-card p-6 space-y-8 fixed h-full left-0 top-0 overflow-y-auto">
         <div className="flex items-center gap-3 px-2">
           <div className="p-2 bg-primary/10 rounded-lg">
-            <LayoutDashboard className="text-primary w-6 h-6" />
+            {/* Favicon'daki (public/icon.svg) marka isareti.
+                text-primary sayesinde acik/koyu temaya gore rengi degisir. */}
+            <span
+              aria-hidden="true"
+              className="text-primary w-6 h-6 flex items-center justify-center text-2xl font-bold leading-none"
+            >
+              ₺
+            </span>
           </div>
           <span className="text-xl font-bold tracking-tight">Hesabını Bil!</span>
         </div>
