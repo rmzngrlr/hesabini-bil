@@ -1068,7 +1068,9 @@ export default function DailyExpenses() {
     if (!groups[date]) {
       groups[date] = [];
     }
-    groups[date].push(expense);
+    // Son eklenen harcama gün içinde en üstte görünsün diye başa ekle
+    // (yeni harcamalar diziye sona eklendiğinden unshift ile ters sıralanır).
+    groups[date].unshift(expense);
     return groups;
   }, {} as Record<string, DailyExpense[]>);
 
