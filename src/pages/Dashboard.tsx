@@ -278,6 +278,8 @@ export default function Dashboard() {
   })();
   const dailyAvgCash = daysLeftInMonth > 0 ? remainingCash / daysLeftInMonth : remainingCash;
   const dailyAvgYk = daysLeftInMonth > 0 ? finalRemainingYk / daysLeftInMonth : finalRemainingYk;
+  // Yuvarlama yapmadan virgülden sonraki ilk 2 haneyi göster (kırparak).
+  const truncTo2 = (n: number) => Math.trunc(n * 100) / 100;
 
   // CC Debt
   // In future, CC Debts list contains "Projected Installments".
@@ -436,7 +438,7 @@ export default function Dashboard() {
            </div>
            {isCurrentMonth && (
              <div className="text-xs text-muted-foreground mt-1">
-               Kalan {daysLeftInMonth} gün · günde ~<span className={`font-semibold ${dailyAvgCash < 0 ? 'text-red-500' : 'text-foreground'}`}>{dailyAvgCash.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 0, maximumFractionDigits: 0 }).replace(/\s|\u00A0/g, '')}</span>
+               Kalan {daysLeftInMonth} gün · günde ~<span className={`font-semibold ${dailyAvgCash < 0 ? 'text-red-500' : 'text-foreground'}`}>{truncTo2(dailyAvgCash).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/\s|\u00A0/g, '')}</span>
              </div>
            )}
         </Card>
@@ -451,7 +453,7 @@ export default function Dashboard() {
             </div>
             {isCurrentMonth && (
               <div className="text-xs text-muted-foreground mt-1">
-                Kalan {daysLeftInMonth} gün · günde ~<span className={`font-semibold ${dailyAvgYk < 0 ? 'text-red-500' : 'text-orange-600'}`}>{dailyAvgYk.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 0, maximumFractionDigits: 0 }).replace(/\s|\u00A0/g, '')}</span>
+                Kalan {daysLeftInMonth} gün · günde ~<span className={`font-semibold ${dailyAvgYk < 0 ? 'text-red-500' : 'text-orange-600'}`}>{truncTo2(dailyAvgYk).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/\s|\u00A0/g, '')}</span>
               </div>
             )}
             </Card>
