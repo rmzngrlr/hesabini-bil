@@ -268,6 +268,17 @@ export default function Dashboard() {
 
   const remainingCash = totalCashResources - totalCashSpent;
 
+  // Ayın kalan günü (bugün dâhil) ve kalan bakiyeye göre günlük ortalama.
+  // Yalnızca içinde bulunulan ay için anlamlıdır.
+  const isCurrentMonth = viewDate === getLocalMonth();
+  const daysLeftInMonth = (() => {
+    const d = new Date();
+    const daysInMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    return daysInMonth - d.getDate() + 1;
+  })();
+  const dailyAvgCash = daysLeftInMonth > 0 ? remainingCash / daysLeftInMonth : remainingCash;
+  const dailyAvgYk = daysLeftInMonth > 0 ? finalRemainingYk / daysLeftInMonth : finalRemainingYk;
+
   // CC Debt
   // In future, CC Debts list contains "Projected Installments".
   // We sum them up.
@@ -423,6 +434,11 @@ export default function Dashboard() {
            <div className="text-xs text-muted-foreground mt-1">
              Toplam: {totalCashResources.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}
            </div>
+           {isCurrentMonth && (
+             <div className="text-xs text-muted-foreground mt-1">
+               Kalan {daysLeftInMonth} gün · günde ~<span className={`font-semibold ${dailyAvgCash < 0 ? 'text-red-500' : 'text-foreground'}`}>{dailyAvgCash.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 0, maximumFractionDigits: 0 }).replace(/\s|\u00A0/g, '')}</span>
+             </div>
+           )}
         </Card>
 
         {showMealCard && (
@@ -433,6 +449,11 @@ export default function Dashboard() {
             <div className="text-xs text-muted-foreground mt-1">
                 Toplam: {totalYkResources.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}
             </div>
+            {isCurrentMonth && (
+              <div className="text-xs text-muted-foreground mt-1">
+                Kalan {daysLeftInMonth} gün · günde ~<span className={`font-semibold ${dailyAvgYk < 0 ? 'text-red-500' : 'text-orange-600'}`}>{dailyAvgYk.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 0, maximumFractionDigits: 0 }).replace(/\s|\u00A0/g, '')}</span>
+              </div>
+            )}
             </Card>
         )}
 
