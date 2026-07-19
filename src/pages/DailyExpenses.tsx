@@ -1666,7 +1666,12 @@ export default function DailyExpenses() {
                     <div
                       key={bill.id}
                       className={cn(
-                        "flex items-center justify-between p-4 rounded-xl border border-border bg-card transition-all",
+                        "flex items-center justify-between p-4 rounded-xl border bg-card transition-all",
+                        // Odeme gunu gelmis ama hala odenmemisse uyari cercevesi.
+                        // Odendi isaretlenince kosul dusecegi icin normale doner.
+                        !bill.isPaid && !!bill.date && bill.date <= todayStr
+                          ? "border-red-500/60 bg-red-500/5"
+                          : "border-border",
                         bill.isPaid && "opacity-60 bg-secondary/50"
                       )}
                     >
