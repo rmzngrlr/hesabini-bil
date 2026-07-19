@@ -30,9 +30,9 @@ export function Layout({ children }: LayoutProps) {
     }
   }, [location.pathname]);
 
+  // Kok div'de bg-background BILEREK yok: body'deki gradyan zeminin gorunmesi
+  // gerekiyor, opak bir arka plan onu tamamen orterdi.
   return (
-    {/* bg-background BILEREK yok: body'deki gradyan zeminin gorunmesi gerekiyor,
-        opak bir arka plan onu tamamen orterdi. */}
     <div className="flex h-screen h-[100dvh] overflow-hidden text-foreground w-full max-w-full">
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-64 border-r glass-blur p-6 space-y-8 fixed h-full left-0 top-0 overflow-y-auto">
