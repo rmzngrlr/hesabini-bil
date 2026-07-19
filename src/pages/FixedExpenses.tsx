@@ -283,7 +283,7 @@ export default function FixedExpenses() {
 
         <div className="space-y-2">
           {state.customIncomes?.map((income) => (
-            <div key={income.id} className="flex items-center justify-between p-3 rounded-lg bg-card border border-border/50 gap-2">
+            <div key={income.id} className="flex items-center justify-between p-3 rounded-lg glass gap-2">
               <span className="font-medium break-words min-w-0">{income.title}</span>
               <div className="flex items-center gap-3 shrink-0">
                 <span className="font-bold text-green-500">
@@ -308,7 +308,7 @@ export default function FixedExpenses() {
 
       <h1 className="text-2xl font-bold tracking-tight mt-8">Sabit Giderler</h1>
 
-      <Card title="Gider Özeti" className="bg-gradient-to-br from-card to-primary/5">
+      <Card title="Gider Özeti" className="bg-gradient-to-br from-transparent to-primary/10">
         <div className="space-y-4 mt-2">
           {fixedExpenseCurrencies.length === 0 ? (
             <div className="text-sm text-muted-foreground">Sabit gider bulunmuyor.</div>
@@ -395,8 +395,8 @@ export default function FixedExpenses() {
           <div
             key={expense.id}
             className={cn(
-              "flex items-center justify-between p-4 rounded-xl border border-border bg-card transition-all",
-              expense.isPaid && "opacity-60 bg-secondary/50"
+              "flex items-center justify-between p-4 rounded-xl glass transition-all",
+              expense.isPaid && "opacity-60"
             )}
           >
             <button

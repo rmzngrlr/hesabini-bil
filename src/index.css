@@ -32,6 +32,24 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
     --radius: 0.5rem;
+
+    /* --- Glassmorphism tokens (light) ---
+       Cam yuzeyler beyaz bir katman olarak durur; acik temada metin kontrastini
+       korumak icin alfa yuksek tutulur. Tek ayar noktasi burasi. */
+    --glass-bg: 0 0% 100%;
+    --glass-bg-alpha: 0.72;
+    --glass-border: 0 0% 100%;
+    --glass-border-alpha: 0.85;
+    --glass-shadow: 0 8px 32px -12px hsl(222.2 47.4% 11.2% / 0.18);
+    --glass-blur: 16px;
+    --glass-saturate: 140%;
+
+    /* Sayfa zemini: camin gorunur olmasini saglayan yumusak gradyan.
+       Marka lacivertinden turetilmis, sakin ve dikkat dagitmayan tonlar. */
+    --app-bg:
+      radial-gradient(1100px 760px at 12% -12%, hsl(210 70% 95%) 0%, transparent 60%),
+      radial-gradient(900px 640px at 100% 0%, hsl(226 65% 95%) 0%, transparent 55%),
+      linear-gradient(180deg, hsl(210 40% 99%) 0%, hsl(214 32% 94%) 100%);
   }
 
   .dark {
@@ -62,6 +80,22 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
+
+    /* --- Glassmorphism tokens (dark) ---
+       Koyu temada cam, zemini aydinlatan ince bir beyaz katmandir; bu yuzden
+       alfa cok dusuk tutulur (yuksek olursa gri lekeye doner). */
+    --glass-bg: 0 0% 100%;
+    --glass-bg-alpha: 0.07;
+    --glass-border: 0 0% 100%;
+    --glass-border-alpha: 0.14;
+    --glass-shadow: 0 8px 32px -12px hsl(0 0% 0% / 0.55);
+    --glass-blur: 16px;
+    --glass-saturate: 140%;
+
+    --app-bg:
+      radial-gradient(1100px 760px at 12% -12%, hsl(217 50% 15%) 0%, transparent 60%),
+      radial-gradient(900px 640px at 100% 0%, hsl(226 55% 13%) 0%, transparent 55%),
+      linear-gradient(180deg, hsl(222.2 84% 6.5%) 0%, hsl(224 60% 4%) 100%);
   }
 }
 
@@ -88,5 +122,43 @@
 
   body {
     @apply bg-background text-foreground;
+    /* Gradyan zemin: cam yuzeylerin arkasinda gorunmesi gereken katman.
+       fixed => icerik kayarken zemin sabit kalir. */
+    background-image: var(--app-bg);
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+    min-height: 100dvh;
+  }
+}
+
+@layer components {
+  /* Kaydirilan yuzeyler icin cam: saydamlik + kenar isigi + yumusak golge.
+     Bilerek backdrop-filter YOK. Zemin pürüzsüz bir gradyan oldugundan blur
+     gorsel olarak neredeyse fark yaratmaz ama mobilde pahalidir. */
+  .glass {
+    background-color: hsl(var(--glass-bg) / var(--glass-bg-alpha));
+    border: 1px solid hsl(var(--glass-border) / var(--glass-border-alpha));
+    box-shadow: var(--glass-shadow);
+  }
+
+  /* Sabit (kaydirilmayan) yuzeyler icin: arkasindan gercek icerik gectigi
+     icin burada blur anlamli. Kenar cubugu, alt menu, modal. */
+  .glass-blur {
+    background-color: hsl(var(--glass-bg) / var(--glass-bg-alpha));
+    border-color: hsl(var(--glass-border) / var(--glass-border-alpha));
+  }
+
+  @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass-blur {
+      -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+      backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    }
+  }
+
+  /* Blur desteklenmiyorsa cam yuzeyler okunaksiz kalmasin diye opaklastir. */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass-blur {
+      background-color: hsl(var(--card));
+    }
   }
 }

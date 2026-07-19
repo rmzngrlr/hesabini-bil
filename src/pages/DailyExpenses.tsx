@@ -1562,7 +1562,7 @@ export default function DailyExpenses() {
                  {isGoldType(activeTab) ? (currentMonthIncome - currentMonthSpent).toLocaleString('tr-TR') : currentMonthSpent.toLocaleString('tr-TR')}{isGoldType(activeTab) ? ' ' : ''}{getAssetUnitLabel(activeTab)}
               </div>
             </Card>
-            <Card title={`Bu Ayki Gelir / Giriş (${getAssetFullTitle(activeTab)})`} className="bg-green-500/5 border-green-500/20">
+            <Card title={`Bu Ayki Gelir / Giriş (${getAssetFullTitle(activeTab)})`} className="bg-gradient-to-br from-transparent to-green-500/12 border-green-500/30">
               <div className="text-2xl font-bold text-green-500 mt-2">
                  {currentMonthIncome.toLocaleString('tr-TR')}{isGoldType(activeTab) ? ' ' : ''}{getAssetUnitLabel(activeTab)}
               </div>
@@ -1666,13 +1666,13 @@ export default function DailyExpenses() {
                     <div
                       key={bill.id}
                       className={cn(
-                        "flex items-center justify-between p-4 rounded-xl border bg-card transition-all",
+                        "flex items-center justify-between p-4 rounded-xl glass transition-all",
                         // Odeme gunu gelmis ama hala odenmemisse uyari cercevesi.
                         // Odendi isaretlenince kosul dusecegi icin normale doner.
                         !bill.isPaid && !!bill.date && bill.date <= todayStr
-                          ? "border-red-500/60 bg-red-500/5"
+                          ? "border-red-500/60 bg-gradient-to-br from-transparent to-red-500/15"
                           : "border-border",
-                        bill.isPaid && "opacity-60 bg-secondary/50"
+                        bill.isPaid && "opacity-60"
                       )}
                     >
                       <button
@@ -1744,8 +1744,8 @@ export default function DailyExpenses() {
                   <div
                     key={bill.id}
                     className={cn(
-                      "flex items-center justify-between p-4 rounded-xl border border-border bg-card transition-all",
-                      bill.isPaid && "opacity-60 bg-secondary/50"
+                      "flex items-center justify-between p-4 rounded-xl glass transition-all",
+                      bill.isPaid && "opacity-60"
                     )}
                   >
                     <button
@@ -1848,7 +1848,7 @@ export default function DailyExpenses() {
                 {groupedExpenses[date].map((expense) => {
                   const isGold = isGoldType(expense.type);
                   return (
-                  <div key={expense.id} className="flex items-center justify-between p-4 rounded-xl bg-card border border-border">
+                  <div key={expense.id} className="flex items-center justify-between p-4 rounded-xl glass">
                     <div className="flex items-center gap-3">
                         <div className={`p-2 rounded-full ${expense.type === 'NAKIT' ? 'bg-green-500/10 text-green-500' : isGold ? 'bg-yellow-500/10 text-yellow-500' : 'bg-blue-500/10 text-blue-500'}`}>
                           {expense.type === 'NAKIT' ? <Banknote size={20} /> : <CreditCard size={20} />}

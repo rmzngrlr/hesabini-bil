@@ -39,7 +39,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
       />
 
       {/* Modal Container */}
-      <div className="relative bg-card text-card-foreground p-6 rounded-2xl border border-border shadow-2xl max-w-[320px] sm:max-w-[340px] w-full flex flex-col items-center text-center transform scale-100 transition-all duration-300 mx-4">
+      <div className="relative text-card-foreground p-6 rounded-2xl border glass-blur shadow-2xl max-w-[320px] sm:max-w-[340px] w-full flex flex-col items-center text-center transform scale-100 transition-all duration-300 mx-4">
         
         {/* Warning Icon (Exclamation inside Circle) */}
         <div className="w-16 h-16 rounded-full border-2 border-orange-200 dark:border-orange-500/20 flex items-center justify-center text-orange-400 dark:text-orange-500 mb-4 bg-orange-50/10 dark:bg-orange-500/5">

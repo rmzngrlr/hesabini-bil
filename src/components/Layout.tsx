@@ -31,9 +31,11 @@ export function Layout({ children }: LayoutProps) {
   }, [location.pathname]);
 
   return (
-    <div className="flex h-screen h-[100dvh] overflow-hidden bg-background text-foreground w-full max-w-full">
+    {/* bg-background BILEREK yok: body'deki gradyan zeminin gorunmesi gerekiyor,
+        opak bir arka plan onu tamamen orterdi. */}
+    <div className="flex h-screen h-[100dvh] overflow-hidden text-foreground w-full max-w-full">
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex flex-col w-64 border-r border-border bg-card p-6 space-y-8 fixed h-full left-0 top-0 overflow-y-auto">
+      <aside className="hidden md:flex flex-col w-64 border-r glass-blur p-6 space-y-8 fixed h-full left-0 top-0 overflow-y-auto">
         <div className="flex items-center gap-3 px-2">
           {/* Favicon'daki (public/icon.svg) marka isareti: dolu rozet gorunumu.
               Renkler bilerek acikca yazildi (bg-primary + text-primary-foreground),
@@ -88,7 +90,7 @@ export function Layout({ children }: LayoutProps) {
       </div>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 border-t bg-card/95 backdrop-blur-lg border-border z-50 safe-area-pb">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 border-t glass-blur z-50 safe-area-pb">
         <div className="flex items-center justify-around h-16 max-w-md mx-auto px-2">
           {currentNavItems.map(({ path, label, icon: Icon }) => (
             <NavLink

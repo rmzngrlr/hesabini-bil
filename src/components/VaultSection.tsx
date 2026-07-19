@@ -254,7 +254,7 @@ export function VaultSection() {
                                             onDragStart={(e) => handleDragStart(e, goldType)}
                                             onDragOver={handleDragOver}
                                             onDrop={(e) => handleDrop(e, goldType)}
-                                            className={`overflow-x-auto bg-card rounded-xl border border-border cursor-move transition-transform ${draggedType === goldType ? 'opacity-50 scale-[0.98]' : 'opacity-100 scale-100'}`}
+                                            className={`overflow-x-auto rounded-xl glass cursor-move transition-transform ${draggedType === goldType ? 'opacity-50 scale-[0.98]' : 'opacity-100 scale-100'}`}
                                         >
                                     <div className="min-w-max">
                                         <div className="p-4 bg-secondary/50 border-b border-border flex items-center justify-between pointer-events-none">
@@ -478,7 +478,7 @@ export function VaultSection() {
                                         const totalGiris = groupRecords.reduce((sum, record) => sum + Number(record.amount), 0);
 
                                         return (
-                                            <div key={goldType} className="overflow-x-auto bg-card rounded-xl border border-border cursor-default">
+                                            <div key={goldType} className="overflow-x-auto rounded-xl glass cursor-default">
                                                 <div className="min-w-max">
                                                     <div className="p-4 bg-secondary/50 border-b border-border flex items-center justify-between">
                                                         <h3 className="font-bold text-lg text-muted-foreground">{goldType}</h3>

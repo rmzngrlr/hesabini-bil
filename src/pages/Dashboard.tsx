@@ -428,7 +428,7 @@ export default function Dashboard() {
 
       {/* Top Summary Cards */}
       <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
-        <Card title={isFuture ? "Tahmini Kalan Türk Lirası" : "Kalan Türk Lirası"} className="bg-gradient-to-br from-card to-secondary/10">
+        <Card title={isFuture ? "Tahmini Kalan Türk Lirası" : "Kalan Türk Lirası"} className="bg-gradient-to-br from-transparent to-secondary/20">
 
            <div className={`text-3xl font-bold mt-2 ${remainingCash < 0 ? 'text-red-500' : 'text-foreground'}`}>
              {remainingCash.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}
@@ -444,7 +444,7 @@ export default function Dashboard() {
         </Card>
 
         {showMealCard && (
-            <Card title="Kalan Yemek Kartı" className="bg-gradient-to-br from-card to-orange-500/5 border-orange-500/20">
+            <Card title="Kalan Yemek Kartı" className="bg-gradient-to-br from-transparent to-orange-500/15 border-orange-500/30">
             <div className="text-3xl font-bold text-orange-600 mt-2">
                 {finalRemainingYk.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}
             </div>
@@ -459,7 +459,7 @@ export default function Dashboard() {
             </Card>
         )}
 
-        <Card title={isFuture ? "Tahmini Kredi Kartı Ödemesi" : "Toplam Kredi Kartı Borcu"} className="border-red-900/20 bg-red-950/5">
+        <Card title={isFuture ? "Tahmini Kredi Kartı Ödemesi" : "Toplam Kredi Kartı Borcu"} className="bg-gradient-to-br from-transparent to-red-500/10 border-red-500/25">
            <div className="text-3xl font-bold text-red-500 mt-2">
              {totalCCDebt.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}
            </div>
@@ -544,7 +544,7 @@ export default function Dashboard() {
                   if (totalGold === 0) return null;
 
                   return (
-                    <Card key={asset} title={getAssetFullTitle(asset)} className="bg-yellow-500/5 border-yellow-500/20">
+                    <Card key={asset} title={getAssetFullTitle(asset)} className="bg-gradient-to-br from-transparent to-yellow-500/12 border-yellow-500/30">
                       <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-500 mt-2">
                         {totalGold} {getAssetSymbol(asset)}
                       </div>
@@ -586,7 +586,7 @@ export default function Dashboard() {
                   if (remaining === 0) return null;
 
                   return (
-                    <Card key={asset} title={getAssetFullTitle(asset)} className="bg-emerald-500/5 border-emerald-500/20">
+                    <Card key={asset} title={getAssetFullTitle(asset)} className="bg-gradient-to-br from-transparent to-emerald-500/12 border-emerald-500/30">
                       <div className={`text-2xl font-bold mt-2 ${remaining < 0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-500'}`}>
                         {remaining.toLocaleString('tr-TR')}{isGoldType(asset) ? ' ' : ''}{getAssetSymbol(asset)}
                       </div>
