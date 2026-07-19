@@ -2,7 +2,7 @@ import { useDraftState } from '../hooks/useDraftState';
 import { useBudget } from '../context/BudgetContext';
 import type { DailyExpense } from '../types';
 import { Card } from '../components/ui/Card';
-import { Trash2, Banknote, CreditCard, Pencil, X, Calendar, ArrowRightLeft, CheckCircle, Circle, Wallet } from 'lucide-react';
+import { Trash2, Banknote, CreditCard, Pencil, X, Calendar, ArrowRightLeft, CheckCircle, Circle, Wallet, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import React, { useMemo, useEffect, useState } from 'react';
 import { tr } from 'date-fns/locale';
@@ -29,7 +29,8 @@ export default function DailyExpenses() {
     toggleFixedExpense,
     addCustomIncome,
     deleteFixedExpense,
-    deleteCustomIncome
+    deleteCustomIncome,
+    dueBillsCount
   } = useBudget();
 
   const getLocalMonth = () => {
@@ -1178,11 +1179,19 @@ export default function DailyExpenses() {
            <button
               onClick={() => setActiveSubTab('BILLS')}
               className={cn(
-                 "flex-1 py-1.5 text-sm font-semibold rounded-md transition-all",
+                 "flex-1 py-1.5 text-sm font-semibold rounded-md transition-all flex items-center justify-center gap-1.5",
                  activeSubTab === 'BILLS' ? "bg-background text-foreground shadow" : "text-muted-foreground hover:bg-secondary/80"
               )}
            >
               Faturalar
+              {dueBillsCount > 0 && (
+                <span className="flex items-center gap-1 text-red-500">
+                  <AlertTriangle size={14} className="shrink-0" />
+                  <span className="flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold leading-none">
+                    {dueBillsCount}
+                  </span>
+                </span>
+              )}
            </button>
         </div>
 

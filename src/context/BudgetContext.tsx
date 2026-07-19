@@ -68,6 +68,7 @@ interface BudgetContextType {
   updateAssetIncome: (assetType: string, amount: number) => void;
   updateAssetRollover: (assetType: string, amount: number) => void;
   activeCurrencies: string[];
+  dueBillsCount: number;
   askConfirmation: (message: string, title?: string) => Promise<boolean>;
 }
 
@@ -2198,6 +2199,15 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     return getActiveCurrencies(realState, vaultRecords);
   }, [realState, vaultRecords]);
 
+  // Vakti gelmiş (bugün veya öncesi) ve hâlâ ödenmemiş fatura sayısı.
+  // Gerçek içinde bulunulan aya (realState) göre hesaplanır; görüntülenen aydan bağımsızdır.
+  const dueBillsCount = useMemo(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    return (realState.fixedExpenses || []).filter(
+      e => e.isBill && e.type !== 'PLANNED_VAULT' && !e.isPaid && !!e.date && e.date <= todayStr
+    ).length;
+  }, [realState.fixedExpenses]);
+
   if (loadError) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground gap-4">
@@ -2259,6 +2269,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             updateAssetIncome,
             updateAssetRollover,
             activeCurrencies,
+            dueBillsCount,
             askConfirmation
         }}
     >
