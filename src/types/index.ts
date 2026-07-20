@@ -25,6 +25,12 @@ export interface FixedExpense {
   vault_owner?: string;
   vault_note?: string;
   isBill?: boolean;
+  /**
+   * Gelecek ay icin ayrilan nakit harclik kalemi.
+   * Turetilmis bir satirdir: kaynagi FutureMonthData.dailyAllowance'dir.
+   * O aya gecildiginde devirde haric tutulur ("cozulur"), tutari kalan nakde doner.
+   */
+  isAllowance?: boolean;
   paymentMethod?: 'NAKIT' | 'KK';
   date?: string;
 }
@@ -84,6 +90,8 @@ export interface MonthlyHistory {
 }
 
 export interface FutureMonthData {
+  /** O ay icin gunluk nakit harclik (TL). Toplam = bu deger x ayin gun sayisi. */
+  dailyAllowance?: number;
   income?: number;
   ykIncome?: number;
   fixedExpenses?: FixedExpense[];

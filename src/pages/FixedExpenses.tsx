@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useDraftState } from '../hooks/useDraftState';
-import { useBudget, isFixedExpenseOverdue } from '../context/BudgetContext';
+import { useBudget, isFixedExpenseOverdue, daysInMonth } from '../context/BudgetContext';
 import { useAuth } from '../context/AuthContext';
 import { Card } from '../components/ui/Card';
 import { Plus, Trash2, CheckCircle, Circle, Pencil, X, Calendar } from 'lucide-react';
@@ -30,6 +30,8 @@ export default function FixedExpenses() {
     updateRollover,
     updateYkIncome,
     updateYkRollover,
+    dailyAllowance,
+    updateDailyAllowance,
     showMealCard,
     showVault,
     vaultRecords,
@@ -57,6 +59,9 @@ export default function FixedExpenses() {
   const [incomeAmount, setIncomeAmount] = useDraftState('fixed_draft_inc_amount', '');
   const [incomeType, setIncomeType] = useState('NAKIT');
 
+  // Gunluk harclik girdisi: sayfadaki diger tutar alanlariyla ayni desen
+  // (yerel state + onBlur), her tus vurusunda global state'e yazilmasin.
+  const [allowanceInput, setAllowanceInput] = useState('');
   const [income, setIncome] = useState(state.income.toString());
   const [rollover, setRollover] = useState(state.rollover.toFixed(2));
   const [ykIncome, setYkIncome] = useState((state.ykIncome || 0).toString());
@@ -67,7 +72,8 @@ export default function FixedExpenses() {
     setRollover(Number(state.rollover).toFixed(2));
     setYkIncome((state.ykIncome || 0).toString());
     setYkRollover(Number(state.ykRollover || 0).toFixed(2));
-  }, [state.income, state.rollover, state.ykIncome, state.ykRollover, viewDate]);
+    setAllowanceInput(dailyAllowance > 0 ? String(dailyAllowance) : '');
+  }, [state.income, state.rollover, state.ykIncome, state.ykRollover, viewDate, dailyAllowance]);
 
   const handleIncomeSave = () => {
     updateIncome(parseFloat(income) || 0);
@@ -308,6 +314,45 @@ export default function FixedExpenses() {
       </div>
 
       <h1 className="text-2xl font-bold tracking-tight mt-8">Sabit Giderler</h1>
+
+      {/* Nakit harclik yalnizca GELECEK aylar icin ayrilir. Icinde bulunulan aya
+          gecildiginde kalem cozulur ve tutari Kalan Turk Lirasi'na doner. */}
+      {isFuture && (
+        <Card title="Nakit Harçlık (Bu Ay İçin Ayrılan)" className="bg-gradient-to-br from-transparent to-emerald-500/12 border-emerald-500/30">
+          <div className="flex flex-col sm:flex-row sm:items-end gap-3 mt-2">
+            <div className="flex-1 space-y-1">
+              <label className="text-xs text-muted-foreground font-medium">Günlük tutar (TL)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0"
+                value={allowanceInput}
+                onChange={(e) => setAllowanceInput(e.target.value)}
+                onBlur={() => updateDailyAllowance(parseFloat(allowanceInput) || 0)}
+                className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+              />
+            </div>
+            <div className="flex-1 text-sm">
+              {dailyAllowance > 0 ? (
+                <div className="text-muted-foreground">
+                  <span className="font-bold text-emerald-600 dark:text-emerald-500 text-lg">
+                    {(dailyAllowance * daysInMonth(viewDate)).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 0, maximumFractionDigits: 0 }).replace(/\s| /g, '')}
+                  </span>
+                  <div className="text-xs mt-0.5">{daysInMonth(viewDate)} gün × günlük tutar</div>
+                </div>
+              ) : (
+                <div className="text-xs text-muted-foreground">
+                  Günlük tutar yazarsan, bu ayın bütçesinden ayrılıp aşağıda gider olarak görünür.
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="text-xs text-muted-foreground mt-3 pt-3 border-t border-border/50">
+            Bu aya geçildiğinde kalem otomatik çözülür ve tutarı <strong>Kalan Türk Lirası</strong>'na eklenir.
+          </div>
+        </Card>
+      )}
 
       <Card title="Gider Özeti" className="bg-gradient-to-br from-transparent to-primary/10">
         <div className="space-y-4 mt-2">

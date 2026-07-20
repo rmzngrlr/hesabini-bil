@@ -28,6 +28,29 @@ export const WARNED_FIXED_EXPENSE_TITLES = [RENT_AND_DUES_TITLE, CC_DEBT_TITLE];
  * acildigi icin, tutar girilmeden uyari vermek anlamsiz olurdu.
  * Kart cercevesi ve menu rozeti AYNI bu fonksiyonu kullanir.
  */
+/** 'YYYY-MM' icin o ayin gun sayisi. new Date(y, m, 0) => o ayin son gunu. */
+export const daysInMonth = (monthStr: string): number => {
+  const [y, m] = monthStr.split('-').map(Number);
+  return new Date(y, m, 0).getDate();
+};
+
+/**
+ * Gelecek ay icin ayrilan nakit harclik kalemini uretir.
+ * Turetilmis satirdir; kaynagi futureData[ay].dailyAllowance'dir.
+ * Eslesme BASLIGA gore degil isAllowance BAYRAGINA gore yapilir, boylece
+ * baslik bilgilendirici olabilir ve degisse bile mantik bozulmaz.
+ */
+export const buildAllowanceExpense = (monthStr: string, daily: number): FixedExpense => {
+  const days = daysInMonth(monthStr);
+  return {
+    id: `allowance-${monthStr}`,
+    title: `Nakit Harçlık (${daily.toLocaleString('tr-TR')} ₺/gün × ${days} gün)`,
+    amount: daily * days,
+    isPaid: false,
+    isAllowance: true,
+  };
+};
+
 export const isFixedExpenseOverdue = (e: FixedExpense): boolean =>
   WARNED_FIXED_EXPENSE_TITLES.includes(e.title)
   && !e.isPaid
@@ -93,6 +116,9 @@ interface BudgetContextType {
   dueBillsCount: number;
   /** Ödenmemiş Kira / Kredi Kartı sayısı (Varlıklarım rozeti). */
   dueFixedExpensesCount: number;
+  /** Goruntulenen ay icin belirlenmis gunluk nakit harclik (yoksa 0). */
+  dailyAllowance: number;
+  updateDailyAllowance: (daily: number) => void;
   /** Yerel "bugün" (YYYY-MM-DD). Gece yarısı geçince canlı olarak güncellenir. */
   todayStr: string;
   askConfirmation: (message: string, title?: string) => Promise<boolean>;
@@ -1069,7 +1095,12 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const futurePlan = prev.futureData[nextMonthStr] || {};
 
         if (futurePlan.fixedExpenses) {
-            nextFixedExpenses = futurePlan.fixedExpenses.map(e => ({ ...e, isPaid: false }));
+            // Nakit harclik kalemi burada "cozulur": aya gecildiginde gider olmaktan
+            // cikar, tutari kendiliginden Kalan Turk Lirasi'na doner. Planlanan
+            // fixedExpenses'a sizmis bir kopyasi olsa bile burada elenir.
+            nextFixedExpenses = futurePlan.fixedExpenses
+                .filter(e => !e.isAllowance)
+                .map(e => ({ ...e, isPaid: false }));
         }
 
         // 3. Self-healing: Inject any missing bills into nextFixedExpenses
@@ -1306,9 +1337,14 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         // and inject the calculated one from previous iteration
         let monthFixedExpenses: FixedExpense[] = [];
 
-        // Use user-defined future expenses if available
+        // Use user-defined future expenses if available.
+        // Harclik kalemi TURETILMISTIR: futureData'ya yazilmis eski bir kopyasi
+        // varsa atilir ve asagida dailyAllowance'tan yeniden uretilir. (KK borcunda
+        // kullanilan "filtrele-sonra-yeniden-uret" deseninin aynisi.)
         if (future.fixedExpenses) {
-             monthFixedExpenses = future.fixedExpenses.map(e => ({ ...e }));
+             monthFixedExpenses = future.fixedExpenses
+                .filter(e => !e.isAllowance)
+                .map(e => ({ ...e }));
         } else {
              // Default Projection: Rent, Dues, and all active bills with 0 amount
              monthFixedExpenses = [
@@ -1319,6 +1355,12 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                     isPaid: false
                 }
              ];
+        }
+
+        // Nakit harclik: o ay icin belirlenmisse turetilmis kalemi ekle.
+        // Sadece gelecek aylarda gorunur; o aya gecilince devirde haric tutulur.
+        if (future.dailyAllowance && future.dailyAllowance > 0) {
+            monthFixedExpenses.push(buildAllowanceExpense(iterMonth, future.dailyAllowance));
         }
 
         // Self-healing: Inject any missing bills into monthFixedExpenses
@@ -2104,6 +2146,25 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     });
   };
 
+  /**
+   * O ay icin gunluk nakit harcligi belirler. Yalnizca GELECEK aylar icin
+   * anlamlidir: icinde bulunulan ay veya gecmiste harclik "cozulmus" olur,
+   * ayrilacak bir sey kalmaz. 0 verilirse harclik kaldirilir.
+   */
+  const updateDailyAllowance = (daily: number) => {
+    setRealState(prev => {
+        if (viewDate <= prev.currentMonth) return prev;
+        const future = prev.futureData[viewDate] || {};
+        return {
+            ...prev,
+            futureData: {
+                ...prev.futureData,
+                [viewDate]: { ...future, dailyAllowance: daily > 0 ? daily : undefined }
+            }
+        };
+    });
+  };
+
   const updateIncome = (income: number) => {
     setRealState(prev => {
         if (viewDate === prev.currentMonth) {
@@ -2301,6 +2362,9 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   // Odenmemis Kira / Kredi Karti sayisi (Varliklarim rozeti).
   // Bu kalemlerde tarih yok; kural ayin 1'inden itibaren gecerli oldugu icin
   // icinde bulunulan ayda odenmemis olmalari yeterli.
+  // Goruntulenen ay icin belirlenmis gunluk harclik (UI'nin okumasi icin).
+  const dailyAllowance = realState.futureData[viewDate]?.dailyAllowance ?? 0;
+
   const dueFixedExpensesCount = useMemo(() => {
     return (realState.fixedExpenses || []).filter(isFixedExpenseOverdue).length;
   }, [realState.fixedExpenses]);
@@ -2368,6 +2432,8 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             activeCurrencies,
             dueBillsCount,
             dueFixedExpensesCount,
+            dailyAllowance,
+            updateDailyAllowance,
             todayStr,
             askConfirmation
         }}
