@@ -342,7 +342,7 @@ export default function FixedExpenses() {
                   value={allowanceInput}
                   onChange={(e) => setAllowanceInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applyAllowance(); } }}
-                  className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+                  className="w-28 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
                 />
                 {/* Hesap anlik yapilir; kalem ancak bu tusa basilinca olusur. */}
                 <button
@@ -486,32 +486,59 @@ export default function FixedExpenses() {
               expense.isPaid && "opacity-60"
             )}
           >
-            <button
-              onClick={() => toggleFixedExpense(expense.id)}
-              className="flex items-center gap-3 flex-1 min-w-0"
-            >
-              {expense.isPaid ? (
-                <CheckCircle className="text-green-500 flex-shrink-0" size={24} />
-              ) : (
-                <Circle className="text-muted-foreground flex-shrink-0" size={24} />
-              )}
-              <div className="text-left min-w-0 flex-1">
-                <span className={cn("font-medium truncate block", expense.isPaid && "line-through")}>{expense.title}</span>
-                <div className="text-sm text-muted-foreground whitespace-nowrap mt-0.5">
-                  {expense.amount.toLocaleString('tr-TR')}{expense.type && isGoldType(expense.type) ? ' ' : ''}{expense.type === 'NAKIT' || !expense.type ? '₺' : expense.type}
+            {/* Harclik kalemi TURETILMISTIR: odendi durumu tasimaz (o aya gecince
+                zaten cozulup silinir) ve genel formla duzenlenemez. Bu yuzden
+                odendi yuvarlagi ve kalem tusu bu kalemde gosterilmez. */}
+            {expense.isAllowance ? (
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="text-left min-w-0 flex-1">
+                  <span className="font-medium truncate block">{expense.title}</span>
+                  <div className="text-sm text-muted-foreground whitespace-nowrap mt-0.5">
+                    {expense.amount.toLocaleString('tr-TR')} ₺
+                  </div>
                 </div>
               </div>
-            </button>
-            
-            <div className="flex items-center">
+            ) : (
               <button
-                onClick={(e) => { e.stopPropagation(); handleEdit(expense); }}
-                className="p-2 text-primary hover:text-primary/80 transition-colors"
+                onClick={() => toggleFixedExpense(expense.id)}
+                className="flex items-center gap-3 flex-1 min-w-0"
               >
-                <Pencil size={20} />
+                {expense.isPaid ? (
+                  <CheckCircle className="text-green-500 flex-shrink-0" size={24} />
+                ) : (
+                  <Circle className="text-muted-foreground flex-shrink-0" size={24} />
+                )}
+                <div className="text-left min-w-0 flex-1">
+                  <span className={cn("font-medium truncate block", expense.isPaid && "line-through")}>{expense.title}</span>
+                  <div className="text-sm text-muted-foreground whitespace-nowrap mt-0.5">
+                    {expense.amount.toLocaleString('tr-TR')}{expense.type && isGoldType(expense.type) ? ' ' : ''}{expense.type === 'NAKIT' || !expense.type ? '₺' : expense.type}
+                  </div>
+                </div>
               </button>
+            )}
+
+            <div className="flex items-center">
+              {!expense.isAllowance && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleEdit(expense); }}
+                  className="p-2 text-primary hover:text-primary/80 transition-colors"
+                >
+                  <Pencil size={20} />
+                </button>
+              )}
               <button
-                onClick={async (e) => { e.stopPropagation(); if (await askConfirmation('Bu sabit gideri silmek istediğinize emin misiniz?')) { deleteFixedExpense(expense.id); } }}
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  if (expense.isAllowance) {
+                    // Turetilmis kalem: deleteFixedExpense ise yaramaz (projeksiyon
+                    // onu dailyAllowance'tan yeniden uretir). Kaynagi sifirlamak gerekir.
+                    if (await askConfirmation('Bu ay için ayrılan nakit harçlığı kaldırmak istediğinize emin misiniz?')) {
+                      updateDailyAllowance(0);
+                    }
+                    return;
+                  }
+                  if (await askConfirmation('Bu sabit gideri silmek istediğinize emin misiniz?')) { deleteFixedExpense(expense.id); }
+                }}
                 className="p-2 text-muted-foreground hover:text-destructive transition-colors"
               >
                 <Trash2 size={20} />
