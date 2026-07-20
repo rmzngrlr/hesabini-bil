@@ -329,9 +329,9 @@ export default function FixedExpenses() {
       {/* Nakit harclik yalnizca GELECEK aylar icin ayrilir. Icinde bulunulan aya
           gecildiginde kalem cozulur ve tutari Kalan Turk Lirasi'na doner. */}
       {isFuture && (
-        <Card title="Nakit Harçlık (Bu Ay İçin Ayrılan)" className="bg-gradient-to-br from-transparent to-emerald-500/12 border-emerald-500/30">
-          <div className="flex flex-col sm:flex-row sm:items-end gap-3 mt-2">
-            <div className="flex-1 space-y-1">
+        <Card title="Nakit Harçlık (Bu Ay İçin Ayrılan)" className="max-w-md bg-gradient-to-br from-transparent to-emerald-500/12 border-emerald-500/30">
+          <div className="flex flex-wrap items-end gap-x-5 gap-y-3 mt-2">
+            <div className="space-y-1">
               <label className="text-xs text-muted-foreground font-medium">Günlük tutar (TL)</label>
               <div className="flex gap-2">
                 <input
@@ -361,7 +361,7 @@ export default function FixedExpenses() {
                 </button>
               </div>
             </div>
-            <div className="flex-1 text-sm">
+            <div className="text-sm pb-1">
               {previewDaily > 0 ? (
                 <div className="text-muted-foreground">
                   <span className={cn(
