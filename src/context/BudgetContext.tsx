@@ -22,6 +22,17 @@ export const CC_DEBT_TITLE = 'Kredi Kartı Borcu (Geçen Ay)';
  */
 export const WARNED_FIXED_EXPENSE_TITLES = [RENT_AND_DUES_TITLE, CC_DEBT_TITLE];
 
+/**
+ * Bir sabit gider "odenmedi" uyarisi vermeli mi?
+ * Tutar > 0 sarti onemli: 'Ev Kirasi ve Aidat' her ay 0 tutarla otomatik
+ * acildigi icin, tutar girilmeden uyari vermek anlamsiz olurdu.
+ * Kart cercevesi ve menu rozeti AYNI bu fonksiyonu kullanir.
+ */
+export const isFixedExpenseOverdue = (e: FixedExpense): boolean =>
+  WARNED_FIXED_EXPENSE_TITLES.includes(e.title)
+  && !e.isPaid
+  && (Number(e.amount) || 0) > 0;
+
 const initialState: BudgetState = {
   version: 6,
   currentMonth: getCurrentMonth(),
@@ -80,6 +91,8 @@ interface BudgetContextType {
   updateAssetRollover: (assetType: string, amount: number) => void;
   activeCurrencies: string[];
   dueBillsCount: number;
+  /** Ödenmemiş Kira / Kredi Kartı sayısı (Varlıklarım rozeti). */
+  dueFixedExpensesCount: number;
   /** Yerel "bugün" (YYYY-MM-DD). Gece yarısı geçince canlı olarak güncellenir. */
   todayStr: string;
   askConfirmation: (message: string, title?: string) => Promise<boolean>;
@@ -2285,6 +2298,13 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     ).length;
   }, [realState.fixedExpenses, todayStr]);
 
+  // Odenmemis Kira / Kredi Karti sayisi (Varliklarim rozeti).
+  // Bu kalemlerde tarih yok; kural ayin 1'inden itibaren gecerli oldugu icin
+  // icinde bulunulan ayda odenmemis olmalari yeterli.
+  const dueFixedExpensesCount = useMemo(() => {
+    return (realState.fixedExpenses || []).filter(isFixedExpenseOverdue).length;
+  }, [realState.fixedExpenses]);
+
   if (loadError) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground gap-4">
@@ -2347,6 +2367,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             updateAssetRollover,
             activeCurrencies,
             dueBillsCount,
+            dueFixedExpensesCount,
             todayStr,
             askConfirmation
         }}

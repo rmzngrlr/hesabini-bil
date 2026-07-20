@@ -19,7 +19,14 @@ const navItems = [
 export function Layout({ children }: LayoutProps) {
   const currentNavItems = navItems;
   const location = useLocation();
-  const { dueBillsCount } = useBudget();
+  const { dueBillsCount, dueFixedExpensesCount } = useBudget();
+
+  // Menu butonlarindaki uyari rozetleri: yol -> sayi.
+  // Sifir olanlar gosterilmez.
+  const badgeCounts: Record<string, number> = {
+    '/islemler': dueBillsCount,
+    '/varliklarim': dueFixedExpensesCount,
+  };
 
   useEffect(() => {
     const currentItem = navItems.find(item => item.path === location.pathname);
@@ -68,9 +75,9 @@ export function Layout({ children }: LayoutProps) {
             >
               <Icon size={20} />
               <span>{label}</span>
-              {path === '/islemler' && dueBillsCount > 0 && (
+              {(badgeCounts[path] ?? 0) > 0 && (
                 <span className="ml-auto flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-xs font-bold">
-                  {dueBillsCount}
+                  {badgeCounts[path]}
                 </span>
               )}
             </NavLink>
@@ -111,9 +118,9 @@ export function Layout({ children }: LayoutProps) {
                   )} />
                   <Icon size={20} className={cn("transition-transform duration-300", isActive && "-translate-y-0.5")} />
                   <span className="text-[10px] font-medium">{label}</span>
-                  {path === '/islemler' && dueBillsCount > 0 && (
+                  {(badgeCounts[path] ?? 0) > 0 && (
                     <span className="absolute top-1 right-1/2 translate-x-4 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold leading-none">
-                      {dueBillsCount}
+                      {badgeCounts[path]}
                     </span>
                   )}
                 </>
