@@ -342,7 +342,7 @@ export default function FixedExpenses() {
                   value={allowanceInput}
                   onChange={(e) => setAllowanceInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applyAllowance(); } }}
-                  className="w-28 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+                  className="no-spinner w-28 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
                 />
                 {/* Hesap anlik yapilir; kalem ancak bu tusa basilinca olusur. */}
                 <button
