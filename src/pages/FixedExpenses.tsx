@@ -3,7 +3,7 @@ import { useDraftState } from '../hooks/useDraftState';
 import { useBudget, isFixedExpenseOverdue, daysInMonth } from '../context/BudgetContext';
 import { useAuth } from '../context/AuthContext';
 import { Card } from '../components/ui/Card';
-import { Plus, Trash2, CheckCircle, Circle, Pencil, X, Calendar } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, Circle, Pencil, X, Calendar, Check } from 'lucide-react';
 import { cn, scrollToElement } from '../lib/utils';
 import type { FixedExpense } from '../types';
 import { VaultSection } from '../components/VaultSection';
@@ -59,8 +59,8 @@ export default function FixedExpenses() {
   const [incomeAmount, setIncomeAmount] = useDraftState('fixed_draft_inc_amount', '');
   const [incomeType, setIncomeType] = useState('NAKIT');
 
-  // Gunluk harclik girdisi: sayfadaki diger tutar alanlariyla ayni desen
-  // (yerel state + onBlur), her tus vurusunda global state'e yazilmasin.
+  // Gunluk harclik girdisi yerel tutulur: hesap yazarken anlik gorunur ama
+  // global state'e ancak tik tusuna basilinca yazilir.
   const [allowanceInput, setAllowanceInput] = useState('');
   const [income, setIncome] = useState(state.income.toString());
   const [rollover, setRollover] = useState(state.rollover.toFixed(2));
@@ -153,6 +153,17 @@ export default function FixedExpenses() {
   };
   const isFuture = viewDate > getLocalDateMonth();
   const isCurrentMonth = viewDate === getLocalDateMonth();
+
+  // Nakit harclik: hesap ANLIK (yazarken), uygulama ONAYA bagli (tik tusu).
+  // previewDaily/previewTotal yazilan degerden turer; dailyAllowance ise
+  // onaylanmis (state'e yazilmis) degerdir. Ikisi farkliysa bekleyen degisiklik var.
+  const previewDaily = parseFloat(allowanceInput) || 0;
+  const previewTotal = previewDaily * daysInMonth(viewDate);
+  const allowancePending = previewDaily !== dailyAllowance;
+  const applyAllowance = () => updateDailyAllowance(previewDaily);
+  const formatTL = (n: number) =>
+    n.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 0, maximumFractionDigits: 0 })
+      .replace(/\s/g, '');
   const formattedMonth = new Date(
       parseInt(viewDate.split('-')[0]),
       parseInt(viewDate.split('-')[1]) - 1
@@ -322,24 +333,49 @@ export default function FixedExpenses() {
           <div className="flex flex-col sm:flex-row sm:items-end gap-3 mt-2">
             <div className="flex-1 space-y-1">
               <label className="text-xs text-muted-foreground font-medium">Günlük tutar (TL)</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0"
-                value={allowanceInput}
-                onChange={(e) => setAllowanceInput(e.target.value)}
-                onBlur={() => updateDailyAllowance(parseFloat(allowanceInput) || 0)}
-                className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0"
+                  value={allowanceInput}
+                  onChange={(e) => setAllowanceInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applyAllowance(); } }}
+                  className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+                />
+                {/* Hesap anlik yapilir; kalem ancak bu tusa basilinca olusur. */}
+                <button
+                  type="button"
+                  onClick={applyAllowance}
+                  disabled={!allowancePending}
+                  title={allowancePending ? 'Onayla' : 'Onaylanacak değişiklik yok'}
+                  className={cn(
+                    "px-3 rounded-lg font-medium transition-all flex items-center justify-center shrink-0",
+                    allowancePending
+                      ? "bg-emerald-500 text-white hover:bg-emerald-600"
+                      : "bg-secondary text-muted-foreground cursor-not-allowed opacity-50"
+                  )}
+                >
+                  <Check size={20} />
+                </button>
+              </div>
             </div>
             <div className="flex-1 text-sm">
-              {dailyAllowance > 0 ? (
+              {previewDaily > 0 ? (
                 <div className="text-muted-foreground">
-                  <span className="font-bold text-emerald-600 dark:text-emerald-500 text-lg">
-                    {(dailyAllowance * daysInMonth(viewDate)).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 0, maximumFractionDigits: 0 }).replace(/\s| /g, '')}
+                  <span className={cn(
+                    "font-bold text-lg",
+                    allowancePending ? "text-muted-foreground" : "text-emerald-600 dark:text-emerald-500"
+                  )}>
+                    {formatTL(previewTotal)}
                   </span>
                   <div className="text-xs mt-0.5">{daysInMonth(viewDate)} gün × günlük tutar</div>
+                  {allowancePending && (
+                    <div className="text-xs mt-1 text-emerald-600 dark:text-emerald-500 font-medium">
+                      Uygulamak için ✓ tuşuna bas
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="text-xs text-muted-foreground">

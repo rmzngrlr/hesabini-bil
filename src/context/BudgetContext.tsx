@@ -35,6 +35,20 @@ export const daysInMonth = (monthStr: string): number => {
 };
 
 /**
+ * 'YYYY-MM' icin Turkce ay adi (bas harfi buyuk).
+ * Sabit dizi kullaniliyor: toLocaleDateString('tr-TR') ay adlarini kucuk harfle
+ * dondurur ve bas harfi buyutmek Turkce'de ozel durumlar dogurabilir.
+ */
+const TR_MONTH_NAMES = [
+  'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+  'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+];
+export const monthNameTr = (monthStr: string): string => {
+  const m = Number(monthStr.split('-')[1]);
+  return TR_MONTH_NAMES[m - 1] ?? '';
+};
+
+/**
  * Gelecek ay icin ayrilan nakit harclik kalemini uretir.
  * Turetilmis satirdir; kaynagi futureData[ay].dailyAllowance'dir.
  * Eslesme BASLIGA gore degil isAllowance BAYRAGINA gore yapilir, boylece
@@ -44,7 +58,7 @@ export const buildAllowanceExpense = (monthStr: string, daily: number): FixedExp
   const days = daysInMonth(monthStr);
   return {
     id: `allowance-${monthStr}`,
-    title: `Nakit Harçlık (${daily.toLocaleString('tr-TR')} ₺/gün × ${days} gün)`,
+    title: `${monthNameTr(monthStr)} Ayı Harçlığım (${daily.toLocaleString('tr-TR')} ₺/gün × ${days} gün)`,
     amount: daily * days,
     isPaid: false,
     isAllowance: true,
