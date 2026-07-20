@@ -491,6 +491,9 @@ export default function FixedExpenses() {
                 odendi yuvarlagi ve kalem tusu bu kalemde gosterilmez. */}
             {expense.isAllowance ? (
               <div className="flex items-center gap-3 flex-1 min-w-0">
+                {/* Odendi yuvarlagi yok ama basligin diger kalemlerle ayni hizada
+                    baslamasi icin ikonun kapladigi 24px'lik yer bos birakilir. */}
+                <div className="w-6 flex-shrink-0" aria-hidden="true" />
                 <div className="text-left min-w-0 flex-1">
                   <span className="font-medium truncate block">{expense.title}</span>
                   <div className="text-sm text-muted-foreground whitespace-nowrap mt-0.5">
