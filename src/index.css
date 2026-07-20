@@ -129,20 +129,23 @@
     background-repeat: no-repeat;
     min-height: 100dvh;
   }
-}
 
-@layer components {
-  /* type="number" alanlarindaki artirma/azaltma oklarini gizler.
-     Deger yine sayisal kalir (mobilde sayi klavyesi acilir), sadece oklar gider. */
-  .no-spinner {
+  /* PROJE GENELI: hicbir sayi alaninda artirma/azaltma oklari gosterilmez;
+     tutarlar elle yazilir. Alanlar sayisal kalir, yani mobilde sayi klavyesi
+     acilmaya devam eder. Global kural oldugu icin sonradan eklenen
+     type="number" alanlari da kendiliginden kapsanir. */
+  input[type="number"] {
     -moz-appearance: textfield;
     appearance: textfield;
   }
-  .no-spinner::-webkit-outer-spin-button,
-  .no-spinner::-webkit-inner-spin-button {
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
     -webkit-appearance: none;
     margin: 0;
   }
+}
+
+@layer components {
 
   /* Kaydirilan yuzeyler icin cam: saydamlik + kenar isigi + yumusak golge.
      Bilerek backdrop-filter YOK. Zemin pürüzsüz bir gradyan oldugundan blur
