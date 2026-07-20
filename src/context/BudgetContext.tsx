@@ -12,6 +12,16 @@ const getCurrentMonth = () => {
   return `${y}-${m}`;
 };
 
+/** Otomatik olusturulan sabit gider basliklari. Tek dogruluk kaynagi. */
+export const RENT_AND_DUES_TITLE = 'Ev Kirası ve Aidat';
+export const CC_DEBT_TITLE = 'Kredi Kartı Borcu (Geçen Ay)';
+
+/**
+ * Odenmedigi surece uyari verilecek sabit giderler.
+ * Bunlarda tarih alani yoktur; ayin 1'inden itibaren odenmemisse uyari verilir.
+ */
+export const WARNED_FIXED_EXPENSE_TITLES = [RENT_AND_DUES_TITLE, CC_DEBT_TITLE];
+
 const initialState: BudgetState = {
   version: 6,
   currentMonth: getCurrentMonth(),
@@ -379,11 +389,11 @@ function recalculateHistoryAndCurrent(state: BudgetState): BudgetState {
 
             // Update CC Debt Fixed Expense for this month based on previous month's total debt
             // Filter out old debt
-            hist.fixedExpenses = hist.fixedExpenses.filter(e => e.title !== 'Kredi Kartı Borcu (Geçen Ay)');
+            hist.fixedExpenses = hist.fixedExpenses.filter(e => e.title !== CC_DEBT_TITLE);
             if (runningCCDebt > 0) {
                 hist.fixedExpenses.push({
                     id: generateId(),
-                    title: 'Kredi Kartı Borcu (Geçen Ay)',
+                    title: CC_DEBT_TITLE,
                     amount: runningCCDebt,
                     isPaid: true // Historical debts are assumed paid
                 });
@@ -474,14 +484,14 @@ function recalculateHistoryAndCurrent(state: BudgetState): BudgetState {
 
     if (newState.history.length > 0) {
         // Propagate CC Debt to Current Month
-        const existingCCDebtIdx = newState.fixedExpenses.findIndex(e => e.title === 'Kredi Kartı Borcu (Geçen Ay)');
+        const existingCCDebtIdx = newState.fixedExpenses.findIndex(e => e.title === CC_DEBT_TITLE);
         if (runningCCDebt > 0) {
             if (existingCCDebtIdx !== -1) {
                 newState.fixedExpenses[existingCCDebtIdx].amount = runningCCDebt;
             } else {
                 newState.fixedExpenses.push({
                     id: generateId(),
-                    title: 'Kredi Kartı Borcu (Geçen Ay)',
+                    title: CC_DEBT_TITLE,
                     amount: runningCCDebt,
                     isPaid: false // default false for current month
                 });
@@ -552,7 +562,7 @@ function migrateState(parsed: any): BudgetState {
 
     if (parsed.version === 4) {
       // Version 4 -> 5 (Cleanup duplicate CC debts from fixedExpenses)
-      const ccDebtTitle = 'Kredi Kartı Borcu (Geçen Ay)';
+      const ccDebtTitle = CC_DEBT_TITLE;
       const otherExpenses = (parsed.fixedExpenses || []).filter((e: any) => e.title !== ccDebtTitle);
       const ccDebts = (parsed.fixedExpenses || []).filter((e: any) => e.title === ccDebtTitle);
 
@@ -583,6 +593,58 @@ function migrateState(parsed: any): BudgetState {
         ...parsed,
         version: 7
       };
+    }
+
+    if (parsed.version === 7) {
+      // Version 7 -> 8: 'Ev Kirası' ve 'Aidat' tek kalemde birlestirilir.
+      // Tutarlar toplanir; ikisi de odenmisse birlesik kalem odenmis sayilir.
+      // Listedeki konum korunur (ilk eslesmenin yerine yazilir).
+      const RENT = 'Ev Kirası';
+      const DUES = 'Aidat';
+      const MERGED = RENT_AND_DUES_TITLE;
+
+      const mergeRentAndDues = (list: any): any => {
+        if (!Array.isArray(list)) return list;
+        const targets = list.filter((e: any) => e && (e.title === RENT || e.title === DUES));
+        if (targets.length === 0) return list;
+
+        const total = targets.reduce((sum: number, e: any) => sum + (Number(e.amount) || 0), 0);
+        const allPaid = targets.every((e: any) => !!e.isPaid);
+
+        let placed = false;
+        const out: any[] = [];
+        for (const e of list) {
+          if (e && (e.title === RENT || e.title === DUES)) {
+            if (!placed) {
+              out.push({ ...e, title: MERGED, amount: total, isPaid: allPaid });
+              placed = true;
+            }
+            // sonraki eslesmeler duser
+          } else {
+            out.push(e);
+          }
+        }
+        return out;
+      };
+
+      parsed.fixedExpenses = mergeRentAndDues(parsed.fixedExpenses);
+
+      if (Array.isArray(parsed.history)) {
+        parsed.history = parsed.history.map((h: any) => (
+          h ? { ...h, fixedExpenses: mergeRentAndDues(h.fixedExpenses) } : h
+        ));
+      }
+
+      if (parsed.futureData && typeof parsed.futureData === 'object') {
+        Object.keys(parsed.futureData).forEach((key) => {
+          const fd = parsed.futureData[key];
+          if (fd && Array.isArray(fd.fixedExpenses)) {
+            fd.fixedExpenses = mergeRentAndDues(fd.fixedExpenses);
+          }
+        });
+      }
+
+      parsed.version = 8;
     }
 
     // Unconditional cleanup of PLANNED_VAULT daily expenses
@@ -987,8 +1049,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         // New Fixed Expenses list
         // 1. Start with defaults (Rent, Dues) as 0, similar to projection logic
         let nextFixedExpenses: FixedExpense[] = [
-            { id: generateId(), title: 'Ev Kirası', amount: 0, isPaid: false },
-            { id: generateId(), title: 'Aidat', amount: 0, isPaid: false }
+            { id: generateId(), title: RENT_AND_DUES_TITLE, amount: 0, isPaid: false }
         ];
 
         // 2. Check for Future Plan (Overrides)
@@ -1022,12 +1083,12 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const finalCCDebt = totalCCDebt + ccDebtAdjustment;
 
         // Check if "Kredi Kartı Borcu (Geçen Ay)" is already in the list (e.g. from plan)
-        const hasCCDebt = nextFixedExpenses.some(e => e.title === 'Kredi Kartı Borcu (Geçen Ay)');
+        const hasCCDebt = nextFixedExpenses.some(e => e.title === CC_DEBT_TITLE);
 
         if (!hasCCDebt && (finalCCDebt > 0 || ccDebtAdjustment !== 0)) {
              nextFixedExpenses.push({
                 id: generateId(),
-                title: 'Kredi Kartı Borcu (Geçen Ay)',
+                title: CC_DEBT_TITLE,
                 amount: finalCCDebt > 0 ? finalCCDebt : 0,
                 isPaid: false
              });
@@ -1040,12 +1101,12 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
              // So we should re-calculate using the adjustment.
 
              // Remove the static entry from the plan and inject the dynamic one
-             nextFixedExpenses = nextFixedExpenses.filter(e => e.title !== 'Kredi Kartı Borcu (Geçen Ay)');
+             nextFixedExpenses = nextFixedExpenses.filter(e => e.title !== CC_DEBT_TITLE);
 
              if (finalCCDebt > 0 || ccDebtAdjustment !== 0) {
                  nextFixedExpenses.push({
                     id: generateId(),
-                    title: 'Kredi Kartı Borcu (Geçen Ay)',
+                    title: CC_DEBT_TITLE,
                     amount: finalCCDebt > 0 ? finalCCDebt : 0,
                     isPaid: false
                  });
@@ -1228,7 +1289,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const monthCustomIncomes = future.customIncomes || [];
 
         // Fixed Expenses
-        // Filter out any existing 'Kredi Kartı Borcu (Geçen Ay)' to avoid duplication/stale data
+        // Filter out any existing CC_DEBT_TITLE to avoid duplication/stale data
         // and inject the calculated one from previous iteration
         let monthFixedExpenses: FixedExpense[] = [];
 
@@ -1240,13 +1301,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
              monthFixedExpenses = [
                 {
                     id: `proj-rent-${iterMonth}`,
-                    title: 'Ev Kirası',
-                    amount: 0,
-                    isPaid: false
-                },
-                {
-                    id: `proj-dues-${iterMonth}`,
-                    title: 'Aidat',
+                    title: RENT_AND_DUES_TITLE,
                     amount: 0,
                     isPaid: false
                 }
@@ -1276,12 +1331,12 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const adjustedCCDebt = lastMonthCCDebt + ccDebtAdjustment;
 
         // Ensure "Kredi Kartı Borcu (Geçen Ay)" is present with adjusted value
-        monthFixedExpenses = monthFixedExpenses.filter(e => e.title !== 'Kredi Kartı Borcu (Geçen Ay)');
+        monthFixedExpenses = monthFixedExpenses.filter(e => e.title !== CC_DEBT_TITLE);
 
         if (adjustedCCDebt > 0 || ccDebtAdjustment !== 0) {
              monthFixedExpenses.push({
                 id: `proj-cc-debt-${iterMonth}`,
-                title: 'Kredi Kartı Borcu (Geçen Ay)',
+                title: CC_DEBT_TITLE,
                 amount: adjustedCCDebt > 0 ? adjustedCCDebt : 0, // Ensure non-negative display
                 isPaid: false
             });
@@ -1968,11 +2023,11 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         } else if (viewDate > prev.currentMonth) {
             const future = prev.futureData[viewDate] || {};
 
-            const isCCDebt = id.startsWith('proj-cc-debt-') || expense.title === 'Kredi Kartı Borcu (Geçen Ay)';
+            const isCCDebt = id.startsWith('proj-cc-debt-') || expense.title === CC_DEBT_TITLE;
 
             if (isCCDebt && expense.amount !== undefined) {
                 const previousAdjustment = future.ccDebtAdjustment || 0;
-                const currentItem = derivedState.fixedExpenses.find(e => e.id === id || e.title === 'Kredi Kartı Borcu (Geçen Ay)');
+                const currentItem = derivedState.fixedExpenses.find(e => e.id === id || e.title === CC_DEBT_TITLE);
                 const currentDisplayedAmount = currentItem ? currentItem.amount : 0;
 
                 const base = currentDisplayedAmount - previousAdjustment;
@@ -2165,15 +2220,15 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const nextMonthStr = toLocalMonthStr(nextDate);
 
         // New Fixed Expenses list
-        // Remove old 'Kredi Kartı Borcu (Geçen Ay)' entries to prevent accumulation
+        // Remove old CC_DEBT_TITLE entries to prevent accumulation
         const nextFixedExpenses = prev.fixedExpenses
-            .filter(ex => ex.title !== 'Kredi Kartı Borcu (Geçen Ay)')
+            .filter(ex => ex.title !== CC_DEBT_TITLE)
             .map(ex => ({ ...ex, isPaid: false }));
 
         if (totalCCDebt > 0) {
           nextFixedExpenses.push({
             id: generateId(),
-            title: 'Kredi Kartı Borcu (Geçen Ay)',
+            title: CC_DEBT_TITLE,
             amount: totalCCDebt,
             isPaid: false
           });

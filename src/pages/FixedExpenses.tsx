@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useDraftState } from '../hooks/useDraftState';
-import { useBudget } from '../context/BudgetContext';
+import { useBudget, WARNED_FIXED_EXPENSE_TITLES } from '../context/BudgetContext';
 import { useAuth } from '../context/AuthContext';
 import { Card } from '../components/ui/Card';
 import { Plus, Trash2, CheckCircle, Circle, Pencil, X, Calendar } from 'lucide-react';
@@ -146,6 +146,7 @@ export default function FixedExpenses() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   };
   const isFuture = viewDate > getLocalDateMonth();
+  const isCurrentMonth = viewDate === getLocalDateMonth();
   const formattedMonth = new Date(
       parseInt(viewDate.split('-')[0]),
       parseInt(viewDate.split('-')[1]) - 1
@@ -396,6 +397,12 @@ export default function FixedExpenses() {
             key={expense.id}
             className={cn(
               "flex items-center justify-between p-4 rounded-xl glass transition-all",
+              // Kira ve Kredi Karti icin uyari: bu ayda, odenmemisse kirmizi.
+              // Tarih alani yok; ayin 1'inden itibaren gecerli. Odenince duser.
+              isCurrentMonth
+                && !expense.isPaid
+                && WARNED_FIXED_EXPENSE_TITLES.includes(expense.title)
+                && "border-red-500/60 bg-gradient-to-br from-transparent to-red-500/15",
               expense.isPaid && "opacity-60"
             )}
           >
