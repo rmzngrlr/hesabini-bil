@@ -428,8 +428,39 @@ export default function DailyExpenses() {
   const [exchangeFromCustomCode, setExchangeFromCustomCode] = useState('');
   const [exchangeToCustomCode, setExchangeToCustomCode] = useState('');
 
+  const calculatedExchangeRate = useMemo(() => {
+    const fromAmt = parseFloat(exchangeFromAmount);
+    const toAmt = parseFloat(exchangeToAmount);
+    if (isNaN(fromAmt) || fromAmt <= 0 || isNaN(toAmt) || toAmt <= 0) return null;
 
+    let fromType = exchangeFromType;
+    if (fromType === 'NEW_CURRENCY' && exchangeFromCustomCode) {
+      fromType = detectCurrencyCode(exchangeFromCustomCode);
+    }
+    let toType = exchangeToType;
+    if (toType === 'NEW_CURRENCY' && exchangeToCustomCode) {
+      toType = detectCurrencyCode(exchangeToCustomCode);
+    }
 
+    if (fromType === 'NAKIT' && toType !== 'NAKIT') {
+      const rate = fromAmt / toAmt;
+      return `Birim Fiyat: 1 ${toType} = ${rate.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} TL`;
+    } else if (fromType !== 'NAKIT' && toType === 'NAKIT') {
+      const rate = toAmt / fromAmt;
+      return `Birim Fiyat: 1 ${fromType} = ${rate.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} TL`;
+    } else {
+      const rate1 = toAmt / fromAmt;
+      const rate2 = fromAmt / toAmt;
+      return `Birim Fiyat: 1 ${fromType} = ${rate1.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} ${toType} | 1 ${toType} = ${rate2.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} ${fromType}`;
+    }
+  }, [exchangeFromAmount, exchangeToAmount, exchangeFromType, exchangeToType, exchangeFromCustomCode, exchangeToCustomCode]);
+
+  const calculatedGoldUnitPrice = useMemo(() => {
+    const total = parseFloat(goldPriceTL);
+    const qty = parseFloat(amount);
+    if (isNaN(total) || total <= 0 || isNaN(qty) || qty <= 0) return '-';
+    return (total / qty).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TL';
+  }, [goldPriceTL, amount]);
 
   const uniqueDescriptions = useMemo(() => {
     const descriptions = new Set<string>();
@@ -680,7 +711,13 @@ export default function DailyExpenses() {
         // Add flow
         // The user wants the TL equivalent to be added to the vault note to help with matching
         // "Altın alış satış da TL karşılığını yazıyorum ya bunu kasa kısmında nota eklersen..."
-        const finalVaultNote = goldPriceTL ? `${goldNote ? goldNote + ' | ' : ''}${goldTransactionType === 'Bozdurma' ? 'Satış' : 'Alış'} Fiyatı: ${goldPriceTL} TL` : goldNote;
+        const total = parseFloat(goldPriceTL);
+        const qty = numAmount;
+        let rateStr = '';
+        if (!isNaN(total) && total > 0 && !isNaN(qty) && qty > 0) {
+          rateStr = ` (Birim Fiyat: ${(total / qty).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL)`;
+        }
+        const finalVaultNote = goldPriceTL ? `${goldNote ? goldNote + ' | ' : ''}${goldTransactionType === 'Bozdurma' ? 'Satış' : 'Alış'} Tutarı: ${goldPriceTL} TL${rateStr}` : goldNote;
 
         if (isFuture) {
           const actionStr = goldTransactionType === 'Bozdurma' ? 'Satışı' : 'Alımı';
@@ -882,7 +919,17 @@ export default function DailyExpenses() {
 
     if (finalFromType === finalToType) return; // Same type, ignore
 
-    const note = exchangeNote.trim() ? ` - ${exchangeNote}` : '';
+    let rateStr = '';
+    if (finalFromType === 'NAKIT' && finalToType !== 'NAKIT') {
+      rateStr = ` (Kur: ${(fAmount / tAmount).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} TL)`;
+    } else if (finalFromType !== 'NAKIT' && finalToType === 'NAKIT') {
+      rateStr = ` (Kur: ${(tAmount / fAmount).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} TL)`;
+    } else {
+      rateStr = ` (Kur: ${(tAmount / fAmount).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} ${finalToType}/${finalFromType})`;
+    }
+
+    const finalExchangeNote = exchangeNote.trim() ? `${exchangeNote.trim()}${rateStr}` : rateStr.trim();
+    const note = finalExchangeNote ? ` - ${finalExchangeNote}` : '';
 
     // NAKIT -> Dolar = Dolar Alımı (Nakit çıkışı, Dolar girişi)
     // Dolar -> NAKIT = Dolar Satışı (Dolar çıkışı, Nakit girişi)
@@ -917,7 +964,7 @@ export default function DailyExpenses() {
         vault_gold_type: plannedAsset,
         vault_amount: plannedAssetAmount,
         vault_owner: 'Ortak',
-        vault_note: exchangeNote.trim()
+        vault_note: finalExchangeNote
       });
     } else {
       addDailyExpense({
@@ -1272,6 +1319,12 @@ export default function DailyExpenses() {
                </div>
             )}
 
+            {calculatedExchangeRate && (
+               <div className="p-3 bg-primary/10 text-primary rounded-lg text-sm font-semibold text-center border border-primary/20">
+                 {calculatedExchangeRate}
+               </div>
+            )}
+
             <div className="space-y-1">
                <label className="text-xs text-muted-foreground">Not</label>
                <input type="text" placeholder="Özel not veya kur bilgisi (İsteğe bağlı)" value={exchangeNote} onChange={e => setExchangeNote(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary font-medium" />
@@ -1285,16 +1338,20 @@ export default function DailyExpenses() {
           </form>
           ) : (
           <form onSubmit={handleSubmit} className="space-y-3 mt-2">
-            <div className="flex gap-2 items-center">
-              <div className="flex-[2] space-y-1">
-                 <label className="text-xs text-muted-foreground">Birim Fiyat (TL)</label>
-                 <input type="number" step="0.01" required placeholder="Örn: 2450.50" value={goldPriceTL} onChange={e => setGoldPriceTL(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary font-medium" />
-              </div>
-              <div className="flex-1 space-y-1">
-                 <label className="text-xs text-muted-foreground">Miktar (Adet/Gram)</label>
-                 <input type="number" step="0.001" required placeholder="Örn: 1 veya 0.75" value={amount} onChange={e => setAmount(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary" />
-              </div>
-            </div>
+             <div className="grid grid-cols-3 gap-2 items-center">
+               <div className="space-y-1 col-span-1">
+                  <label className="text-xs text-muted-foreground">Miktar (Adet/Gram)</label>
+                  <input type="number" step="0.001" required placeholder="Örn: 5" value={amount} onChange={e => setAmount(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary font-medium" />
+               </div>
+               <div className="space-y-1 col-span-1">
+                  <label className="text-xs text-muted-foreground">Toplam Tutar (TL)</label>
+                  <input type="number" step="0.01" required placeholder="Örn: 15000" value={goldPriceTL} onChange={e => setGoldPriceTL(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary font-medium" />
+               </div>
+               <div className="space-y-1 col-span-1">
+                  <label className="text-xs text-muted-foreground">Birim Fiyat (TL)</label>
+                  <input type="text" readOnly value={calculatedGoldUnitPrice} className="w-full px-3 py-2 rounded-lg bg-secondary/50 text-muted-foreground border border-dashed border-border focus:outline-none font-mono font-bold cursor-not-allowed text-center text-sm" />
+               </div>
+             </div>
 
             <div className="space-y-1">
                <label className="text-xs text-muted-foreground">Kime Ait (Kasa Sahibi)</label>

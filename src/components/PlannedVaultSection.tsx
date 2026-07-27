@@ -51,6 +51,15 @@ export function PlannedVaultSection() {
         return c;
     };
 
+    const calculatedUnitPriceText = React.useMemo(() => {
+        const total = parseFloat(amountTL);
+        const qty = parseFloat(goldAmount);
+        if (isNaN(total) || total <= 0 || isNaN(qty) || qty <= 0) return null;
+        const rate = total / qty;
+        const unitName = goldType === 'NEW_CURRENCY' ? detectCurrencyCode(customCurrencyCode) : goldType;
+        return `Hesaplanan Birim Fiyat: 1 ${unitName} = ${rate.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} TL`;
+    }, [amountTL, goldAmount, goldType, customCurrencyCode]);
+
     const allFormTypes = {
         golds: ['Gram', 'Çeyrek', 'Yarım', 'Tam', 'Ata', 'Reşat', 'Bilezik', 'Külçe', 'Has'],
         currencies: (activeCurrencies && activeCurrencies.length > 0) ? activeCurrencies : ['Dolar', 'Euro']
@@ -208,6 +217,12 @@ export function PlannedVaultSection() {
                                     className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                                 />
                             </div>
+
+                            {calculatedUnitPriceText && (
+                                <div className="md:col-span-2 p-3 bg-primary/10 text-primary rounded-lg text-sm font-semibold text-center border border-primary/20">
+                                    {calculatedUnitPriceText}
+                                </div>
+                            )}
 
                             <div className="space-y-1">
                                 <label className="text-xs text-muted-foreground">Başlık (Opsiyonel)</label>
