@@ -423,6 +423,7 @@ export default function DailyExpenses() {
   const [exchangeToType, setExchangeToType] = useState('NAKIT');
   const [exchangeFromAmount, setExchangeFromAmount] = useState('');
   const [exchangeToAmount, setExchangeToAmount] = useState('');
+  const [exchangeRate, setExchangeRate] = useState('');
   const exchangeDate = getTodayStr();
   const [exchangeNote, setExchangeNote] = useState('');
   const [exchangeFromCustomCode, setExchangeFromCustomCode] = useState('');
@@ -461,6 +462,81 @@ export default function DailyExpenses() {
     if (isNaN(total) || total <= 0 || isNaN(qty) || qty <= 0) return '-';
     return (total / qty).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TL';
   }, [goldPriceTL, amount]);
+
+  useEffect(() => {
+    const fAmt = parseFloat(exchangeFromAmount);
+    const tAmt = parseFloat(exchangeToAmount);
+    if (!isNaN(fAmt) && fAmt > 0 && !isNaN(tAmt) && tAmt > 0) {
+      if (exchangeFromType === 'NAKIT') {
+        setExchangeRate((fAmt / tAmt).toFixed(4));
+      } else if (exchangeToType === 'NAKIT') {
+        setExchangeRate((tAmt / fAmt).toFixed(4));
+      } else {
+        setExchangeRate((tAmt / fAmt).toFixed(4));
+      }
+    } else {
+      setExchangeRate('');
+    }
+  }, [exchangeFromType, exchangeToType]);
+
+  const handleFromAmountChange = (val: string) => {
+    setExchangeFromAmount(val);
+    const fAmt = parseFloat(val);
+    const tAmt = parseFloat(exchangeToAmount);
+    if (!isNaN(fAmt) && fAmt > 0 && !isNaN(tAmt) && tAmt > 0) {
+      if (exchangeFromType === 'NAKIT') {
+        setExchangeRate((fAmt / tAmt).toFixed(4));
+      } else if (exchangeToType === 'NAKIT') {
+        setExchangeRate((tAmt / fAmt).toFixed(4));
+      } else {
+        setExchangeRate((tAmt / fAmt).toFixed(4));
+      }
+    }
+  };
+
+  const handleToAmountChange = (val: string) => {
+    setExchangeToAmount(val);
+    const fAmt = parseFloat(exchangeFromAmount);
+    const tAmt = parseFloat(val);
+    if (!isNaN(fAmt) && fAmt > 0 && !isNaN(tAmt) && tAmt > 0) {
+      if (exchangeFromType === 'NAKIT') {
+        setExchangeRate((fAmt / tAmt).toFixed(4));
+      } else if (exchangeToType === 'NAKIT') {
+        setExchangeRate((tAmt / fAmt).toFixed(4));
+      } else {
+        setExchangeRate((tAmt / fAmt).toFixed(4));
+      }
+    }
+  };
+
+  const handleExchangeRateChange = (val: string) => {
+    setExchangeRate(val);
+    const rate = parseFloat(val);
+    if (isNaN(rate) || rate <= 0) return;
+
+    const fAmt = parseFloat(exchangeFromAmount);
+    const tAmt = parseFloat(exchangeToAmount);
+
+    if (exchangeFromType === 'NAKIT') {
+      if (!isNaN(tAmt) && tAmt > 0) {
+        setExchangeFromAmount((tAmt * rate).toFixed(2));
+      } else if (!isNaN(fAmt) && fAmt > 0) {
+        setExchangeToAmount((fAmt / rate).toFixed(4));
+      }
+    } else if (exchangeToType === 'NAKIT') {
+      if (!isNaN(fAmt) && fAmt > 0) {
+        setExchangeToAmount((fAmt * rate).toFixed(2));
+      } else if (!isNaN(tAmt) && tAmt > 0) {
+        setExchangeFromAmount((tAmt / rate).toFixed(4));
+      }
+    } else {
+      if (!isNaN(fAmt) && fAmt > 0) {
+        setExchangeToAmount((fAmt * rate).toFixed(4));
+      } else if (!isNaN(tAmt) && tAmt > 0) {
+        setExchangeFromAmount((tAmt / rate).toFixed(4));
+      }
+    }
+  };
 
   const uniqueDescriptions = useMemo(() => {
     const descriptions = new Set<string>();
@@ -1284,7 +1360,7 @@ export default function DailyExpenses() {
               </div>
               <div className="flex-1 space-y-1">
                  <label className="text-xs text-muted-foreground">Tutar</label>
-                 <input type="number" step="0.001" required placeholder="0.00" value={exchangeFromAmount} onChange={e => setExchangeFromAmount(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary" />
+                 <input type="number" step="0.001" required placeholder="0.00" value={exchangeFromAmount} onChange={e => handleFromAmountChange(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary" />
               </div>
             </div>
 
@@ -1308,7 +1384,7 @@ export default function DailyExpenses() {
               </div>
               <div className="flex-1 space-y-1">
                  <label className="text-xs text-muted-foreground">Tutar</label>
-                 <input type="number" step="0.001" required placeholder="0.00" value={exchangeToAmount} onChange={e => setExchangeToAmount(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary" />
+                 <input type="number" step="0.001" required placeholder="0.00" value={exchangeToAmount} onChange={e => handleToAmountChange(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary" />
               </div>
             </div>
 
@@ -1318,6 +1394,18 @@ export default function DailyExpenses() {
                  <input type="text" required placeholder="Para Birimi Girin" value={exchangeToCustomCode} onChange={e => setExchangeToCustomCode(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary font-medium" />
                </div>
             )}
+
+            <div className="space-y-1">
+               <label className="text-xs text-muted-foreground">Birim Fiyat / Kur</label>
+               <input
+                 type="number"
+                 step="0.0001"
+                 placeholder="Birim Fiyat (Otomatik hesaplanır veya girin)"
+                 value={exchangeRate}
+                 onChange={e => handleExchangeRateChange(e.target.value)}
+                 className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary font-medium"
+               />
+            </div>
 
             {calculatedExchangeRate && (
                <div className="p-3 bg-primary/10 text-primary rounded-lg text-sm font-semibold text-center border border-primary/20">

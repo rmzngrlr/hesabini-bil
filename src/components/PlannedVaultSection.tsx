@@ -40,6 +40,7 @@ export function PlannedVaultSection() {
     const [editingId, setEditingId] = useState<string | null>(null);
 
     const [customCurrencyCode, setCustomCurrencyCode] = useState('');
+    const [plannedUnitPrice, setPlannedUnitPrice] = useState('');
 
     const plannedRecords = state.fixedExpenses.filter(e => e.type === 'PLANNED_VAULT');
 
@@ -70,9 +71,16 @@ export function PlannedVaultSection() {
         setTitle(record.title);
         setAmountTL(record.amount.toString());
         setGoldType(record.vault_gold_type || 'Gram');
-        setGoldAmount(record.vault_amount?.toString() || '');
+        const qty = record.vault_amount || 0;
+        setGoldAmount(qty ? qty.toString() : '');
         setGoldOwner(record.vault_owner || '');
         setGoldNote(record.vault_note || '');
+        const total = record.amount;
+        if (total > 0 && qty > 0) {
+            setPlannedUnitPrice((total / qty).toFixed(4));
+        } else {
+            setPlannedUnitPrice('');
+        }
         window.scrollTo({ top: document.getElementById('planned-vault-form')?.offsetTop || 0, behavior: 'smooth' });
     };
 
@@ -85,6 +93,49 @@ export function PlannedVaultSection() {
         setGoldOwner('');
         setGoldNote('');
         setCustomCurrencyCode('');
+        setPlannedUnitPrice('');
+    };
+
+    const handleGoldAmountChange = (val: string) => {
+        setGoldAmount(val);
+        const qty = parseFloat(val);
+        const total = parseFloat(amountTL);
+        const rate = parseFloat(plannedUnitPrice);
+        if (!isNaN(qty) && qty > 0) {
+            if (!isNaN(total) && total > 0) {
+                setPlannedUnitPrice((total / qty).toFixed(4));
+            } else if (!isNaN(rate) && rate > 0) {
+                setAmountTL((qty * rate).toFixed(2));
+            }
+        }
+    };
+
+    const handleAmountTLChange = (val: string) => {
+        setAmountTL(val);
+        const total = parseFloat(val);
+        const qty = parseFloat(goldAmount);
+        const rate = parseFloat(plannedUnitPrice);
+        if (!isNaN(total) && total > 0) {
+            if (!isNaN(qty) && qty > 0) {
+                setPlannedUnitPrice((total / qty).toFixed(4));
+            } else if (!isNaN(rate) && rate > 0) {
+                setGoldAmount((total / rate).toFixed(4));
+            }
+        }
+    };
+
+    const handlePlannedUnitPriceChange = (val: string) => {
+        setPlannedUnitPrice(val);
+        const rate = parseFloat(val);
+        const qty = parseFloat(goldAmount);
+        const total = parseFloat(amountTL);
+        if (!isNaN(rate) && rate > 0) {
+            if (!isNaN(qty) && qty > 0) {
+                setAmountTL((qty * rate).toFixed(2));
+            } else if (!isNaN(total) && total > 0) {
+                setGoldAmount((total / rate).toFixed(4));
+            }
+        }
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -200,7 +251,7 @@ export function PlannedVaultSection() {
                                     required
                                     placeholder="Örn: 100"
                                     value={goldAmount}
-                                    onChange={(e) => setGoldAmount(e.target.value)}
+                                    onChange={(e) => handleGoldAmountChange(e.target.value)}
                                     className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                                 />
                             </div>
@@ -213,8 +264,20 @@ export function PlannedVaultSection() {
                                     required
                                     placeholder="Örn: 3300"
                                     value={amountTL}
-                                    onChange={(e) => setAmountTL(e.target.value)}
+                                    onChange={(e) => handleAmountTLChange(e.target.value)}
                                     className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                />
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="text-xs text-muted-foreground">Birim Fiyat (TL)</label>
+                                <input
+                                    type="number"
+                                    step="0.0001"
+                                    placeholder="Birim Fiyat (Miktar veya Tutar girildiğinde hesaplanır)"
+                                    value={plannedUnitPrice}
+                                    onChange={(e) => handlePlannedUnitPriceChange(e.target.value)}
+                                    className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
                                 />
                             </div>
 
