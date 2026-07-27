@@ -463,16 +463,21 @@ export default function DailyExpenses() {
     return (total / qty).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TL';
   }, [goldPriceTL, amount]);
 
+  const formatRateValue = (val: number): string => {
+    if (isNaN(val) || val <= 0) return '';
+    return val % 1 === 0 ? val.toFixed(0) : parseFloat(val.toFixed(2)).toString();
+  };
+
   useEffect(() => {
     const fAmt = parseFloat(exchangeFromAmount);
     const tAmt = parseFloat(exchangeToAmount);
     if (!isNaN(fAmt) && fAmt > 0 && !isNaN(tAmt) && tAmt > 0) {
       if (exchangeFromType === 'NAKIT') {
-        setExchangeRate((fAmt / tAmt).toFixed(4));
+        setExchangeRate(formatRateValue(fAmt / tAmt));
       } else if (exchangeToType === 'NAKIT') {
-        setExchangeRate((tAmt / fAmt).toFixed(4));
+        setExchangeRate(formatRateValue(tAmt / fAmt));
       } else {
-        setExchangeRate((tAmt / fAmt).toFixed(4));
+        setExchangeRate(formatRateValue(tAmt / fAmt));
       }
     } else {
       setExchangeRate('');
@@ -485,11 +490,11 @@ export default function DailyExpenses() {
     const tAmt = parseFloat(exchangeToAmount);
     if (!isNaN(fAmt) && fAmt > 0 && !isNaN(tAmt) && tAmt > 0) {
       if (exchangeFromType === 'NAKIT') {
-        setExchangeRate((fAmt / tAmt).toFixed(4));
+        setExchangeRate(formatRateValue(fAmt / tAmt));
       } else if (exchangeToType === 'NAKIT') {
-        setExchangeRate((tAmt / fAmt).toFixed(4));
+        setExchangeRate(formatRateValue(tAmt / fAmt));
       } else {
-        setExchangeRate((tAmt / fAmt).toFixed(4));
+        setExchangeRate(formatRateValue(tAmt / fAmt));
       }
     }
   };
@@ -500,11 +505,11 @@ export default function DailyExpenses() {
     const tAmt = parseFloat(val);
     if (!isNaN(fAmt) && fAmt > 0 && !isNaN(tAmt) && tAmt > 0) {
       if (exchangeFromType === 'NAKIT') {
-        setExchangeRate((fAmt / tAmt).toFixed(4));
+        setExchangeRate(formatRateValue(fAmt / tAmt));
       } else if (exchangeToType === 'NAKIT') {
-        setExchangeRate((tAmt / fAmt).toFixed(4));
+        setExchangeRate(formatRateValue(tAmt / fAmt));
       } else {
-        setExchangeRate((tAmt / fAmt).toFixed(4));
+        setExchangeRate(formatRateValue(tAmt / fAmt));
       }
     }
   };
@@ -521,19 +526,19 @@ export default function DailyExpenses() {
       if (!isNaN(tAmt) && tAmt > 0) {
         setExchangeFromAmount((tAmt * rate).toFixed(2));
       } else if (!isNaN(fAmt) && fAmt > 0) {
-        setExchangeToAmount((fAmt / rate).toFixed(4));
+        setExchangeToAmount((fAmt / rate).toFixed(2));
       }
     } else if (exchangeToType === 'NAKIT') {
       if (!isNaN(fAmt) && fAmt > 0) {
         setExchangeToAmount((fAmt * rate).toFixed(2));
       } else if (!isNaN(tAmt) && tAmt > 0) {
-        setExchangeFromAmount((tAmt / rate).toFixed(4));
+        setExchangeFromAmount((tAmt / rate).toFixed(2));
       }
     } else {
       if (!isNaN(fAmt) && fAmt > 0) {
-        setExchangeToAmount((fAmt * rate).toFixed(4));
+        setExchangeToAmount((fAmt * rate).toFixed(2));
       } else if (!isNaN(tAmt) && tAmt > 0) {
-        setExchangeFromAmount((tAmt / rate).toFixed(4));
+        setExchangeFromAmount((tAmt / rate).toFixed(2));
       }
     }
   };
@@ -1352,7 +1357,7 @@ export default function DailyExpenses() {
           {exchangeTabMode === 'CURRENCY' ? (
           <form onSubmit={handleExchangeSubmit} className="space-y-3 mt-2">
             <div className="flex gap-2 items-center">
-              <div className="flex-[2] space-y-1">
+              <div className="flex-1 space-y-1">
                  <label className="text-xs text-muted-foreground">Verilen Birim</label>
                  <select value={exchangeFromType} onChange={e => setExchangeFromType(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary">
                    <optgroup label="Para Birimleri">{assetOptions}</optgroup>
@@ -1376,7 +1381,7 @@ export default function DailyExpenses() {
             </div>
 
             <div className="flex gap-2 items-center">
-              <div className="flex-[2] space-y-1">
+              <div className="flex-1 space-y-1">
                  <label className="text-xs text-muted-foreground">Alınan Birim</label>
                  <select value={exchangeToType} onChange={e => setExchangeToType(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary">
                    <optgroup label="Para Birimleri">{assetOptions}</optgroup>

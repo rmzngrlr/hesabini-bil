@@ -44,6 +44,11 @@ export function PlannedVaultSection() {
 
     const plannedRecords = state.fixedExpenses.filter(e => e.type === 'PLANNED_VAULT');
 
+    const formatRateValue = (val: number): string => {
+        if (isNaN(val) || val <= 0) return '';
+        return val % 1 === 0 ? val.toFixed(0) : parseFloat(val.toFixed(2)).toString();
+    };
+
     const detectCurrencyCode = (code: string) => {
         const c = code.toUpperCase().trim();
         if (c.includes('USD') || c.includes('$') || c.includes('DOLAR')) return 'Dolar';
@@ -58,7 +63,7 @@ export function PlannedVaultSection() {
         if (isNaN(total) || total <= 0 || isNaN(qty) || qty <= 0) return null;
         const rate = total / qty;
         const unitName = goldType === 'NEW_CURRENCY' ? detectCurrencyCode(customCurrencyCode) : goldType;
-        return `Hesaplanan Birim Fiyat: 1 ${unitName} = ${rate.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} TL`;
+        return `Hesaplanan Birim Fiyat: 1 ${unitName} = ${formatRateValue(rate)} TL`;
     }, [amountTL, goldAmount, goldType, customCurrencyCode]);
 
     const allFormTypes = {
@@ -77,7 +82,7 @@ export function PlannedVaultSection() {
         setGoldNote(record.vault_note || '');
         const total = record.amount;
         if (total > 0 && qty > 0) {
-            setPlannedUnitPrice((total / qty).toFixed(4));
+            setPlannedUnitPrice(formatRateValue(total / qty));
         } else {
             setPlannedUnitPrice('');
         }
@@ -103,7 +108,7 @@ export function PlannedVaultSection() {
         const rate = parseFloat(plannedUnitPrice);
         if (!isNaN(qty) && qty > 0) {
             if (!isNaN(total) && total > 0) {
-                setPlannedUnitPrice((total / qty).toFixed(4));
+                setPlannedUnitPrice(formatRateValue(total / qty));
             } else if (!isNaN(rate) && rate > 0) {
                 setAmountTL((qty * rate).toFixed(2));
             }
@@ -117,9 +122,9 @@ export function PlannedVaultSection() {
         const rate = parseFloat(plannedUnitPrice);
         if (!isNaN(total) && total > 0) {
             if (!isNaN(qty) && qty > 0) {
-                setPlannedUnitPrice((total / qty).toFixed(4));
+                setPlannedUnitPrice(formatRateValue(total / qty));
             } else if (!isNaN(rate) && rate > 0) {
-                setGoldAmount((total / rate).toFixed(4));
+                setGoldAmount((total / rate).toFixed(2));
             }
         }
     };
@@ -133,7 +138,7 @@ export function PlannedVaultSection() {
             if (!isNaN(qty) && qty > 0) {
                 setAmountTL((qty * rate).toFixed(2));
             } else if (!isNaN(total) && total > 0) {
-                setGoldAmount((total / rate).toFixed(4));
+                setGoldAmount((total / rate).toFixed(2));
             }
         }
     };
