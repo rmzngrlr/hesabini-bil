@@ -142,9 +142,12 @@ export default function Debt() {
     state.ccDebts.forEach(debt => {
       if (debt.date) {
         if (!groups[debt.date]) groups[debt.date] = [];
-        groups[debt.date].push(debt);
+        // Son eklenen borc/odeme gun icinde en ustte gorunsun diye basa ekle
+        // (yeni kayitlar diziye sona eklendiginden unshift ile ters siralanir).
+        // Islemler sayfasindaki gunluk liste ile ayni davranis.
+        groups[debt.date].unshift(debt);
       } else {
-        noDateGroup.push(debt);
+        noDateGroup.unshift(debt);
       }
     });
 
