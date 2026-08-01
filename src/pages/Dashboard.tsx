@@ -488,34 +488,10 @@ export default function Dashboard() {
           {isVaultExpanded && (
             <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
             {(() => {
-              const addMonths = (dateStr: string, months: number): string => {
-                let [y, m] = dateStr.split('-').map(Number);
-                m += months;
-                while (m > 12) {
-                  m -= 12;
-                  y++;
-                }
-                while (m < 1) {
-                  m += 12;
-                  y--;
-                }
-                return `${y}-${String(m).padStart(2, '0')}`;
-              };
-
-              const getKasaSum = (records: any[], type: string, filterFn: (date: string) => boolean) => {
-                return records
-                  .filter(r => r.gold_type === type && filterFn(r.record_date))
-                  .reduce((sum, r) => {
-                    const amt = Number(r.amount);
-                    const tType = r.transaction_type || 'Birikim';
-                    if (tType === 'Borç Verdim') return sum;
-                    if (tType === 'Birikim' || tType === 'Giriş' || tType === 'Bütçe Geliri') {
-                      return sum + amt;
-                    } else {
-                      return sum - amt;
-                    }
-                  }, 0);
-              };
+              // NOT: addMonths ve getKasaSum yardimcilari kaldirildi. Doviz kasa
+              // hareketleri motor tarafindan zaten dailyExpenses'e enjekte edildigi
+              // icin (recalculate:396) burada ayrica kasa toplami hesaplanmiyordu;
+              // ekleyince cift sayim oluyordu.
 
               // Merge vault asset types (gold + foreign currency) with daily-only currencies
               const vaultAssetTypes = vaultRecords.map(r => r.gold_type);
@@ -578,10 +554,13 @@ export default function Dashboard() {
                     totalSpent = paidFixed + dailySpent;
                   }
 
-                  const kasaChanges = getKasaSum(vaultRecords, asset, d => d >= `${state.currentMonth}-01` && d < `${addMonths(state.currentMonth, 1)}-01`);
-                  const finalResources = totalResources + (kasaChanges > 0 ? kasaChanges : 0);
-                  const finalSpent = totalSpent + (kasaChanges < 0 ? Math.abs(kasaChanges) : 0);
-                  const remaining = finalResources - finalSpent;
+                  // Döviz kasa hareketleri MOTOR TARAFINDAN zaten dailyExpenses'e
+                  // 'vault-curr-' kayitlari olarak enjekte ediliyor (recalculate:396) ve
+                  // yukarida dailyIncomeTotal/dailySpent icinde sayiliyor. Burada ayrica
+                  // getKasaSum ile eklemek ayni tutari IKI KEZ sayiyordu (50+75+75=200).
+                  // Ay devri motoru da geçmis aylar icin kasaChanges=0 kullaniyor (:502);
+                  // burada da ayni davraniyoruz.
+                  const remaining = totalResources - totalSpent;
 
                   if (remaining === 0) return null;
 
