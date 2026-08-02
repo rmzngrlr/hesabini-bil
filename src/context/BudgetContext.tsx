@@ -86,6 +86,26 @@ const initialState: BudgetState = {
   futureData: {},
 };
 
+/**
+ * Bir taksitin k. ayinin odeme tarihini hesaplar.
+ * startDate'in GUNU odeme gunu olarak kabul edilir (taksit 1'in ayindan
+ * baslar, her taksit +1 ay). Ornek: startDate 2026-02-01, k=7 -> 2026-08-01.
+ * startDate ISO ('...T...Z') veya 'YYYY-MM-DD' olabilir; sadece tarih kismi alinir.
+ * startDate yoksa undefined doner (borc tarihsiz kalir, mevcut davranis korunur).
+ */
+export const installmentDate = (startDate: string | undefined, k: number): string | undefined => {
+  if (!startDate) return undefined;
+  const ymd = String(startDate).substring(0, 10);
+  const [y, mo, d] = ymd.split('-').map(Number);
+  if (!y || !mo) return undefined;
+  const idx = (mo - 1) + (k - 1);
+  const ny = y + Math.floor(idx / 12);
+  const nm = ((idx % 12) + 12) % 12 + 1;
+  const lastDay = new Date(ny, nm, 0).getDate();
+  const nd = Math.min(d || 1, lastDay);
+  return `${ny}-${String(nm).padStart(2, '0')}-${String(nd).padStart(2, '0')}`;
+};
+
 interface BudgetContextType {
   state: BudgetState;
   viewDate: string;
@@ -1087,6 +1107,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                id: generateId(),
                description: `${inst.description} (${nextInstallmentNumber}/${inst.installmentCount})`,
                amount: inst.monthlyAmount,
+               date: installmentDate(inst.startDate, nextInstallmentNumber),
                installmentId: inst.id,
                currentInstallment: nextInstallmentNumber,
                totalInstallments: inst.installmentCount
@@ -1441,6 +1462,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                     id: `proj-${inst.id}-${iterMonth}`, // Unique ID for projection
                     description: `${inst.description} (${currentInstNum}/${inst.installmentCount})`,
                     amount: amount,
+                    date: installmentDate(inst.startDate, currentInstNum),
                     installmentId: inst.id, // Keep link to original
                     currentInstallment: currentInstNum,
                     totalInstallments: inst.installmentCount
@@ -2056,6 +2078,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       id: generateId(),
       description: `${newInstallment.description} (1/${newInstallment.installmentCount})`,
       amount: newInstallment.monthlyAmount,
+      date: installmentDate(newInstallment.startDate, 1),
       installmentId: newInstallment.id,
       currentInstallment: 1,
       totalInstallments: newInstallment.installmentCount
@@ -2291,6 +2314,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                id: generateId(),
                description: `${inst.description} (${nextInstallmentNumber}/${inst.installmentCount})`,
                amount: inst.monthlyAmount,
+               date: installmentDate(inst.startDate, nextInstallmentNumber),
                installmentId: inst.id,
                currentInstallment: nextInstallmentNumber,
                totalInstallments: inst.installmentCount
