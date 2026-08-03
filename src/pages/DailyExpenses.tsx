@@ -31,6 +31,9 @@ export default function DailyExpenses() {
     deleteFixedExpense,
     deleteCustomIncome,
     dueBillsCount,
+    autoPaidBills,
+    autoPaidBillsCount,
+    dismissAutoPaidBill,
     todayStr
   } = useBudget();
 
@@ -1326,6 +1329,11 @@ export default function DailyExpenses() {
                   </span>
                 </span>
               )}
+              {autoPaidBillsCount > 0 && (
+                <span className="flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-sky-500 text-white text-[10px] font-bold leading-none">
+                  {autoPaidBillsCount}
+                </span>
+              )}
            </button>
         </div>
 
@@ -1723,6 +1731,39 @@ export default function DailyExpenses() {
       {/* Faturalar Sekmesi İçeriği */}
       {activeSubTab === 'BILLS' && (
         <div className="space-y-6">
+          {/* Otomatik ödeme bildirimleri: KK faturası günü gelince otomatik ödendi.
+              X ile kapatılınca (dismissAutoPaidBill) rozet düşer. */}
+          {autoPaidBills.length > 0 && (
+            <div className="space-y-2">
+              {autoPaidBills.map((bill) => (
+                <div key={bill.id} className="flex items-start justify-between gap-3 p-4 rounded-xl border border-sky-500/40 bg-sky-500/10">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className="p-2 rounded-full bg-sky-500/15 text-sky-600 dark:text-sky-400 shrink-0">
+                      <CreditCard size={18} />
+                    </div>
+                    <div className="text-sm min-w-0">
+                      <div className="font-semibold text-sky-700 dark:text-sky-300">Kredi kartı ile otomatik ödendi</div>
+                      <div className="text-muted-foreground mt-0.5">
+                        {bill.date ? format(new Date(bill.date), 'd MMMM yyyy', { locale: tr }) : ''}
+                        {' · '}
+                        <span className="font-medium text-foreground">{bill.amount.toLocaleString('tr-TR')} ₺</span>
+                        {' · '}
+                        {bill.title}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => dismissAutoPaidBill(bill.id)}
+                    title="Bildirimi kapat"
+                    className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary shrink-0"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Fatura Özet Kartları */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="bg-secondary/40 border border-border/60 p-4 rounded-xl shadow-sm">

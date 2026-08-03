@@ -33,6 +33,11 @@ export interface FixedExpense {
   isAllowance?: boolean;
   paymentMethod?: 'NAKIT' | 'KK';
   date?: string;
+  /**
+   * KK ödeme yöntemli fatura günü gelince otomatik ödendiğinde true olur.
+   * Faturalar sekmesindeki bildirim kartı X ile kapatılınca false'a döner.
+   */
+  autoPaidPending?: boolean;
 }
 
 export interface CustomIncome {

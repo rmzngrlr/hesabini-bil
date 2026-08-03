@@ -150,6 +150,12 @@ interface BudgetContextType {
   dueBillsCount: number;
   /** Ödenmemiş Kira / Kredi Kartı sayısı (Varlıklarım rozeti). */
   dueFixedExpensesCount: number;
+  /** Otomatik ödenmiş, bildirimi kapatılmamış KK faturaları (bildirim kartı için). */
+  autoPaidBills: FixedExpense[];
+  /** Aynı faturaların sayısı (mavi bilgi rozeti için). */
+  autoPaidBillsCount: number;
+  /** Bir otomatik ödeme bildirimini kapatır (X). */
+  dismissAutoPaidBill: (id: string) => void;
   /** Goruntulenen ay icin belirlenmis gunluk nakit harclik (yoksa 0). */
   dailyAllowance: number;
   updateDailyAllowance: (daily: number) => void;
@@ -2407,6 +2413,46 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     return (realState.fixedExpenses || []).filter(isFixedExpenseOverdue).length;
   }, [realState.fixedExpenses]);
 
+  // KK ödeme yöntemli faturalar: günü gelince (bugün >= tarih) OTOMATIK "ödendi"
+  // işaretlenir; syncCCDebtsForList sayesinde Kredi Kartı sayfasında faturanın
+  // tarihiyle borç olarak belirir. autoPaidPending, Faturalar sekmesindeki bildirim
+  // kartı X ile kapatılana kadar sürer. Sadece içinde bulunulan ay (realState).
+  useEffect(() => {
+    if (isLoading || !isAuthenticated) return;
+    const hasDue = (realState.fixedExpenses || []).some(
+      e => e.isBill && e.paymentMethod === 'KK' && !e.isPaid && !!e.date && e.date <= todayStr
+    );
+    if (!hasDue) return;
+    setRealState(prev => {
+      const newFixed = (prev.fixedExpenses || []).map(e =>
+        (e.isBill && e.paymentMethod === 'KK' && !e.isPaid && !!e.date && e.date <= todayStr)
+          ? { ...e, isPaid: true, autoPaidPending: true }
+          : e
+      );
+      const updatedCCDebts = syncCCDebtsForList(newFixed, prev.ccDebts);
+      return { ...prev, fixedExpenses: newFixed, ccDebts: updatedCCDebts };
+    });
+  }, [realState.fixedExpenses, todayStr, isLoading, isAuthenticated]);
+
+  // Otomatik ödenmiş, bildirimi henüz kapatılmamış KK faturaları.
+  // isPaid şartı: ay devrinde isPaid sıfırlanınca eski bir autoPaidPending kalsa
+  // bile bildirim gösterilmesin; yeni ayda günü gelince yeniden tetiklenir.
+  const autoPaidBills = useMemo(
+    () => (realState.fixedExpenses || []).filter(e => e.isBill && e.autoPaidPending && e.isPaid),
+    [realState.fixedExpenses]
+  );
+  const autoPaidBillsCount = autoPaidBills.length;
+
+  // Bildirim kartını X ile kapat: sadece bildirim işaretini kaldırır, ödemeyi bozmaz.
+  const dismissAutoPaidBill = (id: string) => {
+    setRealState(prev => ({
+      ...prev,
+      fixedExpenses: (prev.fixedExpenses || []).map(e =>
+        e.id === id ? { ...e, autoPaidPending: false } : e
+      )
+    }));
+  };
+
   if (loadError) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground gap-4">
@@ -2470,6 +2516,9 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             activeCurrencies,
             dueBillsCount,
             dueFixedExpensesCount,
+            autoPaidBills,
+            autoPaidBillsCount,
+            dismissAutoPaidBill,
             dailyAllowance,
             updateDailyAllowance,
             todayStr,

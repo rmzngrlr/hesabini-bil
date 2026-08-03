@@ -19,13 +19,16 @@ const navItems = [
 export function Layout({ children }: LayoutProps) {
   const currentNavItems = navItems;
   const location = useLocation();
-  const { dueBillsCount, dueFixedExpensesCount } = useBudget();
+  const { dueBillsCount, dueFixedExpensesCount, autoPaidBillsCount } = useBudget();
 
-  // Menu butonlarindaki uyari rozetleri: yol -> sayi.
-  // Sifir olanlar gosterilmez.
+  // Menu butonlarindaki KIRMIZI uyari rozetleri (senin odemen gereken): yol -> sayi.
   const badgeCounts: Record<string, number> = {
     '/islemler': dueBillsCount,
     '/varliklarim': dueFixedExpensesCount,
+  };
+  // MAVI bilgi rozetleri (otomatik odendi, bildirim var): yol -> sayi.
+  const infoBadgeCounts: Record<string, number> = {
+    '/islemler': autoPaidBillsCount,
   };
 
   useEffect(() => {
@@ -75,9 +78,18 @@ export function Layout({ children }: LayoutProps) {
             >
               <Icon size={20} />
               <span>{label}</span>
-              {(badgeCounts[path] ?? 0) > 0 && (
-                <span className="ml-auto flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-xs font-bold">
-                  {badgeCounts[path]}
+              {((badgeCounts[path] ?? 0) > 0 || (infoBadgeCounts[path] ?? 0) > 0) && (
+                <span className="ml-auto flex items-center gap-1">
+                  {(infoBadgeCounts[path] ?? 0) > 0 && (
+                    <span className="flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-sky-500 text-white text-xs font-bold">
+                      {infoBadgeCounts[path]}
+                    </span>
+                  )}
+                  {(badgeCounts[path] ?? 0) > 0 && (
+                    <span className="flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-xs font-bold">
+                      {badgeCounts[path]}
+                    </span>
+                  )}
                 </span>
               )}
             </NavLink>
@@ -121,6 +133,11 @@ export function Layout({ children }: LayoutProps) {
                   {(badgeCounts[path] ?? 0) > 0 && (
                     <span className="absolute top-1 right-1/2 translate-x-4 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold leading-none">
                       {badgeCounts[path]}
+                    </span>
+                  )}
+                  {(infoBadgeCounts[path] ?? 0) > 0 && (
+                    <span className="absolute top-1 right-1/2 -translate-x-6 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-sky-500 text-white text-[10px] font-bold leading-none">
+                      {infoBadgeCounts[path]}
                     </span>
                   )}
                 </>
