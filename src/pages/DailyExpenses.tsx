@@ -1735,32 +1735,31 @@ export default function DailyExpenses() {
               X ile kapatılınca (dismissAutoPaidBill) rozet düşer. */}
           {autoPaidBills.length > 0 && (
             <div className="space-y-2">
-              {autoPaidBills.map((bill) => (
-                <div key={bill.id} className="flex items-start justify-between gap-3 p-4 rounded-xl border border-sky-500/40 bg-sky-500/10">
-                  <div className="flex items-start gap-3 min-w-0">
-                    <div className="p-2 rounded-full bg-sky-500/15 text-sky-600 dark:text-sky-400 shrink-0">
-                      <CreditCard size={18} />
-                    </div>
-                    <div className="text-sm min-w-0">
-                      <div className="font-semibold text-sky-700 dark:text-sky-300">Kredi kartı ile otomatik ödendi</div>
-                      <div className="text-muted-foreground mt-0.5">
-                        {bill.date ? format(new Date(bill.date), 'd MMMM yyyy', { locale: tr }) : ''}
-                        {' · '}
-                        <span className="font-medium text-foreground">{bill.amount.toLocaleString('tr-TR')} ₺</span>
-                        {' · '}
-                        {bill.title}
+              {autoPaidBills.map((bill) => {
+                // Tarih dili: bugunse "bugün", degilse "GG Ay YYYY tarihinde".
+                const dateText = bill.date === todayStr
+                  ? 'bugün'
+                  : (bill.date ? `${format(new Date(bill.date), 'd MMMM yyyy', { locale: tr })} tarihinde` : '');
+                return (
+                  <div key={bill.id} className="flex items-center justify-between gap-3 p-4 rounded-xl border border-sky-500/40 bg-sky-500/10">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="p-2 rounded-full bg-sky-500/15 text-sky-600 dark:text-sky-400 shrink-0">
+                        <CreditCard size={18} />
+                      </div>
+                      <div className="text-sm text-foreground min-w-0 leading-relaxed">
+                        <span className="font-semibold">{bill.amount.toLocaleString('tr-TR')} ₺</span> tutarındaki {bill.title} faturanız {dateText} kredi kartınızla ödendi.
                       </div>
                     </div>
+                    <button
+                      onClick={() => dismissAutoPaidBill(bill.id)}
+                      title="Bildirimi kapat"
+                      className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary shrink-0"
+                    >
+                      <X size={18} />
+                    </button>
                   </div>
-                  <button
-                    onClick={() => dismissAutoPaidBill(bill.id)}
-                    title="Bildirimi kapat"
-                    className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary shrink-0"
-                  >
-                    <X size={18} />
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
