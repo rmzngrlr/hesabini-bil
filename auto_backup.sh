@@ -1,35 +1,51 @@
 #!/bin/bash
 
 # ==============================================================================
-# Hesabini Bil - Otomatik MySQL Yedekleme Betiği
-# Bu betik her çalıştığında xserver Docker konteynerindeki hesabini_bil
-# veritabanının bir yedeğini alır. Sadece en son alınan yedeği tutar (eskiyi siler).
+# Hesabini Bil - Otomatik MySQL Yedekleme Betigi
+# ------------------------------------------------------------------------------
+# - Sifre BETIGE GOMULMEZ; uygulamanin kullandigi server/.env icindeki
+#   DB_PASSWORD degeri okunur. Sifre degisse bile yedekleme calismaya devam eder.
+# - Once gecici dosyaya yazar; yalnizca yedek BASARILI ve DOLU ise gercek
+#   dosyanin uzerine tasir. Boylece basarisiz bir yedek, onceki gecerli yedegi
+#   0 baytla ezmez.
+# - Sadece en son yedek tutulur (latest_budget_backup.sql her seferinde yenilenir).
 # ==============================================================================
+set -o pipefail
 
-# Yedek dosyasının kaydedileceği klasör (bu betiğin bulunduğu klasör)
-BACKUP_DIR="/home/xserver/hesabini-bil"
-# Oluşturulacak yedek dosyasının sabit adı (her seferinde üzerine yazılır)
-BACKUP_FILE="${BACKUP_DIR}/latest_budget_backup.sql"
-
-# Docker'daki MySQL (xserver) içinden budget_docker_user ile hesabini_bil veritabanını yedekle
-# Şifreniz .env içindeki şifrenizle aynıdır (Xx2026?. veya .env'de ne yazıyorsa).
-# Uyarı: Terminale açık şifre yazıldığında güvenlik uyarısı almamak ve yedeği
-# güvenle almak için mysql_config_editor vs kullanılabilir ancak şu an direkt bash üzerinden atıyoruz.
-# NOT: Şifrenizi aşağıya Tırnak İşaretleri ("") arasına kendi şifrenizi ekleyiniz.
+# Betigin bulundugu klasor (baska makineye tasinsa/kopyalansa da dogru calisir)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BACKUP_FILE="${SCRIPT_DIR}/latest_budget_backup.sql"
+ENV_FILE="${SCRIPT_DIR}/server/.env"
 
 DB_USER="budget_docker_user"
-DB_PASS="sifrenizi_buraya_yazin"
 DB_NAME="hesabini_bil"
 CONTAINER_NAME="xserver"
 
-echo "[$(date +'%Y-%m-%d %H:%M:%S')] Yedekleme basliyor..."
+log() { echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"; }
 
-# Docker içinden mysqldump komutunu çalıştır ve çıktıyı dışarıdaki dosyaya yönlendir
-sudo docker exec ${CONTAINER_NAME} mysqldump -u${DB_USER} -p"${DB_PASS}" ${DB_NAME} > ${BACKUP_FILE}
+log "Yedekleme basliyor..."
 
-# İşlem sonucunu kontrol et
-if [ $? -eq 0 ]; then
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] Yedekleme basariyla tamamlandi. Dosya: ${BACKUP_FILE}"
+# --- Sifreyi server/.env icindeki DB_PASSWORD'dan oku ---
+if [ ! -f "$ENV_FILE" ]; then
+    log "HATA: $ENV_FILE bulunamadi."
+    exit 1
+fi
+DB_PASS=$(grep -E '^DB_PASSWORD=' "$ENV_FILE" | sed 's/^DB_PASSWORD=//; s/^"//; s/"$//' | tr -d '\r')
+if [ -z "$DB_PASS" ]; then
+    log "HATA: server/.env icinde DB_PASSWORD bulunamadi."
+    exit 1
+fi
+
+# --- Once gecici dosyaya al; sadece basarili + dolu ise yerine tasi ---
+# MYSQL_PWD kullanildigi icin sifre komut satirinda gorunmez (mysqldump uyarisi cikmaz).
+TMP_FILE="$(mktemp "${BACKUP_FILE}.XXXXXX")"
+if sudo docker exec -e MYSQL_PWD="$DB_PASS" "$CONTAINER_NAME" \
+        mysqldump -u"$DB_USER" --single-transaction --no-tablespaces "$DB_NAME" > "$TMP_FILE" \
+   && [ -s "$TMP_FILE" ]; then
+    mv "$TMP_FILE" "$BACKUP_FILE"
+    log "Yedekleme basariyla tamamlandi. Dosya: ${BACKUP_FILE} ($(du -h "$BACKUP_FILE" | cut -f1))"
 else
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] HATA: Yedekleme basarisiz oldu!"
+    rm -f "$TMP_FILE"
+    log "HATA: Yedekleme basarisiz oldu! Onceki yedek korundu (uzerine yazilmadi)."
+    exit 1
 fi
