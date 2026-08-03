@@ -28,6 +28,20 @@ export function toLocalMonthStr(d: Date = new Date()): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
+/**
+ * Bir kredi kartı borcu "bekleyen" mi? (günü henüz gelmemiş)
+ * Yalnızca içinde bulunulan ayda ve tarihi bugünden SONRA olan kalemler bekler.
+ * Geçmiş/gelecek ay görünümlerinde ve tarihsiz kalemlerde bekleme uygulanmaz.
+ * Toplam hesabı ve liste görünümü AYNI bu fonksiyonu kullanır (tek kaynak).
+ */
+export function isDebtPending(
+  date: string | undefined,
+  isCurrentMonth: boolean,
+  todayStr: string
+): boolean {
+  return isCurrentMonth && !!date && date > todayStr;
+}
+
 export const scrollToElement = (id: string) => {
   setTimeout(() => {
     const el = document.getElementById(id);

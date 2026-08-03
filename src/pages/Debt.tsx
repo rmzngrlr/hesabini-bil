@@ -3,13 +3,13 @@ import { useBudget } from '../context/BudgetContext';
 import { Card } from '../components/ui/Card';
 import React, { useMemo } from 'react';
 import { Plus, Trash2, CalendarClock, CreditCard, Pencil, X } from 'lucide-react';
-import { cn, scrollToElement, getTodayStr } from '../lib/utils';
+import { cn, scrollToElement, getTodayStr, isDebtPending } from '../lib/utils';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import type { CCDebt } from '../types';
 
 export default function Debt() {
-  const { state, viewDate, addCCDebt, updateCCDebt, deleteCCDebt, addInstallment, deleteInstallment, addDailyExpense, askConfirmation } = useBudget();
+  const { state, viewDate, addCCDebt, updateCCDebt, deleteCCDebt, addInstallment, deleteInstallment, addDailyExpense, askConfirmation, todayStr } = useBudget();
   const [description, setDescription] = useDraftState('debt_draft_desc', '');
   const [amount, setAmount] = useDraftState('debt_draft_amount', '');
   const [date, setDate] = useDraftState('debt_draft_date', getTodayStr());
@@ -133,7 +133,18 @@ export default function Debt() {
   // Total Debt is sum. Spending is negative. Payment is positive.
   // Result is negative balance (e.g. -5000).
   // Display as positive magnitude.
-  const totalDebt = Math.abs(state.ccDebts.reduce((sum, d) => sum + d.amount, 0));
+  // Gunu gelmemis (bu ayda ileri tarihli) borclar toplama girmez; gunu gelince girer.
+  const getLocalMonth = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  };
+  const isCurrentMonth = viewDate === getLocalMonth();
+  const totalDebt = Math.abs(
+    state.ccDebts
+      .filter(d => !isDebtPending(d.date, isCurrentMonth, todayStr))
+      .reduce((sum, d) => sum + d.amount, 0)
+  );
+  const pendingCount = state.ccDebts.filter(d => isDebtPending(d.date, isCurrentMonth, todayStr)).length;
 
   const groupedDebts = useMemo(() => {
     const groups: Record<string, CCDebt[]> = {};
@@ -159,10 +170,6 @@ export default function Debt() {
   }, [groupedDebts.groups]);
 
 
-  const getLocalMonth = () => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-  };
   const isFuture = viewDate > getLocalMonth();
   const formattedMonth = new Date(
       parseInt(viewDate.split('-')[0]),
@@ -184,6 +191,11 @@ export default function Debt() {
         <div className="text-3xl font-bold text-red-500 mt-2">
           {totalDebt.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}
         </div>
+        {pendingCount > 0 && (
+          <div className="text-xs text-muted-foreground mt-1">
+            günü gelmemiş {pendingCount} kalem hariç
+          </div>
+        )}
       </Card>
 
       <div id="edit-form-card"><Card title={editingId ? "İşlemi Düzenle" : "İşlem Ekle"}>
@@ -365,11 +377,19 @@ export default function Debt() {
 
         {sortedDates.map((date) => {
           const dailyTotal = groupedDebts.groups[date].reduce((sum, item) => sum + item.amount, 0);
+          // Bu ayda gunu henuz gelmemis grup: soluk + "gunu gelmedi" etiketi.
+          // Gunu gelince (todayStr canli oldugundan gece yarisi dahil) kendiliginden aktiflesir.
+          const isPending = isDebtPending(date, isCurrentMonth, todayStr);
           return (
-            <div key={date} className="space-y-3">
+            <div key={date} className={cn("space-y-3 transition-opacity", isPending && "opacity-50")}>
               <div className="flex justify-between items-center ml-1 pr-1">
-                <h3 className="text-sm font-medium text-muted-foreground">
+                <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                   {format(new Date(date), 'd MMMM yyyy, EEEE', { locale: tr })}
+                  {isPending && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-500 whitespace-nowrap">
+                      günü gelmedi
+                    </span>
+                  )}
                 </h3>
                 <span className={cn("text-sm font-bold", dailyTotal >= 0 ? "text-green-500" : "text-red-500")}>
                   {dailyTotal > 0 ? '+' : ''}

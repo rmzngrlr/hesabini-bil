@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Settings as SettingsIcon, Sun, Moon, ChevronLeft, ChevronRight, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
 import { useBudget } from '../context/BudgetContext';
+import { isDebtPending } from '../lib/utils';
 import { Card } from '../components/ui/Card';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { ProgressBar } from '../components/ui/ProgressBar';
@@ -13,7 +14,7 @@ const isGoldType = (type: string) => {
 };
 
 export default function Dashboard() {
-  const { state, viewDate, earliestAllowedMonth, setViewDate, theme, toggleTheme, showMealCard, vaultRecords, vaultOrder, activeCurrencies } = useBudget();
+  const { state, viewDate, earliestAllowedMonth, setViewDate, theme, toggleTheme, showMealCard, vaultRecords, vaultOrder, activeCurrencies, todayStr } = useBudget();
 
   // Track window size for responsive chart rendering
   const [isMobile, setIsMobile] = useState(false);
@@ -284,7 +285,13 @@ export default function Dashboard() {
   // CC Debt
   // In future, CC Debts list contains "Projected Installments".
   // We sum them up.
-  const totalCCDebt = Math.abs(state.ccDebts.reduce((sum, d) => sum + d.amount, 0));
+  // Gunu gelmemis (bu ayda ileri tarihli) borclar toplama girmez (Kredi Karti
+  // sayfasiyla ayni kural, ortak isDebtPending). Gelecek/gecmis aylarda tam sayilir.
+  const totalCCDebt = Math.abs(
+    state.ccDebts
+      .filter(d => !isDebtPending(d.date, isCurrentMonth, todayStr))
+      .reduce((sum, d) => sum + d.amount, 0)
+  );
   
   // Progress Bar
   // If future, usage = fixed expenses / income
