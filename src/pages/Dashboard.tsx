@@ -392,7 +392,9 @@ export default function Dashboard() {
       <header className="flex flex-col gap-4">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold tracking-tight">Bilanço</h1>
-          <div className="flex gap-2">
+          {/* Tema + Ayarlar masaustunde sol menudeki profil bolumunde; burada
+              yalnizca mobilde gosterilir (mobilde sol menu yok). */}
+          <div className="flex gap-2 md:hidden">
             <button
               onClick={toggleTheme}
               className="p-2 rounded-full bg-secondary text-muted-foreground hover:text-primary transition-colors"
