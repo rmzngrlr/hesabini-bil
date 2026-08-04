@@ -34,7 +34,8 @@ export function Layout({ children }: LayoutProps) {
 
   useEffect(() => {
     const currentItem = navItems.find(item => item.path === location.pathname);
-    if (currentItem) {
+    // Bilanço (ana sayfa, '/') icin sekme basligi sade: sadece "Hesabını Bil!".
+    if (currentItem && currentItem.path !== '/') {
       document.title = `${currentItem.label} | Hesabını Bil!`;
     } else {
       document.title = 'Hesabını Bil!';
