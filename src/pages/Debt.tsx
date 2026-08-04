@@ -9,7 +9,7 @@ import { tr } from 'date-fns/locale';
 import type { CCDebt } from '../types';
 
 export default function Debt() {
-  const { state, viewDate, addCCDebt, updateCCDebt, deleteCCDebt, addInstallment, deleteInstallment, addDailyExpense, askConfirmation, todayStr } = useBudget();
+  const { state, viewDate, addCCDebt, updateCCDebt, deleteCCDebt, addInstallment, deleteInstallment, addDailyExpense, askConfirmation, todayStr, ccDueNotices, dismissCCDueNotice } = useBudget();
   const [description, setDescription] = useDraftState('debt_draft_desc', '');
   const [amount, setAmount] = useDraftState('debt_draft_amount', '');
   const [date, setDate] = useDraftState('debt_draft_date', getTodayStr());
@@ -186,6 +186,35 @@ export default function Debt() {
             {isFuture && <span className="text-xs bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded ml-2">Planlama Modu</span>}
         </div>
       </header>
+
+      {ccDueNotices.length > 0 && (
+        <div className="space-y-2">
+          {ccDueNotices.map((debt) => {
+            const dateText = debt.date === todayStr
+              ? 'bugün'
+              : (debt.date ? `${format(new Date(debt.date), 'd MMMM yyyy', { locale: tr })} tarihinde` : '');
+            return (
+              <div key={debt.id} className="flex items-center justify-between gap-3 p-4 rounded-xl border border-sky-500/40 bg-sky-500/10">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="p-2 rounded-full bg-sky-500/15 text-sky-600 dark:text-sky-400 shrink-0">
+                    <CreditCard size={18} />
+                  </div>
+                  <div className="text-sm text-foreground min-w-0 leading-relaxed">
+                    <span className="font-semibold">{Math.abs(debt.amount).toLocaleString('tr-TR')} ₺</span> tutarındaki {debt.description} {dateText} kredi kartı ekstrenize eklendi.
+                  </div>
+                </div>
+                <button
+                  onClick={() => dismissCCDueNotice(debt.id)}
+                  title="Bildirimi kapat"
+                  className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary shrink-0"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <Card title="Bu Ay Ödenecek Toplam Kredi Kartı Borcu" className="bg-gradient-to-br from-transparent to-red-500/12 border-red-500/25">
         <div className="text-3xl font-bold text-red-500 mt-2">

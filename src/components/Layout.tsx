@@ -19,16 +19,17 @@ const navItems = [
 export function Layout({ children }: LayoutProps) {
   const currentNavItems = navItems;
   const location = useLocation();
-  const { dueBillsCount, dueFixedExpensesCount, autoPaidBillsCount } = useBudget();
+  const { dueBillsCount, dueFixedExpensesCount, autoPaidBillsCount, ccDueNoticeCount } = useBudget();
 
   // Menu butonlarindaki KIRMIZI uyari rozetleri (senin odemen gereken): yol -> sayi.
   const badgeCounts: Record<string, number> = {
     '/islemler': dueBillsCount,
     '/varliklarim': dueFixedExpensesCount,
   };
-  // MAVI bilgi rozetleri (otomatik odendi, bildirim var): yol -> sayi.
+  // MAVI bilgi rozetleri (otomatik odendi / ekstre bildirimi): yol -> sayi.
   const infoBadgeCounts: Record<string, number> = {
     '/islemler': autoPaidBillsCount,
+    '/borc': ccDueNoticeCount,
   };
 
   useEffect(() => {

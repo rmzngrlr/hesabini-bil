@@ -69,6 +69,13 @@ export interface CCDebt {
   installmentId?: string; // Link to parent installment if applicable
   currentInstallment?: number; // e.g. 1 (of 6)
   totalInstallments?: number; // e.g. 6
+  /**
+   * Kredi karti ekstre bildirimi durumu:
+   *  - undefined => bildirime uygun degil (bugün/gecmis dogmus veya bill-cc kalemi).
+   *  - false     => ileri tarihli dogdu, gunu gelince bildirim gosterilecek.
+   *  - true      => bildirim kullanici tarafindan (X) kapatildi.
+   */
+  dueNoticeSeen?: boolean;
 }
 
 export interface Installment {

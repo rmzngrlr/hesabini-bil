@@ -152,6 +152,10 @@ interface BudgetContextType {
   dueFixedExpensesCount: number;
   /** Otomatik ödenmiş, bildirimi kapatılmamış KK faturaları (bildirim kartı için). */
   autoPaidBills: FixedExpense[];
+  /** Günü gelmiş, ekstre bildirimi henüz kapatılmamış KK borçları. */
+  ccDueNotices: CCDebt[];
+  ccDueNoticeCount: number;
+  dismissCCDueNotice: (id: string) => void;
   /** Aynı faturaların sayısı (mavi bilgi rozeti için). */
   autoPaidBillsCount: number;
   /** Bir otomatik ödeme bildirimini kapatır (X). */
@@ -2453,6 +2457,43 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }));
   };
 
+  // --- Kredi karti ekstre bildirimi ---
+  // Ileri tarihli (gunu gelmemis) KK borclarini "bildirime uygun" isaretle (dueNoticeSeen=false).
+  // Boylece gunu gelince (tarih <= bugun) bildirim gosterilir. Bugun/gecmis dogan veya
+  // KK faturasindan gelen (bill-cc-) kalemler isaretlenmez => onlar icin bildirim cikmaz.
+  useEffect(() => {
+    if (isLoading || !isAuthenticated) return;
+    const needsMark = (realState.ccDebts || []).some(d =>
+      d.dueNoticeSeen === undefined && !!d.date && d.date > todayStr && !String(d.id).startsWith('bill-cc-')
+    );
+    if (!needsMark) return;
+    setRealState(prev => ({
+      ...prev,
+      ccDebts: (prev.ccDebts || []).map(d =>
+        (d.dueNoticeSeen === undefined && !!d.date && d.date > todayStr && !String(d.id).startsWith('bill-cc-'))
+          ? { ...d, dueNoticeSeen: false }
+          : d
+      )
+    }));
+  }, [realState.ccDebts, todayStr, isLoading, isAuthenticated]);
+
+  // Gunu gelmis (tarih <= bugun) ve bildirimi henuz kapatilmamis (dueNoticeSeen===false) borclar.
+  const ccDueNotices = useMemo(
+    () => (realState.ccDebts || []).filter(d => d.dueNoticeSeen === false && !!d.date && d.date <= todayStr),
+    [realState.ccDebts, todayStr]
+  );
+  const ccDueNoticeCount = ccDueNotices.length;
+
+  // Ekstre bildirimini X ile kapat: sadece isareti kaldirir, borcu/toplami bozmaz.
+  const dismissCCDueNotice = (id: string) => {
+    setRealState(prev => ({
+      ...prev,
+      ccDebts: (prev.ccDebts || []).map(d =>
+        d.id === id ? { ...d, dueNoticeSeen: true } : d
+      )
+    }));
+  };
+
   if (loadError) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground gap-4">
@@ -2519,6 +2560,9 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             autoPaidBills,
             autoPaidBillsCount,
             dismissAutoPaidBill,
+            ccDueNotices,
+            ccDueNoticeCount,
+            dismissCCDueNotice,
             dailyAllowance,
             updateDailyAllowance,
             todayStr,
