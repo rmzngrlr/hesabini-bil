@@ -1747,7 +1747,7 @@ export default function DailyExpenses() {
                         <CreditCard size={18} />
                       </div>
                       <div className="text-sm text-foreground min-w-0 leading-relaxed">
-                        <span className="font-semibold">{bill.amount.toLocaleString('tr-TR')} ₺</span> tutarındaki {bill.title} faturanız {dateText} kredi kartınızla ödendi.
+                        <span className="font-semibold">{bill.amount.toLocaleString('tr-TR')} ₺</span> tutarındaki <span className="font-semibold">{bill.title}</span> faturanız <span className="font-semibold">{dateText}</span> kredi kartınızla ödendi.
                       </div>
                     </div>
                     <button

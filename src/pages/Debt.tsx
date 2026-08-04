@@ -200,7 +200,7 @@ export default function Debt() {
                     <CreditCard size={18} />
                   </div>
                   <div className="text-sm text-foreground min-w-0 leading-relaxed">
-                    <span className="font-semibold">{Math.abs(debt.amount).toLocaleString('tr-TR')} ₺</span> tutarındaki {debt.description} {dateText} kredi kartı ekstrenize eklendi.
+                    <span className="font-semibold">{Math.abs(debt.amount).toLocaleString('tr-TR')} ₺</span> tutarındaki <span className="font-semibold">{debt.description}</span> harcamanız <span className="font-semibold">{dateText}</span> kredi kartı ekstrenize eklendi.
                   </div>
                 </div>
                 <button
