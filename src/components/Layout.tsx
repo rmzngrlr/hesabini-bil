@@ -129,7 +129,7 @@ export function Layout({ children }: LayoutProps) {
         <div className={cn("shrink-0 pb-4", collapsed ? "px-3" : "px-4")}>
           {collapsed ? (
             <div className="flex flex-col items-center gap-1.5">
-              <div title={username || undefined} className="w-9 h-9 rounded-full bg-red-500 text-white flex items-center justify-center font-semibold text-sm">{initial}</div>
+              <div title={username || undefined} className="w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-semibold text-sm">{initial}</div>
               <Link to="/ayarlar" title="Ayarlar" className="w-10 h-10 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors">
                 <Settings size={20} />
               </Link>
@@ -142,7 +142,7 @@ export function Layout({ children }: LayoutProps) {
             </div>
           ) : (
             <div className="border border-border rounded-xl p-1.5 flex items-center gap-1.5">
-              <div className="w-9 h-9 rounded-full bg-red-500 text-white flex items-center justify-center font-semibold text-sm shrink-0">{initial}</div>
+              <div className="w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-semibold text-sm shrink-0">{initial}</div>
               <span className="text-sm font-medium flex-1 min-w-0 truncate">{username || 'Hesabım'}</span>
               <Link to="/ayarlar" title="Ayarlar" className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors shrink-0">
                 <Settings size={17} />
