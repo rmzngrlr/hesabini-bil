@@ -4,14 +4,14 @@ import { useAuth, getAuthToken } from '../context/AuthContext';
 import { Card } from '../components/ui/Card';
 import { Avatar } from '../components/ui/Avatar';
 import { AvatarCropModal } from '../components/AvatarCropModal';
-import { Download, Upload, CreditCard, KeyRound, AlertCircle, CheckCircle2, ArrowLeft, Camera, Trash2 } from 'lucide-react';
+import { Download, Upload, CreditCard, KeyRound, AlertCircle, CheckCircle2, ArrowLeft, Camera, Trash2, CalendarClock } from 'lucide-react';
 import { exportToExcel, importFromExcel } from '../services/excelService';
 import { API_URL } from '../services/api';
 import { cn } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
 
 export default function Settings() {
-  const { state, loadState, showMealCard, toggleShowMealCard, showVault, toggleShowVault, askConfirmation } = useBudget();
+  const { state, loadState, showMealCard, toggleShowMealCard, showVault, toggleShowVault, askConfirmation, statementCutoffDay, setStatementCutoffDay } = useBudget();
   const { username, avatar, updateAvatar } = useAuth();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -387,6 +387,33 @@ export default function Settings() {
                   <div className="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
               </label>
           </div>
+        </div>
+      </Card>
+
+      <Card title="Kredi Kartı">
+        <div className="flex items-center justify-between gap-3 p-2">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="p-2 rounded-full bg-purple-500/10 text-purple-500">
+              <CalendarClock size={20} />
+            </div>
+            <div className="min-w-0">
+              <div className="font-medium">Hesap Kesim Günü</div>
+              <div className="text-xs text-muted-foreground">
+                Bu günden sonra yapılan harcamalar bir sonraki ayın ekstresine yazılır.
+              </div>
+            </div>
+          </div>
+          <select
+            value={statementCutoffDay ?? ''}
+            onChange={(e) => setStatementCutoffDay(e.target.value === '' ? null : Number(e.target.value))}
+            className="px-3 py-2 rounded-xl bg-secondary text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary shrink-0"
+            aria-label="Hesap kesim günü"
+          >
+            <option value="">Kapalı</option>
+            {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+              <option key={d} value={d}>Her ayın {d}'i</option>
+            ))}
+          </select>
         </div>
       </Card>
 

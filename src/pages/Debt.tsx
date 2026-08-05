@@ -1,16 +1,16 @@
 import { useDraftState } from '../hooks/useDraftState';
 import { useBudget } from '../context/BudgetContext';
 import { Card } from '../components/ui/Card';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Plus, Trash2, CalendarClock, CreditCard, Pencil, X } from 'lucide-react';
-import { cn, scrollToElement, getTodayStr, isDebtPending } from '../lib/utils';
+import { cn, scrollToElement, getTodayStr, isDebtPending, statementMonth } from '../lib/utils';
 import { MonthNavigator } from '../components/MonthNavigator';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import type { CCDebt } from '../types';
 
 export default function Debt() {
-  const { state, viewDate, addCCDebt, updateCCDebt, deleteCCDebt, addInstallment, deleteInstallment, addDailyExpense, askConfirmation, todayStr, ccDueNotices, dismissCCDueNotice } = useBudget();
+  const { state, viewDate, setViewDate, addCCDebt, updateCCDebt, deleteCCDebt, addInstallment, deleteInstallment, addDailyExpense, askConfirmation, todayStr, ccDueNotices, dismissCCDueNotice, statementCutoffDay } = useBudget();
   const [description, setDescription] = useDraftState('debt_draft_desc', '');
   const [amount, setAmount] = useDraftState('debt_draft_amount', '');
   const [date, setDate] = useDraftState('debt_draft_date', getTodayStr());
@@ -20,6 +20,14 @@ export default function Debt() {
   const [installmentCount, setInstallmentCount] = useDraftState('debt_draft_inst_count', '2');
   const [transactionType, setTransactionType] = useDraftState<'SPEND' | 'PAY'>('debt_draft_tx_type', 'SPEND');
   const [editingId, setEditingId] = useDraftState<string | null>('debt_draft_editing_id', null);
+  // Harcama, bakilan aydan farkli bir ekstreye dustugunde gosterilen gecici bilgi notu.
+  const [addedNote, setAddedNote] = useState('');
+
+  // "YYYY-MM" -> "Agustos 2026" (Turkce ay adi).
+  const formatStatementMonth = (ym: string) => {
+    const [y, m] = ym.split('-').map(Number);
+    return format(new Date(y, m - 1, 1), 'LLLL yyyy', { locale: tr });
+  };
 
   const uniqueDescriptions = useMemo(() => {
     const descriptions = new Set<string>();
@@ -73,6 +81,7 @@ export default function Debt() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!description || !amount || !date) return;
+    setAddedNote('');
 
     const numAmount = parseFloat(amount);
 
@@ -115,6 +124,16 @@ export default function Debt() {
               addCCDebt({ description, amount: debtAmount, date });
             }
         }
+    }
+
+    // Kesim gunu nedeniyle harcama bakilan aydan farkli bir ekstreye dustuyse
+    // o ekstreye gec ve bilgi notu goster (taksit ve duzenleme haric).
+    if (!editingId && !isInstallment && statementCutoffDay) {
+      const s = statementMonth(date, statementCutoffDay);
+      if (s && s !== viewDate) {
+        setViewDate(s);
+        setAddedNote(`Bu harcama ${formatStatementMonth(s)} ekstresine eklendi (kesim günü ${statementCutoffDay}).`);
+      }
     }
 
     setDescription('');
@@ -182,6 +201,13 @@ export default function Debt() {
         </div>
         <MonthNavigator />
       </header>
+
+      {addedNote && (
+        <div className="flex items-start gap-2 p-3 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 text-sm border border-blue-500/20">
+          <CalendarClock size={16} className="mt-0.5 shrink-0" />
+          <span>{addedNote}</span>
+        </div>
+      )}
 
       {ccDueNotices.length > 0 && (
         <div className="space-y-2">
@@ -398,7 +424,14 @@ export default function Debt() {
       )}
 
       <div className="space-y-6">
-        <h2 className="text-lg font-semibold">Bu Ayın Ekstresi</h2>
+        <div>
+          <h2 className="text-lg font-semibold">Bu Ayın Ekstresi</h2>
+          {statementCutoffDay && (
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Kesim günü: her ayın {statementCutoffDay}'i. Bu günden sonraki harcamalar sonraki ekstreye yazılır.
+            </p>
+          )}
+        </div>
 
         {sortedDates.map((date) => {
           const dailyTotal = groupedDebts.groups[date].reduce((sum, item) => sum + item.amount, 0);

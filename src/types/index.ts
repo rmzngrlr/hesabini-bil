@@ -120,6 +120,11 @@ export interface FutureMonthData {
 export interface BudgetState {
   version?: number;
   currentMonth: string; // YYYY-MM
+  /**
+   * Kredi kartı hesap kesim günü (1-31). Bu günden SONRA yapılan harcamalar
+   * bir sonraki ayın ekstresine sayılır. null/undefined => kapalı (takvim ayı).
+   */
+  statementCutoffDay?: number | null;
   income: number;
   rollover: number;
   ykIncome: number;

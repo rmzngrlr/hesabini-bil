@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useMemo, useRef, type ReactNode } from 'react';
-import { getTodayStr, toLocalMonthStr } from '../lib/utils';
+import { getTodayStr, toLocalMonthStr, statementMonth } from '../lib/utils';
 import type { BudgetState, FixedExpense, CustomIncome, DailyExpense, CCDebt, Installment, MonthlyHistory, GoldRecord } from '../types';
 import { fetchWithAuth } from '../services/api';
 import { useAuth } from './AuthContext';
@@ -120,6 +120,9 @@ interface BudgetContextType {
   deleteDailyExpense: (id: string) => void;
   addCCDebt: (debt: Omit<CCDebt, 'id'>) => void;
   deleteCCDebt: (id: string) => void;
+  /** Kredi kartı hesap kesim günü (1-31) veya kapalı (null). */
+  statementCutoffDay: number | null;
+  setStatementCutoffDay: (day: number | null) => void;
   addInstallment: (installment: Omit<Installment, 'id' | 'remainingInstallments'>) => void;
   deleteInstallment: (id: string) => void;
   updateDailyExpense: (id: string, expense: Partial<DailyExpense>) => void;
@@ -1909,25 +1912,31 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     };
 
     setRealState(prev => {
-        if (viewDate === prev.currentMonth) {
+        // Hedef ekstre ayi: kesim gunu ACIKSA tarihe gore hesaplanir (kesimden
+        // sonraki harcamalar sonraki aya). Kapaliysa eski davranis: goruntulenen ay.
+        const targetMonth = prev.statementCutoffDay
+          ? (statementMonth(newDebt.date, prev.statementCutoffDay) || viewDate)
+          : viewDate;
+
+        if (targetMonth === prev.currentMonth) {
             return { ...prev, ccDebts: [...prev.ccDebts, newDebt] };
-        } else if (viewDate > prev.currentMonth) {
+        } else if (targetMonth > prev.currentMonth) {
             // Add to future data
-            const future = prev.futureData[viewDate] || {};
+            const future = prev.futureData[targetMonth] || {};
             const currentDebts = future.ccDebts || [];
             return {
                 ...prev,
                 futureData: {
                     ...prev.futureData,
-                    [viewDate]: {
+                    [targetMonth]: {
                         ...future,
                         ccDebts: [...currentDebts, newDebt]
                     }
                 }
             };
-        } else if (viewDate < prev.currentMonth) {
+        } else if (targetMonth < prev.currentMonth) {
             // Edit History
-            const histIndex = prev.history.findIndex(h => h.month === viewDate);
+            const histIndex = prev.history.findIndex(h => h.month === targetMonth);
             if (histIndex !== -1) {
                 const newHistory = [...prev.history];
                 newHistory[histIndex] = {
@@ -1939,6 +1948,41 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             return prev;
         }
         return prev;
+    });
+  };
+
+  // Kredi karti hesap kesim gununu ayarla. Ayarlaninca, bu ayin borclarindan
+  // kesim gununden SONRA tarihli olanlari sonraki ayin ekstresine tasir
+  // (kapanmis gecmis aylara ve mevcut gelecek planlarina dokunulmaz).
+  const setStatementCutoffDay = (day: number | null) => {
+    const cutoff = (day && day >= 1 && day <= 31) ? day : null;
+    setRealState(prev => {
+      let ccDebts = prev.ccDebts;
+      let futureData = prev.futureData;
+
+      if (cutoff) {
+        const stay: CCDebt[] = [];
+        const moves: Record<string, CCDebt[]> = {};
+        for (const d of prev.ccDebts) {
+          const t = d.date ? statementMonth(d.date, cutoff) : prev.currentMonth;
+          if (t && t > prev.currentMonth) {
+            if (!moves[t]) moves[t] = [];
+            moves[t].push(d);
+          } else {
+            stay.push(d);
+          }
+        }
+        if (Object.keys(moves).length > 0) {
+          ccDebts = stay;
+          futureData = { ...prev.futureData };
+          for (const [m, debts] of Object.entries(moves)) {
+            const fd = futureData[m] || {};
+            futureData[m] = { ...fd, ccDebts: [...(fd.ccDebts || []), ...debts] };
+          }
+        }
+      }
+
+      return { ...prev, statementCutoffDay: cutoff, ccDebts, futureData };
     });
   };
 
@@ -2529,6 +2573,8 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             deleteDailyExpense,
             addCCDebt,
             deleteCCDebt,
+            statementCutoffDay: realState.statementCutoffDay ?? null,
+            setStatementCutoffDay,
             addInstallment,
             deleteInstallment,
             updateDailyExpense,

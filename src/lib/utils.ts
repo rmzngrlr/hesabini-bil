@@ -42,6 +42,29 @@ export function isDebtPending(
   return isCurrentMonth && !!date && date > todayStr;
 }
 
+/**
+ * Bir kredi kartı harcamasının hangi ekstreye (YYYY-MM) düştüğünü döndürür.
+ * cutoff = hesap kesim günü. Gün <= cutoff ise o ay; gün > cutoff ise SONRAKİ ay
+ * (Aralık'ta yıl döner). cutoff yoksa (null/undefined/0) takvim ayı = mevcut davranış.
+ * dateStr yoksa undefined döner (çağıran, viewDate gibi bir varsayılana düşer).
+ */
+export function statementMonth(
+  dateStr: string | undefined,
+  cutoff: number | null | undefined
+): string | undefined {
+  if (!dateStr) return undefined;
+  const ymd = String(dateStr).substring(0, 10);
+  const [y, m, d] = ymd.split('-').map(Number);
+  if (!y || !m || !d) return ymd.substring(0, 7) || undefined;
+  if (!cutoff || d <= cutoff) {
+    return `${y}-${String(m).padStart(2, '0')}`;
+  }
+  let ny = y;
+  let nm = m + 1;
+  if (nm > 12) { nm = 1; ny++; }
+  return `${ny}-${String(nm).padStart(2, '0')}`;
+}
+
 export const scrollToElement = (id: string) => {
   setTimeout(() => {
     const el = document.getElementById(id);
