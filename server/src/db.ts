@@ -49,7 +49,7 @@ export const getDb = async () => {
         const [userColumns] = await connection.query<mysql.RowDataPacket[]>(`
             SELECT COLUMN_NAME
             FROM INFORMATION_SCHEMA.COLUMNS
-            WHERE TABLE_NAME = 'users' AND COLUMN_NAME IN ('is_admin', 'vault_order') AND TABLE_SCHEMA = DATABASE()
+            WHERE TABLE_NAME = 'users' AND COLUMN_NAME IN ('is_admin', 'vault_order', 'avatar') AND TABLE_SCHEMA = DATABASE()
         `);
 
         const uColumnNames = userColumns.map((col: any) => col.COLUMN_NAME);
@@ -65,6 +65,13 @@ export const getDb = async () => {
             await connection.query(`
                 ALTER TABLE users
                 ADD COLUMN vault_order TEXT DEFAULT NULL;
+            `);
+        }
+
+        if (!uColumnNames.includes('avatar')) {
+            await connection.query(`
+                ALTER TABLE users
+                ADD COLUMN avatar MEDIUMTEXT DEFAULT NULL;
             `);
         }
 

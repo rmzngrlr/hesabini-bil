@@ -49,7 +49,7 @@ router.post('/register', async (req, res) => {
         const isAdmin = true;
         const token = jwt.sign({ userId: result.lastID, username, isAdmin }, JWT_SECRET, { expiresIn: '30d' });
 
-        res.status(201).json({ message: 'Kayıt başarılı', token, username, isAdmin });
+        res.status(201).json({ message: 'Kayıt başarılı', token, username, isAdmin, avatar: null });
     } catch (error) {
         console.error('Kayıt hatası:', error);
         res.status(500).json({ error: 'Sunucu hatası oluştu.' });
@@ -68,7 +68,7 @@ router.post('/login', async (req, res) => {
         const db = await getDb();
 
         // Find user
-        const user = await db.get('SELECT id, username, password_hash, is_admin FROM users WHERE username = ?', [username]);
+        const user = await db.get('SELECT id, username, password_hash, is_admin, avatar FROM users WHERE username = ?', [username]);
         if (!user) {
             return res.status(401).json({ error: 'Geçersiz kullanıcı adı veya şifre.' });
         }
@@ -85,7 +85,7 @@ router.post('/login', async (req, res) => {
         // Generate Token
         const token = jwt.sign({ userId: user.id, username: user.username, isAdmin }, JWT_SECRET, { expiresIn: '30d' });
 
-        res.json({ message: 'Giriş başarılı', token, username: user.username, isAdmin });
+        res.json({ message: 'Giriş başarılı', token, username: user.username, isAdmin, avatar: user.avatar || null });
     } catch (error) {
         console.error('Giriş hatası:', error);
         res.status(500).json({ error: 'Sunucu hatası oluştu.' });
@@ -209,6 +209,49 @@ router.post('/change-password', authenticate, async (req: any, res: any) => {
         res.json({ message: 'Şifreniz başarıyla değiştirildi.' });
     } catch (error) {
         console.error('Şifre değiştirme hatası:', error);
+        res.status(500).json({ error: 'Sunucu hatası oluştu.' });
+    }
+});
+
+// Basit avatar (data URL) dogrulamasi: sadece kucuk, gomulu gorseller
+const isValidAvatar = (v: any): boolean => {
+    if (typeof v !== 'string') return false;
+    if (!/^data:image\/(png|jpe?g|webp);base64,/.test(v)) return false;
+    if (v.length > 120000) return false; // ~120KB uzunluk siniri (kucuk avatar icin fazlasiyla yeterli)
+    return true;
+};
+
+// POST /api/auth/avatar (Requires Auth) - profil fotografini kaydet veya kaldir (null)
+router.post('/avatar', authenticate, async (req: any, res: any) => {
+    const userId = req.user.userId;
+    const { avatar } = req.body;
+
+    if (avatar !== null && !isValidAvatar(avatar)) {
+        return res.status(400).json({ error: 'Geçersiz görsel veya boyut çok büyük.' });
+    }
+
+    try {
+        const db = await getDb();
+        await db.run('UPDATE users SET avatar = ? WHERE id = ?', [avatar, userId]);
+        res.json({ message: 'Profil fotoğrafı güncellendi.', avatar: avatar ?? null });
+    } catch (error) {
+        console.error('Avatar güncelleme hatası:', error);
+        res.status(500).json({ error: 'Sunucu hatası oluştu.' });
+    }
+});
+
+// GET /api/auth/profile (Requires Auth) - kullanici adi + avatar (baska cihazda tazeleme icin)
+router.get('/profile', authenticate, async (req: any, res: any) => {
+    const userId = req.user.userId;
+    try {
+        const db = await getDb();
+        const user = await db.get('SELECT username, avatar FROM users WHERE id = ?', [userId]);
+        if (!user) {
+            return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
+        }
+        res.json({ username: user.username, avatar: user.avatar || null });
+    } catch (error) {
+        console.error('Profil getirme hatası:', error);
         res.status(500).json({ error: 'Sunucu hatası oluştu.' });
     }
 });

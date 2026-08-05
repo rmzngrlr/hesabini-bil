@@ -2,16 +2,24 @@ import { useRef, useState } from 'react';
 import { useBudget } from '../context/BudgetContext';
 import { useAuth, getAuthToken } from '../context/AuthContext';
 import { Card } from '../components/ui/Card';
-import { Download, Upload, CreditCard, User, KeyRound, AlertCircle, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { Avatar } from '../components/ui/Avatar';
+import { AvatarCropModal } from '../components/AvatarCropModal';
+import { Download, Upload, CreditCard, KeyRound, AlertCircle, CheckCircle2, ArrowLeft, Camera, Trash2 } from 'lucide-react';
 import { exportToExcel, importFromExcel } from '../services/excelService';
 import { API_URL } from '../services/api';
+import { cn } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
 
 export default function Settings() {
   const { state, loadState, showMealCard, toggleShowMealCard, showVault, toggleShowVault, askConfirmation } = useBudget();
-  const { username } = useAuth();
+  const { username, avatar, updateAvatar } = useAuth();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [cropFile, setCropFile] = useState<File | null>(null);
+  const [avatarMsg, setAvatarMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+  const [avatarLoading, setAvatarLoading] = useState(false);
+  const initial = (username?.trim().charAt(0) || '?').toUpperCase();
   const [securityQuestion, setSecurityQuestion] = useState('');
   const [securityAnswer, setSecurityAnswer] = useState('');
   const [secError, setSecError] = useState('');
@@ -54,6 +62,51 @@ export default function Settings() {
 
     // Reset file input
     e.target.value = '';
+  };
+
+  const handleAvatarPick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setAvatarMsg({ type: 'error', text: 'Lütfen bir resim dosyası seçin.' });
+      return;
+    }
+    if (file.size > 12 * 1024 * 1024) {
+      setAvatarMsg({ type: 'error', text: 'Dosya çok büyük (en fazla 12 MB).' });
+      return;
+    }
+    setAvatarMsg(null);
+    setCropFile(file);
+  };
+
+  const handleCropSave = async (dataUrl: string) => {
+    setCropFile(null);
+    setAvatarLoading(true);
+    setAvatarMsg(null);
+    try {
+      await updateAvatar(dataUrl);
+      setAvatarMsg({ type: 'success', text: 'Profil fotoğrafı güncellendi.' });
+    } catch (err: any) {
+      setAvatarMsg({ type: 'error', text: err.message || 'Fotoğraf kaydedilemedi.' });
+    } finally {
+      setAvatarLoading(false);
+    }
+  };
+
+  const handleAvatarRemove = async () => {
+    if (!avatar) return;
+    if (!(await askConfirmation('Profil fotoğrafını kaldırmak istiyor musunuz?'))) return;
+    setAvatarLoading(true);
+    setAvatarMsg(null);
+    try {
+      await updateAvatar(null);
+      setAvatarMsg({ type: 'success', text: 'Profil fotoğrafı kaldırıldı.' });
+    } catch (err: any) {
+      setAvatarMsg({ type: 'error', text: err.message || 'İşlem başarısız.' });
+    } finally {
+      setAvatarLoading(false);
+    }
   };
 
   const handleSetSecurityQuestion = async (e: React.FormEvent) => {
@@ -140,16 +193,52 @@ export default function Settings() {
       </header>
 
       <Card title="Hesap">
-        <div className="flex items-center justify-between p-2">
-            <div className="flex items-center gap-3">
-                <div className="p-2 rounded-full bg-blue-500/10 text-blue-500">
-                    <User size={20} />
-                </div>
-                <div>
-                    <div className="font-medium">Giriş Yapılan Kullanıcı</div>
-                    <div className="text-xs text-muted-foreground">{username || 'Bilinmiyor'}</div>
-                </div>
+        <div className="p-2 space-y-3">
+          {avatarMsg && (
+            <div className={cn(
+              "p-3 rounded-lg text-sm flex items-center gap-2",
+              avatarMsg.type === 'error' ? "bg-red-500/10 text-red-500" : "bg-green-500/10 text-green-500"
+            )}>
+              {avatarMsg.type === 'error' ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
+              {avatarMsg.text}
             </div>
+          )}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <Avatar src={avatar} initial={initial} className="w-14 h-14 text-xl" />
+              <div className="min-w-0">
+                <div className="font-medium truncate">{username || 'Bilinmiyor'}</div>
+                <div className="text-xs text-muted-foreground">Giriş yapılan kullanıcı</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={avatarLoading}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-secondary text-sm font-medium hover:bg-secondary/80 transition-colors disabled:opacity-50"
+              >
+                <Camera size={16} />
+                <span className="hidden sm:inline">{avatar ? 'Değiştir' : 'Fotoğraf ekle'}</span>
+              </button>
+              {avatar && (
+                <button
+                  onClick={handleAvatarRemove}
+                  disabled={avatarLoading}
+                  aria-label="Fotoğrafı kaldır"
+                  className="p-2 rounded-xl text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                >
+                  <Trash2 size={16} />
+                </button>
+              )}
+            </div>
+          </div>
+          <input
+            type="file"
+            ref={avatarInputRef}
+            onChange={handleAvatarPick}
+            accept="image/*"
+            className="hidden"
+          />
         </div>
       </Card>
 
@@ -337,6 +426,14 @@ export default function Settings() {
            />
         </div>
       </Card>
+
+      {cropFile && (
+        <AvatarCropModal
+          file={cropFile}
+          onCancel={() => setCropFile(null)}
+          onSave={handleCropSave}
+        />
+      )}
     </div>
   );
 }

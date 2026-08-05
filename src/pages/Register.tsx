@@ -51,7 +51,7 @@ export default function Register() {
       const contentType = res.headers.get("content-type");
       if (contentType && contentType.indexOf("application/json") !== -1) {
           const data = await res.json();
-          login(data.token, data.username, data.isAdmin);
+          login(data.token, data.username, data.isAdmin, data.avatar);
           navigate('/');
       } else {
           throw new Error('Sunucudan geçersiz bir yanıt alındı.');
