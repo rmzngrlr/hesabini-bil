@@ -4,6 +4,7 @@ import { Card } from '../components/ui/Card';
 import React, { useMemo } from 'react';
 import { Plus, Trash2, CalendarClock, CreditCard, Pencil, X } from 'lucide-react';
 import { cn, scrollToElement, getTodayStr, isDebtPending } from '../lib/utils';
+import { MonthNavigator } from '../components/MonthNavigator';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import type { CCDebt } from '../types';
@@ -171,21 +172,15 @@ export default function Debt() {
 
 
   const isFuture = viewDate > getLocalMonth();
-  const formattedMonth = new Date(
-      parseInt(viewDate.split('-')[0]),
-      parseInt(viewDate.split('-')[1]) - 1
-  ).toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
 
   return (
     <div id="main-form-container" className="space-y-6 pb-20 p-4">
-      <header className="flex flex-col gap-2">
+      <header className="flex items-center gap-2 flex-wrap">
         <h1 className="text-2xl font-bold tracking-tight">Kredi Kartı Borçları</h1>
-        <div className="flex items-center gap-2 text-muted-foreground">
-            <CalendarClock size={16} />
-            <span className="capitalize">{formattedMonth}</span>
-            {isFuture && <span className="text-xs bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded ml-2">Planlama Modu</span>}
-        </div>
+        {isFuture && <span className="text-xs bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded">Planlama Modu</span>}
       </header>
+
+      <MonthNavigator />
 
       {ccDueNotices.length > 0 && (
         <div className="space-y-2">

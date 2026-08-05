@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Settings as SettingsIcon, Sun, Moon, ChevronLeft, ChevronRight, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
+import { MobileProfileMenu } from '../components/MobileProfileMenu';
+import { MonthNavigator } from '../components/MonthNavigator';
 import { useBudget } from '../context/BudgetContext';
 import { isDebtPending } from '../lib/utils';
 import { Card } from '../components/ui/Card';
@@ -14,7 +15,7 @@ const isGoldType = (type: string) => {
 };
 
 export default function Dashboard() {
-  const { state, viewDate, earliestAllowedMonth, setViewDate, theme, toggleTheme, showMealCard, vaultRecords, vaultOrder, activeCurrencies, todayStr } = useBudget();
+  const { state, viewDate, showMealCard, vaultRecords, vaultOrder, activeCurrencies, todayStr } = useBudget();
 
   // Track window size for responsive chart rendering
   const [isMobile, setIsMobile] = useState(false);
@@ -147,28 +148,6 @@ export default function Dashboard() {
   };
 
 
-  // Helper to format month
-  const formatMonth = (dateStr: string) => {
-    const [y, m] = dateStr.split('-').map(Number);
-    const date = new Date(y, m - 1, 1);
-    return date.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
-  };
-
-  // Helper to change month
-  const changeMonth = (delta: number) => {
-    let [y, m] = viewDate.split('-').map(Number);
-    m += delta;
-    while (m > 12) {
-      m -= 12;
-      y++;
-    }
-    while (m < 1) {
-      m += 12;
-      y--;
-    }
-    const newStr = `${y}-${String(m).padStart(2, '0')}`;
-    setViewDate(newStr);
-  };
 
   // Calculations based on Derived State
   // Note: Derived State has already projected values for future months.
@@ -392,41 +371,13 @@ export default function Dashboard() {
       <header className="flex flex-col gap-4">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold tracking-tight">Bilanço</h1>
-          {/* Tema + Ayarlar masaustunde sol menudeki profil bolumunde; burada
-              yalnizca mobilde gosterilir (mobilde sol menu yok). */}
-          <div className="flex gap-2 md:hidden">
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-full bg-secondary text-muted-foreground hover:text-primary transition-colors"
-            >
-              {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
-            <Link to="/ayarlar" className="p-2 rounded-full bg-secondary text-muted-foreground hover:text-primary transition-colors">
-              <SettingsIcon size={20} />
-            </Link>
+          {/* Mobilde profil menusu (avatar akordiyonu); masaustunde sol menude. */}
+          <div className="md:hidden">
+            <MobileProfileMenu />
           </div>
         </div>
 
-        <div className="flex justify-between items-center bg-secondary/30 rounded-xl p-2">
-           <button
-             onClick={() => changeMonth(-1)}
-             disabled={viewDate <= earliestAllowedMonth}
-             className={`p-2 rounded-lg transition-colors ${viewDate <= earliestAllowedMonth ? 'opacity-30 cursor-not-allowed text-muted-foreground' : 'hover:bg-secondary'}`}
-           >
-               <ChevronLeft size={20} />
-           </button>
-
-           <div className="flex flex-col items-center">
-               <div className="flex items-center gap-2 font-medium text-lg">
-                   <Calendar size={18} className="text-primary" />
-                   <span className="capitalize w-32 text-center">{formatMonth(viewDate)}</span>
-               </div>
-           </div>
-
-           <button onClick={() => changeMonth(1)} className="p-2 hover:bg-secondary rounded-lg transition-colors">
-               <ChevronRight size={20} />
-           </button>
-        </div>
+        <MonthNavigator />
 
         {isFuture && (
             <div className="bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs px-3 py-2 rounded-md border border-blue-500/20 text-center">

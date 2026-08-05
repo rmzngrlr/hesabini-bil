@@ -3,7 +3,8 @@ import { useDraftState } from '../hooks/useDraftState';
 import { useBudget, isFixedExpenseOverdue, daysInMonth } from '../context/BudgetContext';
 import { useAuth } from '../context/AuthContext';
 import { Card } from '../components/ui/Card';
-import { Plus, Trash2, CheckCircle, Circle, Pencil, X, Calendar, Check } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, Circle, Pencil, X, Check } from 'lucide-react';
+import { MonthNavigator } from '../components/MonthNavigator';
 import { cn, scrollToElement } from '../lib/utils';
 import type { FixedExpense } from '../types';
 import { VaultSection } from '../components/VaultSection';
@@ -164,10 +165,6 @@ export default function FixedExpenses() {
   const formatTL = (n: number) =>
     n.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 0, maximumFractionDigits: 0 })
       .replace(/\s/g, '');
-  const formattedMonth = new Date(
-      parseInt(viewDate.split('-')[0]),
-      parseInt(viewDate.split('-')[1]) - 1
-  ).toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
 
   // Exclude PLANNED_VAULT from standard currency list
   const fixedExpenseCurrencies = Array.from(new Set(
@@ -183,16 +180,15 @@ export default function FixedExpenses() {
 
   return (
     <div id="main-form-container" className="space-y-6 pb-20 p-4">
-      <div className="mb-8">
+      <div className="mb-2">
         <h1 className="text-3xl font-extrabold tracking-tight text-primary">Varlıklarım</h1>
       </div>
-      <header className="flex flex-col gap-2">
+
+      <MonthNavigator />
+
+      <header className="flex items-center gap-2 flex-wrap">
         <h1 className="text-2xl font-bold tracking-tight">Sabit Gelirler</h1>
-        <div className="flex items-center gap-2 text-muted-foreground">
-            <Calendar size={16} />
-            <span className="capitalize">{formattedMonth}</span>
-            {isFuture && <span className="text-xs bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded ml-2">Planlama Modu</span>}
-        </div>
+        {isFuture && <span className="text-xs bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded">Planlama Modu</span>}
       </header>
 
       <div className="grid gap-4 md:grid-cols-2">

@@ -2,13 +2,13 @@ import { useRef, useState } from 'react';
 import { useBudget } from '../context/BudgetContext';
 import { useAuth, getAuthToken } from '../context/AuthContext';
 import { Card } from '../components/ui/Card';
-import { Download, Upload, CreditCard, LogOut, User, KeyRound, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Download, Upload, CreditCard, User, KeyRound, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { exportToExcel, importFromExcel } from '../services/excelService';
 import { API_URL } from '../services/api';
 
 export default function Settings() {
   const { state, loadState, showMealCard, toggleShowMealCard, showVault, toggleShowVault, askConfirmation } = useBudget();
-  const { username, logout } = useAuth();
+  const { username } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [securityQuestion, setSecurityQuestion] = useState('');
   const [securityAnswer, setSecurityAnswer] = useState('');
@@ -141,13 +141,6 @@ export default function Settings() {
                     <div className="text-xs text-muted-foreground">{username || 'Bilinmiyor'}</div>
                 </div>
             </div>
-            <button
-              onClick={logout}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-100 rounded-lg hover:bg-red-200 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 transition-colors"
-            >
-              <LogOut size={16} />
-              <span>Çıkış Yap</span>
-            </button>
         </div>
       </Card>
 

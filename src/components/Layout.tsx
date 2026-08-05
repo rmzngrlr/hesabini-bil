@@ -78,7 +78,7 @@ export function Layout({ children }: LayoutProps) {
         </div>
 
         {/* Nav */}
-        <nav className={cn("flex-1 space-y-2 overflow-y-auto py-2", collapsed ? "px-3" : "px-4")}>
+        <nav className={cn("flex-1 space-y-2 py-2", collapsed ? "px-3" : "px-4 overflow-y-auto")}>
           {currentNavItems.map(({ path, label, icon: Icon }) => {
             const red = badgeCounts[path] ?? 0;
             const info = infoBadgeCounts[path] ?? 0;
@@ -86,10 +86,10 @@ export function Layout({ children }: LayoutProps) {
               <NavLink
                 key={path}
                 to={path}
-                title={collapsed ? label : undefined}
+                aria-label={collapsed ? label : undefined}
                 className={({ isActive }) =>
                   cn(
-                    "flex items-center rounded-xl transition-all font-medium relative",
+                    "group flex items-center rounded-xl transition-all font-medium relative",
                     collapsed ? "justify-center h-11" : "gap-3 px-4 py-3",
                     isActive
                       ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
@@ -99,6 +99,11 @@ export function Layout({ children }: LayoutProps) {
               >
                 <Icon size={20} className="shrink-0" />
                 {!collapsed && <span className="whitespace-nowrap">{label}</span>}
+                {collapsed && (
+                  <span className="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 whitespace-nowrap rounded-md border border-border bg-popover px-2.5 py-1 text-xs font-medium text-popover-foreground shadow-md opacity-0 translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 z-50">
+                    {label}
+                  </span>
+                )}
                 {collapsed
                   ? (red > 0 || info > 0) && (
                       <span className="absolute top-1.5 right-1.5 flex gap-0.5">

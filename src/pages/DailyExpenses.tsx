@@ -2,7 +2,8 @@ import { useDraftState } from '../hooks/useDraftState';
 import { useBudget } from '../context/BudgetContext';
 import type { DailyExpense } from '../types';
 import { Card } from '../components/ui/Card';
-import { Trash2, Banknote, CreditCard, Pencil, X, Calendar, ArrowRightLeft, CheckCircle, Circle, Wallet, AlertTriangle } from 'lucide-react';
+import { Trash2, Banknote, CreditCard, Pencil, X, ArrowRightLeft, CheckCircle, Circle, Wallet, AlertTriangle } from 'lucide-react';
+import { MonthNavigator } from '../components/MonthNavigator';
 import { format } from 'date-fns';
 import React, { useMemo, useEffect, useState, useRef } from 'react';
 import { tr } from 'date-fns/locale';
@@ -1261,11 +1262,6 @@ export default function DailyExpenses() {
     new Date(b).getTime() - new Date(a).getTime()
   );
 
-  const formattedMonth = new Date(
-      parseInt(viewDate.split('-')[0]),
-      parseInt(viewDate.split('-')[1]) - 1
-  ).toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
-
   const assetOptions = (
     <>
       <option value="NAKIT">Türk Lirası</option>
@@ -1277,14 +1273,12 @@ export default function DailyExpenses() {
 
   return (
     <div id="main-form-container" className="space-y-6 pb-20 p-4">
-      <header className="flex flex-col gap-2">
+      <header className="flex items-center gap-2 flex-wrap">
         <h1 className="text-2xl font-bold tracking-tight">İşlem Tutanağı</h1>
-        <div className="flex items-center gap-2 text-muted-foreground">
-            <Calendar size={16} />
-            <span className="capitalize">{formattedMonth}</span>
-            {isFuture && <span className="text-xs bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded ml-2">Planlama Modu</span>}
-        </div>
+        {isFuture && <span className="text-xs bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded">Planlama Modu</span>}
       </header>
+
+      <MonthNavigator />
       
       {isFuture && (
         <div className="p-4 bg-blue-500/10 rounded-xl text-blue-600 dark:text-blue-400 border border-blue-500/20 text-center text-sm font-semibold mb-2">
