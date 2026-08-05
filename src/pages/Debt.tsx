@@ -175,12 +175,13 @@ export default function Debt() {
 
   return (
     <div id="main-form-container" className="space-y-6 pb-20 p-4">
-      <header className="flex items-center gap-2 flex-wrap">
-        <h1 className="text-2xl font-bold tracking-tight">Kredi Kartı Borçları</h1>
-        {isFuture && <span className="text-xs bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded">Planlama Modu</span>}
+      <header className="flex flex-col gap-4">
+        <div className="flex items-center gap-2 flex-wrap">
+          <h1 className="text-3xl font-extrabold tracking-tight text-primary">Kredi Kartı Borçları</h1>
+          {isFuture && <span className="text-xs bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded">Planlama Modu</span>}
+        </div>
+        <MonthNavigator />
       </header>
-
-      <MonthNavigator />
 
       {ccDueNotices.length > 0 && (
         <div className="space-y-2">

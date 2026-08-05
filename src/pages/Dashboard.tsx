@@ -370,7 +370,7 @@ export default function Dashboard() {
     <div className="space-y-6 pb-20 p-4">
       <header className="flex flex-col gap-4">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold tracking-tight">Bilanço</h1>
+          <h1 className="text-3xl font-extrabold tracking-tight text-primary">Bilanço</h1>
           {/* Mobilde profil menusu (avatar akordiyonu); masaustunde sol menude. */}
           <div className="md:hidden">
             <MobileProfileMenu />

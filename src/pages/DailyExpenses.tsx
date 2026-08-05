@@ -1273,12 +1273,13 @@ export default function DailyExpenses() {
 
   return (
     <div id="main-form-container" className="space-y-6 pb-20 p-4">
-      <header className="flex items-center gap-2 flex-wrap">
-        <h1 className="text-2xl font-bold tracking-tight">İşlem Tutanağı</h1>
-        {isFuture && <span className="text-xs bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded">Planlama Modu</span>}
+      <header className="flex flex-col gap-4">
+        <div className="flex items-center gap-2 flex-wrap">
+          <h1 className="text-3xl font-extrabold tracking-tight text-primary">İşlem Tutanağı</h1>
+          {isFuture && <span className="text-xs bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded">Planlama Modu</span>}
+        </div>
+        <MonthNavigator />
       </header>
-
-      <MonthNavigator />
       
       {isFuture && (
         <div className="p-4 bg-blue-500/10 rounded-xl text-blue-600 dark:text-blue-400 border border-blue-500/20 text-center text-sm font-semibold mb-2">

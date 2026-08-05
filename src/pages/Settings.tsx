@@ -2,13 +2,15 @@ import { useRef, useState } from 'react';
 import { useBudget } from '../context/BudgetContext';
 import { useAuth, getAuthToken } from '../context/AuthContext';
 import { Card } from '../components/ui/Card';
-import { Download, Upload, CreditCard, User, KeyRound, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Download, Upload, CreditCard, User, KeyRound, AlertCircle, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { exportToExcel, importFromExcel } from '../services/excelService';
 import { API_URL } from '../services/api';
+import { useNavigate } from 'react-router-dom';
 
 export default function Settings() {
   const { state, loadState, showMealCard, toggleShowMealCard, showVault, toggleShowVault, askConfirmation } = useBudget();
   const { username } = useAuth();
+  const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [securityQuestion, setSecurityQuestion] = useState('');
   const [securityAnswer, setSecurityAnswer] = useState('');
@@ -126,8 +128,15 @@ export default function Settings() {
 
   return (
     <div className="space-y-6 pb-20">
-       <header className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold tracking-tight">Ayarlar</h1>
+       <header className="flex items-center gap-2">
+        <button
+          onClick={() => navigate(-1)}
+          aria-label="Geri"
+          className="md:hidden p-2 -ml-2 rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+        >
+          <ArrowLeft size={22} />
+        </button>
+        <h1 className="text-3xl font-extrabold tracking-tight text-primary">Ayarlar</h1>
       </header>
 
       <Card title="Hesap">
