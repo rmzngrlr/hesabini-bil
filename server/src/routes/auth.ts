@@ -18,6 +18,11 @@ router.post('/register', async (req, res) => {
         return res.status(400).json({ error: 'Kullanıcı adı ve şifre gereklidir.' });
     }
 
+    // Kullanici adi tek kelime olmali (bosluk/whitespace icermez).
+    if (/\s/.test(username)) {
+        return res.status(400).json({ error: 'Kullanıcı adı tek kelime olmalı, boşluk içeremez.' });
+    }
+
     try {
         const db = await getDb();
 

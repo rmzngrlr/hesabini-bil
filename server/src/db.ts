@@ -75,6 +75,20 @@ export const getDb = async () => {
             `);
         }
 
+        // Kullanici adi buyuk/kucuk harf DUYARLI olsun (utf8mb4_bin = byte-exact eslesme).
+        // Boylece "Ahmet" ile "ahmet" farkli kullanicilardir ve giriste tam eslesme gerekir.
+        const [unameCol] = await connection.query<mysql.RowDataPacket[]>(`
+            SELECT COLLATION_NAME
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_NAME = 'users' AND COLUMN_NAME = 'username' AND TABLE_SCHEMA = DATABASE()
+        `);
+        if (unameCol[0] && unameCol[0].COLLATION_NAME !== 'utf8mb4_bin') {
+            await connection.query(`
+                ALTER TABLE users
+                MODIFY username VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL
+            `);
+        }
+
         await connection.query(`
             CREATE TABLE IF NOT EXISTS gold_records (
                 id INT AUTO_INCREMENT PRIMARY KEY,

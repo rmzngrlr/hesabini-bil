@@ -85,11 +85,12 @@ export default function Register() {
               <input
                 type="text"
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                onChange={(e) => setUsername(e.target.value.replace(/\s/g, ''))}
                 required
                 className="w-full px-4 py-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 placeholder="Kullanıcı adınız"
               />
+              <p className="text-xs text-muted-foreground">Tek kelime, boşluksuz. Büyük/küçük harf duyarlıdır.</p>
             </div>
 
             <div className="space-y-1">
