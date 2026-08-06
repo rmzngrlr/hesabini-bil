@@ -115,7 +115,7 @@ export default function Login() {
           <p className="text-muted-foreground">Bütçenize erişmek için giriş yapın.</p>
         </div>
 
-        <Card title="Giriş Yap">
+        <Card>
           <div className="space-y-4 p-2">
             {error && (
               <div className="p-3 bg-red-500/10 text-red-500 rounded-lg text-sm flex items-center gap-2">
