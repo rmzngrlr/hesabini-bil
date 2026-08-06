@@ -128,7 +128,7 @@ export default function Login() {
               mode === 'welcome' ? (
                 <div className="flex flex-col items-center gap-3 py-2">
                   <Avatar src={avatar} initial={initial} className="w-20 h-20 text-2xl" />
-                  <div className="text-lg font-semibold text-center">Tekrar hoş geldin, {username}</div>
+                  <div className="text-lg font-semibold text-center">Tekrar Hoş Geldin, {username}</div>
                   <button
                     onClick={() => handleContinue(username)}
                     disabled={isLoading}
@@ -136,7 +136,7 @@ export default function Login() {
                   >
                     {isLoading ? 'Devam ediliyor...' : <>Devam <ArrowRight size={20} /></>}
                   </button>
-                  <button onClick={useDifferentAccount} className="text-sm text-primary hover:underline">
+                  <button onClick={useDifferentAccount} className="text-sm text-primary hover:underline mt-4">
                     Farklı hesapla giriş yap
                   </button>
                 </div>
