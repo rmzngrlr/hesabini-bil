@@ -1820,11 +1820,12 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     };
 
     setRealState(prev => {
-        if (viewDate === prev.currentMonth) {
-            return { ...prev, dailyExpenses: [...prev.dailyExpenses, newExpense] };
-        } else if (viewDate < prev.currentMonth) {
-            // Edit History
-            const histIndex = prev.history.findIndex(h => h.month === viewDate);
+        // Kaydin ayi GORUNTULENEN aydan degil, secilen TARIHTEN belirlenir.
+        const targetMonth = (newExpense.date && String(newExpense.date).substring(0, 7)) || prev.currentMonth;
+
+        if (targetMonth < prev.currentMonth) {
+            // Gecmis ay: ilgili history ayina ekle.
+            const histIndex = prev.history.findIndex(h => h.month === targetMonth);
             if (histIndex !== -1) {
                 const newHistory = [...prev.history];
                 newHistory[histIndex] = {
@@ -1833,9 +1834,11 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 };
                 return recalculateHistoryAndCurrent({ ...prev, history: newHistory });
             }
-            return prev;
+            // O gecmis ay kaydi yoksa guvenli sekilde bu aya ekle.
+            return { ...prev, dailyExpenses: [...prev.dailyExpenses, newExpense] };
         }
-        return prev;
+        // Bu ay veya (gunluk islem ileride tutulmadigi icin) ileri tarih -> bu ay.
+        return { ...prev, dailyExpenses: [...prev.dailyExpenses, newExpense] };
     });
   };
 

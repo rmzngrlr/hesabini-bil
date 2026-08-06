@@ -15,6 +15,7 @@ export default function DailyExpenses() {
   const {
     state,
     viewDate,
+    setViewDate,
     addDailyExpense,
     updateDailyExpense,
     deleteDailyExpense,
@@ -973,6 +974,13 @@ export default function DailyExpenses() {
     }
     
     setAmount('');
+
+    // Ekleme (duzenleme degil) yapildiysa ve kayit secilen tarihin ayina (goruntulenen
+    // aydan farkli) dustuyse, o ayi goster ki kullanici eklenen kaydi gorsun.
+    if (!editingId) {
+      const targetMonth = String(date).substring(0, 7);
+      if (targetMonth && targetMonth !== viewDate) setViewDate(targetMonth);
+    }
 
     sessionStorage.removeItem('daily_draft_desc');
     sessionStorage.removeItem('daily_draft_amount');
