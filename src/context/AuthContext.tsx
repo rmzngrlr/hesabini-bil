@@ -59,6 +59,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.setItem('budget_is_admin', String(newIsAdmin));
     if (newAvatar) localStorage.setItem('budget_avatar', newAvatar);
     else localStorage.removeItem('budget_avatar');
+    // Iki adimli giris icin son kullaniciyi hatirla (cikista SILINMEZ).
+    localStorage.setItem('budget_last_user', JSON.stringify({ username: newUsername, avatar: newAvatar || null }));
     setToken(newToken);
     setUsername(newUsername);
     setIsAdmin(newIsAdmin);
@@ -97,6 +99,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setAvatar(newAvatar);
     if (newAvatar) localStorage.setItem('budget_avatar', newAvatar);
     else localStorage.removeItem('budget_avatar');
+    // Hatirlanan kullanicinin avatarini da tazele.
+    const uname = username || localStorage.getItem('budget_username');
+    if (uname) localStorage.setItem('budget_last_user', JSON.stringify({ username: uname, avatar: newAvatar || null }));
   };
 
   return (
@@ -127,4 +132,24 @@ export const useAuth = () => {
 // Utility function to easily get the token outside of React hooks
 export const getAuthToken = () => {
   return localStorage.getItem('budget_token');
+};
+
+export interface LastUser {
+  username: string;
+  avatar: string | null;
+}
+
+// Iki adimli girisin ilk adiminda gosterilen "son giren kullanici" (localStorage).
+export const getLastUser = (): LastUser | null => {
+  try {
+    const raw = localStorage.getItem('budget_last_user');
+    if (!raw) return null;
+    const p = JSON.parse(raw);
+    if (p && typeof p.username === 'string') {
+      return { username: p.username, avatar: p.avatar || null };
+    }
+    return null;
+  } catch {
+    return null;
+  }
 };

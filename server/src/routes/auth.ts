@@ -256,4 +256,24 @@ router.get('/profile', authenticate, async (req: any, res: any) => {
     }
 });
 
+// GET /api/auth/lookup/:username - iki adimli giris: kullaniciyi tani (kimlik dogrulamasiz).
+// Kullanici adindan avatar + adi doner; yoksa 404. Sifre adimindan ONCE avatar gostermek icin.
+router.get('/lookup/:username', async (req, res) => {
+    const { username } = req.params;
+    if (!username) {
+        return res.status(400).json({ error: 'Kullanıcı adı gereklidir.' });
+    }
+    try {
+        const db = await getDb();
+        const user = await db.get('SELECT username, avatar FROM users WHERE username = ?', [username]);
+        if (!user) {
+            return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
+        }
+        res.json({ username: user.username, avatar: user.avatar || null });
+    } catch (error) {
+        console.error('Kullanıcı tanıma hatası:', error);
+        res.status(500).json({ error: 'Sunucu hatası oluştu.' });
+    }
+});
+
 export default router;
