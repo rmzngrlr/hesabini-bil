@@ -367,7 +367,7 @@ export default function Dashboard() {
   const totalPieValue = pieData.reduce((sum, item) => sum + item.value, 0);
 
   return (
-    <div className="space-y-6 pb-20 p-4">
+    <div className="space-y-6 p-4">
       <header className="flex flex-col gap-4">
         <div className="flex justify-between items-center min-h-[40px]">
           <h1 className="text-3xl font-extrabold tracking-tight text-primary">Bilanço</h1>
@@ -553,7 +553,7 @@ export default function Dashboard() {
 
         {/* Pie Chart Section */}
         {pieData.length > 0 && (
-            <div className={`w-full mt-2 ${isMobile ? 'h-[340px]' : 'h-64'}`}>
+            <div className={`w-full mt-2 ${isMobile ? 'h-[280px]' : 'h-64'}`}>
                 <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                         <Pie

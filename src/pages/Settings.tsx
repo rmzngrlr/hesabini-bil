@@ -180,7 +180,7 @@ export default function Settings() {
   };
 
   return (
-    <div className="space-y-6 pb-20">
+    <div className="space-y-6">
        <header className="flex items-center gap-2">
         <button
           onClick={() => navigate(-1)}
