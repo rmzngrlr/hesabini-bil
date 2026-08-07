@@ -1834,8 +1834,21 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 };
                 return recalculateHistoryAndCurrent({ ...prev, history: newHistory });
             }
-            // O gecmis ay kaydi yoksa guvenli sekilde bu aya ekle.
-            return { ...prev, dailyExpenses: [...prev.dailyExpenses, newExpense] };
+            // O gecmis ay history'de YOKSA: o ayi olustur ve kaydi oraya koy.
+            // (Aksi halde kayit yanlislikla bu aya duserdi -> hatanin kaynagi buydu.)
+            const newMonth: MonthlyHistory = {
+                month: targetMonth,
+                income: 0,
+                rollover: 0,
+                ykIncome: 0,
+                ykRollover: 0,
+                fixedExpenses: [],
+                customIncomes: [],
+                dailyExpenses: [newExpense],
+                ccDebts: [],
+            };
+            const newHistory = [...prev.history, newMonth].sort((a, b) => a.month.localeCompare(b.month));
+            return recalculateHistoryAndCurrent({ ...prev, history: newHistory });
         }
         // Bu ay veya (gunluk islem ileride tutulmadigi icin) ileri tarih -> bu ay.
         return { ...prev, dailyExpenses: [...prev.dailyExpenses, newExpense] };
