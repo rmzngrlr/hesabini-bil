@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { MobileProfileMenu } from '../components/MobileProfileMenu';
 import { MonthNavigator } from '../components/MonthNavigator';
@@ -70,27 +70,51 @@ const FALLBACK_CURRENCY_COLOR = { card: 'to-slate-500/12 border-slate-500/30', v
 
 const getCurrencyColors = (asset: string) => CURRENCY_COLORS[currencyColorKey(asset)] || FALLBACK_CURRENCY_COLOR;
 
-// Kart başlığı: kısa etiket + tam adı gösteren küçük tooltip. Native title dokunmatikte
-// çalışmadığı için hem fare (hover) hem dokunmatik (tap) ile açılır; dışarı tıklayınca kapanır.
+// Kart başlığı: tam adı gösterir; kutuya (tek satıra) SIĞMIYORSA ISO koduna düşer.
+// Kısaltma yalnızca gerçek taşma olunca olur (masaüstü/mobil ayrımı gerekmez, ölçümle çözülür).
+// Kısaltılmışsa üzerine gelince (fare) veya dokununca (mobil) tam adı tooltip'te gösterir.
 function AssetLabel({ short, full }: { short: string; full: string }) {
+  const boxRef = useRef<HTMLSpanElement>(null);
+  const measureRef = useRef<HTMLSpanElement>(null);
+  const [truncated, setTruncated] = useState(false);
   const [open, setOpen] = useState(false);
-  const hasTip = !!full && full !== short;
+
+  useLayoutEffect(() => {
+    const measure = () => {
+      const box = boxRef.current;
+      const m = measureRef.current;
+      if (!box || !m) return;
+      // Tam adin tek satirdaki dogal genisligi kutuya sigmiyorsa taşar -> koda dön.
+      setTruncated(m.scrollWidth > box.clientWidth + 0.5);
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [short, full]);
+
+  const showCode = truncated && !!short && short !== full;
+
   useEffect(() => {
     if (!open) return;
     const close = () => setOpen(false);
     document.addEventListener('click', close);
     return () => document.removeEventListener('click', close);
   }, [open]);
+
   return (
-    <span
-      className={`relative inline-block whitespace-nowrap align-bottom ${hasTip ? 'cursor-help' : ''}`}
-      aria-label={hasTip ? full : undefined}
-      onMouseEnter={() => hasTip && setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-      onClick={() => { if (hasTip) setOpen(true); }}
-    >
-      {short}
-      {open && hasTip && (
+    <span ref={boxRef} className="relative block">
+      {/* Gizli olcum: tam ad, tek satir, dogal genislik */}
+      <span ref={measureRef} aria-hidden className="invisible absolute left-0 top-0 whitespace-nowrap">{full}</span>
+      <span
+        className={`block truncate ${showCode ? 'cursor-help' : ''}`}
+        aria-label={showCode ? full : undefined}
+        onMouseEnter={() => showCode && setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onClick={() => { if (showCode) setOpen(true); }}
+      >
+        {showCode ? short : full}
+      </span>
+      {open && showCode && (
         <span className="absolute left-0 top-full z-30 mt-1 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 text-xs font-normal text-popover-foreground shadow-lg">
           {full}
         </span>
@@ -257,13 +281,12 @@ export default function Dashboard() {
     return codeMap[t.toLowerCase()] || t.substring(0, 3).toUpperCase();
   };
 
-  // Mobil döviz etiketi: kısa isim olduğu gibi kalır ("Euro"); uzunsa ISO koduna döner.
-  // full = tam ad (tooltip'te gösterilir). Altın ve masaüstü bu fonksiyonu kullanmaz.
-  const getCardLabel = (asset: string): { short: string; full: string } => {
-    const full = getAssetFullTitle(asset);
-    const isShortName = full.length <= 8 && !full.includes(' ');
-    return { short: isShortName ? full : getAssetIsoCode(asset), full };
-  };
+  // Döviz kart etiketi: short = ISO kod (yalnızca tam ad kutuya sığmazsa gösterilir),
+  // full = tam ad. Sığıp sığmama ölçümünü AssetLabel yapar.
+  const getCardLabel = (asset: string): { short: string; full: string } => ({
+    short: getAssetIsoCode(asset),
+    full: getAssetFullTitle(asset),
+  });
 
 
 
@@ -636,7 +659,7 @@ export default function Dashboard() {
                 }
                 const colors = getCurrencyColors(asset);
                 return (
-                  <Card key={asset} title={isMobile ? <AssetLabel {...getCardLabel(asset)} /> : getAssetFullTitle(asset)} className={`bg-gradient-to-br from-transparent ${colors.card}`}>
+                  <Card key={asset} title={<AssetLabel {...getCardLabel(asset)} />} className={`bg-gradient-to-br from-transparent ${colors.card}`}>
                     <div className={`text-2xl font-bold mt-2 ${value < 0 ? 'text-red-500' : colors.value}`}>
                       {value.toLocaleString('tr-TR')}{getAssetSymbol(asset)}
                     </div>
