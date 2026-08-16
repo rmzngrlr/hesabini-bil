@@ -14,8 +14,64 @@ const isGoldType = (type: string) => {
   return goldKeywords.some(kw => lower.includes(kw));
 };
 
+// Döviz -> renk anahtarı. Depolanan değer genelde ISO kod (USD, SYP, RUB…) ama
+// eski/serbest metin kayıtlar için ad bazlı geniş eşleşme de var.
+const currencyColorKey = (name: string): string => {
+  const lower = name.trim().toLowerCase();
+  const direct: Record<string, string> = {
+    usd: 'usd', dolar: 'usd', 'amerikan doları': 'usd',
+    eur: 'eur', euro: 'eur',
+    gbp: 'gbp', sterlin: 'gbp', 'ingiliz sterlini': 'gbp',
+    syp: 'syp', 'suriye lirası': 'syp',
+    rub: 'rub', ruble: 'rub', 'rus rublesi': 'rub',
+    azn: 'azn', manat: 'azn', 'azerbaycan manatı': 'azn',
+    sar: 'sar', 'suudi arabistan riyali': 'sar',
+    egp: 'egp', 'mısır lirası': 'egp',
+    lbp: 'lbp', 'lübnan lirası': 'lbp',
+    uzs: 'uzs', som: 'uzs', 'özbekistan somu': 'uzs',
+    bam: 'bam', 'bosna-hersek markı': 'bam', 'bosna markı': 'bam',
+    irr: 'irr', 'iran riyali': 'irr',
+  };
+  if (direct[lower]) return direct[lower];
+  // Serbest/eski metin için ad bazlı yakalama ('iran' testi, 'riyal'den ÖNCE)
+  if (lower.includes('iran')) return 'irr';
+  if (lower.includes('lübnan') || lower.includes('lubnan')) return 'lbp';
+  if (lower.includes('özbek') || lower.includes('ozbek')) return 'uzs';
+  if (lower.includes('suriye') || lower.includes('syrian')) return 'syp';
+  if (lower.includes('suudi') || lower.includes('riyal')) return 'sar';
+  if (lower.includes('mısır') || lower.includes('misir')) return 'egp';
+  if (lower.includes('azerbaycan') || lower.includes('manat')) return 'azn';
+  if (lower.includes('ruble') || lower.includes('rublesi')) return 'rub';
+  if (lower.includes('bosna') || lower.includes('marki') || lower.includes('markı')) return 'bam';
+  if (lower.includes('dolar') || lower.includes('dollar')) return 'usd';
+  if (lower.includes('euro')) return 'eur';
+  if (lower.includes('sterlin') || lower.includes('pound')) return 'gbp';
+  return '';
+};
+
+// Her döviz için kart + değer renk sınıfları. Tailwind JIT taraması için TAM literal
+// stringler (dinamik `to-${x}` üretilirse purge eder, renk çıkmaz).
+const CURRENCY_COLORS: Record<string, { card: string; value: string }> = {
+  usd: { card: 'to-green-500/12 border-green-500/30', value: 'text-green-600 dark:text-green-500' },
+  eur: { card: 'to-blue-500/12 border-blue-500/30', value: 'text-blue-600 dark:text-blue-500' },
+  gbp: { card: 'to-purple-500/12 border-purple-500/30', value: 'text-purple-600 dark:text-purple-500' },
+  syp: { card: 'to-red-500/12 border-red-500/30', value: 'text-red-600 dark:text-red-500' },
+  rub: { card: 'to-indigo-500/12 border-indigo-500/30', value: 'text-indigo-600 dark:text-indigo-500' },
+  azn: { card: 'to-sky-500/12 border-sky-500/30', value: 'text-sky-600 dark:text-sky-500' },
+  sar: { card: 'to-lime-500/12 border-lime-500/30', value: 'text-lime-600 dark:text-lime-500' },
+  egp: { card: 'to-orange-500/12 border-orange-500/30', value: 'text-orange-600 dark:text-orange-500' },
+  lbp: { card: 'to-cyan-500/12 border-cyan-500/30', value: 'text-cyan-600 dark:text-cyan-500' },
+  uzs: { card: 'to-pink-500/12 border-pink-500/30', value: 'text-pink-600 dark:text-pink-500' },
+  bam: { card: 'to-teal-500/12 border-teal-500/30', value: 'text-teal-600 dark:text-teal-500' },
+  irr: { card: 'to-rose-500/12 border-rose-500/30', value: 'text-rose-600 dark:text-rose-500' },
+};
+
+const FALLBACK_CURRENCY_COLOR = { card: 'to-slate-500/12 border-slate-500/30', value: 'text-slate-600 dark:text-slate-400' };
+
+const getCurrencyColors = (asset: string) => CURRENCY_COLORS[currencyColorKey(asset)] || FALLBACK_CURRENCY_COLOR;
+
 export default function Dashboard() {
-  const { state, viewDate, showMealCard, vaultRecords, vaultOrder, activeCurrencies, todayStr } = useBudget();
+  const { state, viewDate, showMealCard, vaultRecords, activeCurrencies, todayStr } = useBudget();
 
   // Track window size for responsive chart rendering
   const [isMobile, setIsMobile] = useState(false);
@@ -80,6 +136,12 @@ export default function Dashboard() {
       'bam': 'KM', 'bosna-hersek markı': 'KM',
       // SYP
       'syp': 'ل.س', 'suriye lirası': 'ل.س',
+      // LBP
+      'lbp': 'L£', 'lübnan lirası': 'L£',
+      // UZS
+      'uzs': "so'm", 'özbekistan somu': "so'm",
+      // IRR
+      'irr': '﷼', 'iran riyali': '﷼',
       // AZN
       'azn': '₼', 'azerbaycan manatı': '₼', 'manat': '₼',
       // UAH
@@ -133,6 +195,9 @@ export default function Dashboard() {
       'kwd': 'Kuveyt Dinarı', 'dinar': 'Kuveyt Dinarı', 'kuveyt dinarı': 'Kuveyt Dinarı',
       'iqd': 'Irak Dinarı', 'irak dinarı': 'Irak Dinarı',
       'syp': 'Suriye Lirası', 'suriye lirası': 'Suriye Lirası',
+      'lbp': 'Lübnan Lirası', 'lübnan lirası': 'Lübnan Lirası',
+      'uzs': 'Özbekistan Somu', 'som': 'Özbekistan Somu', 'özbekistan somu': 'Özbekistan Somu',
+      'irr': 'İran Riyali', 'iran riyali': 'İran Riyali',
       'azn': 'Azerbaycan Manatı', 'manat': 'Azerbaycan Manatı', 'azerbaycan manatı': 'Azerbaycan Manatı',
       'uah': 'Ukrayna Grivnası', 'ukrayna grivnası': 'Ukrayna Grivnası',
       'inr': 'Hindistan Rupisi', 'hindistan rupisi': 'Hindistan Rupisi',
@@ -439,7 +504,7 @@ export default function Dashboard() {
             className="flex justify-between items-center cursor-pointer select-none group py-1"
           >
             <h2 className="text-lg font-bold tracking-tight text-muted-foreground group-hover:text-foreground transition-colors flex items-center gap-2">
-              Diğer Varlıklar
+              Döviz ve Kıymetli Madenler
             </h2>
             <div className="text-muted-foreground group-hover:text-foreground transition-colors p-1 rounded-lg hover:bg-secondary/50">
               {isVaultExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
@@ -448,27 +513,18 @@ export default function Dashboard() {
           {isVaultExpanded && (
             <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
             {(() => {
-              // NOT: addMonths ve getKasaSum yardimcilari kaldirildi. Doviz kasa
-              // hareketleri motor tarafindan zaten dailyExpenses'e enjekte edildigi
-              // icin (recalculate:396) burada ayrica kasa toplami hesaplanmiyordu;
-              // ekleyince cift sayim oluyordu.
+              // Doviz kasa hareketleri motor tarafindan zaten dailyExpenses'e enjekte
+              // edildigi icin (recalculate:396) burada ayrica kasa toplami eklenmez;
+              // eklenince cift sayim olur.
 
-              // Merge vault asset types (gold + foreign currency) with daily-only currencies
+              // Altin + doviz varlik tiplerini birlestir (gunluk-only dovizler dahil)
               const vaultAssetTypes = vaultRecords.map(r => r.gold_type);
               const uniqueAssetTypes = Array.from(new Set([...vaultAssetTypes, ...activeCurrencies]));
-              const sortedAssetTypes = uniqueAssetTypes.sort((a, b) => {
-                const idxA = vaultOrder?.indexOf(a) ?? -1;
-                const idxB = vaultOrder?.indexOf(b) ?? -1;
-                if (idxA === -1 && idxB === -1) return 0;
-                if (idxA === -1) return 1;
-                if (idxB === -1) return -1;
-                return idxA - idxB;
-              });
 
-              return sortedAssetTypes.map(asset => {
-                const isGold = isGoldType(asset);
-                
-                if (isGold) {
+              // Her varligin GORUNEN birim degeri (altin: gram/adet, doviz: kalan tutar).
+              // Hem siralamada hem render'da ayni deger kullanilir.
+              const computeValue = (asset: string): { isGold: boolean; value: number } => {
+                if (isGoldType(asset)) {
                   const groupRecords = vaultRecords.filter(r => r.gold_type === asset && (r.transaction_type || 'Birikim') !== 'Düğün Hediyesi / Takı');
                   const totalGold = groupRecords.reduce((sum, r) => {
                     const amt = Number(r.amount);
@@ -476,62 +532,63 @@ export default function Dashboard() {
                     if (tType === 'Borç Verdim') return sum;
                     return tType === 'Birikim' ? sum + amt : sum - amt;
                   }, 0);
+                  return { isGold: true, value: totalGold };
+                }
+                const assetBudget = state.assetBudgets?.[asset] || { income: 0, rollover: 0 };
+                const customIncomeTotal = (state.customIncomes || [])
+                  .filter(i => i.type === asset)
+                  .reduce((sum, i) => sum + i.amount, 0);
+                const dailyIncomeTotal = state.dailyExpenses
+                  .filter(e => e.type === asset && e.amount > 0)
+                  .reduce((sum, e) => sum + e.amount, 0);
+                const totalResources = assetBudget.rollover + assetBudget.income + customIncomeTotal + dailyIncomeTotal;
+                let totalSpent = 0;
+                if (isFuture) {
+                  totalSpent = state.fixedExpenses
+                    .filter(e => e.type === asset)
+                    .reduce((sum, e) => sum + e.amount, 0);
+                } else {
+                  const paidFixed = state.fixedExpenses
+                    .filter(e => e.type === asset && e.isPaid)
+                    .reduce((sum, e) => sum + e.amount, 0);
+                  const dailySpent = state.dailyExpenses
+                    .filter(e => e.type === asset && e.amount < 0)
+                    .reduce((sum, e) => sum + Math.abs(e.amount), 0);
+                  totalSpent = paidFixed + dailySpent;
+                }
+                return { isGold: false, value: totalResources - totalSpent };
+              };
 
-                  if (totalGold === 0) return null;
+              // Siralama: once altinlar, sonra dovizler; her grup birim sayisina gore
+              // coktan aza; esit birim sayisinda ada gore A->Z.
+              const enriched = uniqueAssetTypes
+                .map(asset => ({ asset, ...computeValue(asset) }))
+                .filter(a => a.value !== 0);
 
+              enriched.sort((a, b) => {
+                if (a.isGold !== b.isGold) return a.isGold ? -1 : 1;
+                if (b.value !== a.value) return b.value - a.value;
+                return getAssetFullTitle(a.asset).localeCompare(getAssetFullTitle(b.asset), 'tr');
+              });
+
+              return enriched.map(({ asset, isGold, value }) => {
+                if (isGold) {
                   return (
                     <Card key={asset} title={getAssetFullTitle(asset)} className="bg-gradient-to-br from-transparent to-yellow-500/12 border-yellow-500/30">
                       <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-500 mt-2">
-                        {totalGold} {getAssetSymbol(asset)}
-                      </div>
-                    </Card>
-                  );
-                } else {
-                  const assetBudget = state.assetBudgets?.[asset] || { income: 0, rollover: 0 };
-                  
-                  const customIncomeTotal = (state.customIncomes || [])
-                    .filter(i => i.type === asset)
-                    .reduce((sum, i) => sum + i.amount, 0);
-
-                  const dailyIncomeTotal = state.dailyExpenses
-                    .filter(e => e.type === asset && e.amount > 0)
-                    .reduce((sum, e) => sum + e.amount, 0);
-
-                  const totalResources = assetBudget.rollover + assetBudget.income + customIncomeTotal + dailyIncomeTotal;
-
-                  let totalSpent = 0;
-                  if (isFuture) {
-                    totalSpent = state.fixedExpenses
-                      .filter(e => e.type === asset)
-                      .reduce((sum, e) => sum + e.amount, 0);
-                  } else {
-                    const paidFixed = state.fixedExpenses
-                      .filter(e => e.type === asset && e.isPaid)
-                      .reduce((sum, e) => sum + e.amount, 0);
-                    const dailySpent = state.dailyExpenses
-                      .filter(e => e.type === asset && e.amount < 0)
-                      .reduce((sum, e) => sum + Math.abs(e.amount), 0);
-                    totalSpent = paidFixed + dailySpent;
-                  }
-
-                  // Döviz kasa hareketleri MOTOR TARAFINDAN zaten dailyExpenses'e
-                  // 'vault-curr-' kayitlari olarak enjekte ediliyor (recalculate:396) ve
-                  // yukarida dailyIncomeTotal/dailySpent icinde sayiliyor. Burada ayrica
-                  // getKasaSum ile eklemek ayni tutari IKI KEZ sayiyordu (50+75+75=200).
-                  // Ay devri motoru da geçmis aylar icin kasaChanges=0 kullaniyor (:502);
-                  // burada da ayni davraniyoruz.
-                  const remaining = totalResources - totalSpent;
-
-                  if (remaining === 0) return null;
-
-                  return (
-                    <Card key={asset} title={getAssetFullTitle(asset)} className="bg-gradient-to-br from-transparent to-emerald-500/12 border-emerald-500/30">
-                      <div className={`text-2xl font-bold mt-2 ${remaining < 0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-500'}`}>
-                        {remaining.toLocaleString('tr-TR')}{isGoldType(asset) ? ' ' : ''}{getAssetSymbol(asset)}
+                        {value} {getAssetSymbol(asset)}
                       </div>
                     </Card>
                   );
                 }
+                const colors = getCurrencyColors(asset);
+                return (
+                  <Card key={asset} title={getAssetFullTitle(asset)} className={`bg-gradient-to-br from-transparent ${colors.card}`}>
+                    <div className={`text-2xl font-bold mt-2 ${value < 0 ? 'text-red-500' : colors.value}`}>
+                      {value.toLocaleString('tr-TR')}{getAssetSymbol(asset)}
+                    </div>
+                  </Card>
+                );
               });
             })()}
             </div>

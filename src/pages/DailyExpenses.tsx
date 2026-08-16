@@ -156,6 +156,12 @@ export default function DailyExpenses() {
       'kuveyt dinarı': 'Kuveyt Dinarı',
       'syp': 'Suriye Lirası',
       'suriye lirası': 'Suriye Lirası',
+      'lbp': 'Lübnan Lirası',
+      'lübnan lirası': 'Lübnan Lirası',
+      'uzs': 'Özbekistan Somu',
+      'özbekistan somu': 'Özbekistan Somu',
+      'irr': 'İran Riyali',
+      'iran riyali': 'İran Riyali',
       'cny': 'Çin Yuanı',
       'çin yuanı': 'Çin Yuanı',
       'sek': 'İsveç Kronu',
@@ -244,6 +250,19 @@ export default function DailyExpenses() {
       return 'JPY';
     }
     
+    // İran, 'riyal' içerdiği için SAR'dan ÖNCE kontrol edilmeli.
+    if (lowerInput.includes('iran') || lowerInput === 'irr') {
+      return 'IRR';
+    }
+
+    if (lowerInput.includes('lubnan') || lowerInput === 'lbp') {
+      return 'LBP';
+    }
+
+    if (lowerInput.includes('ozbek') || lowerInput === 'uzs' || lowerInput === 'som') {
+      return 'UZS';
+    }
+
     if (lowerInput.includes('riyal') || lowerInput.includes('suudi') || lowerInput === 'sar') {
       if (lowerInput.includes('katar') || lowerInput === 'qar') return 'QAR';
       return 'SAR';
@@ -335,6 +354,13 @@ export default function DailyExpenses() {
       // Syrian Pound
       'syp': 'ل.س',
       'suriye lirası': 'ل.س',
+      // Lübnan / Özbekistan / İran
+      'lbp': 'L£',
+      'lübnan lirası': 'L£',
+      'uzs': "so'm",
+      'özbekistan somu': "so'm",
+      'irr': '﷼',
+      'iran riyali': '﷼',
       // BAM / KM
       'bam': 'KM',
       // Franc
