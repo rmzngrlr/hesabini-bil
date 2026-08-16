@@ -5,7 +5,7 @@ import { MonthNavigator } from '../components/MonthNavigator';
 import { useBudget } from '../context/BudgetContext';
 import { isDebtPending } from '../lib/utils';
 import { Card } from '../components/ui/Card';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Sector } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Sector } from 'recharts';
 import { ProgressBar } from '../components/ui/ProgressBar';
 
 const isGoldType = (type: string) => {
@@ -151,12 +151,13 @@ export default function Dashboard() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Bir dilim aktifken (tooltip açıkken) donut merkez yazısını gizle ki üst üste binmesin.
-  const [chartActive, setChartActive] = useState(false);
+  // Dokunulan dilimin bilgisi donut MERKEZİNDE gösterilir (uçan tooltip yok).
+  // null iken merkez toplam bütçeyi gösterir. Dışarı dokununca temizlenir.
+  const [activeSliceIndex, setActiveSliceIndex] = useState<number | null>(null);
   const chartRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
-      if (chartRef.current && !chartRef.current.contains(e.target as Node)) setChartActive(false);
+      if (chartRef.current && !chartRef.current.contains(e.target as Node)) setActiveSliceIndex(null);
     };
     document.addEventListener('click', onDoc);
     return () => document.removeEventListener('click', onDoc);
@@ -536,29 +537,16 @@ export default function Dashboard() {
   const remainStr = trueRemaining >= 0 ? `%${remainPct} kalan` : `%${Math.abs(remainPct)} açık`;
   const remainColor = trueRemaining >= 0 ? '#22c55e' : '#ef4444';
 
+  // Aktif dilim: dokunulan dilimin bilgisi merkezde gösterilir (uçan tooltip yok).
+  const activeSlice = activeSliceIndex != null ? pieData[activeSliceIndex] : null;
+  const activeSliceValueStr = activeSlice ? `${Math.round(activeSlice.value).toLocaleString('tr-TR')} ₺` : '';
+  const activeSlicePct = activeSlice && totalPieValue > 0 ? ((activeSlice.value / totalPieValue) * 100).toFixed(1) : '0';
+
   // Aktif (hover/tap) dilim: hafifçe büyür — çirkin odak çerçevesi yerine.
   const renderActiveShape = (props: any) => {
     const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
     return (
       <Sector cx={cx} cy={cy} innerRadius={innerRadius} outerRadius={outerRadius + 7} startAngle={startAngle} endAngle={endAngle} fill={fill} cornerRadius={6} />
-    );
-  };
-
-  // Tema uyumlu cam tooltip.
-  const renderChartTooltip = ({ active, payload }: any) => {
-    if (!active || !payload || !payload.length) return null;
-    const p = payload[0];
-    const pct = totalPieValue > 0 ? ((Number(p.value) / totalPieValue) * 100).toFixed(1) : '0';
-    return (
-      <div className="rounded-lg border border-border bg-popover px-3 py-2 shadow-lg">
-        <div className="flex items-center gap-2 text-xs font-medium text-popover-foreground">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: p.payload?.color }} />
-          {p.name}
-        </div>
-        <div className="mt-0.5 text-xs text-muted-foreground">
-          {Number(p.value).toLocaleString('tr-TR')} ₺ · %{pct}
-        </div>
-      </div>
     );
   };
 
@@ -760,22 +748,34 @@ export default function Dashboard() {
                                 startAngle={90}
                                 endAngle={-270}
                                 stroke="none"
+                                activeIndex={activeSliceIndex ?? undefined}
                                 activeShape={renderActiveShape}
-                                onMouseEnter={() => setChartActive(true)}
-                                onMouseLeave={() => setChartActive(false)}
+                                onMouseEnter={(_, i) => setActiveSliceIndex(i)}
+                                onMouseLeave={() => setActiveSliceIndex(null)}
                             >
                                 {pieData.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={entry.color} />
                                 ))}
                             </Pie>
-                            <Tooltip content={renderChartTooltip} />
                         </PieChart>
                     </ResponsiveContainer>
-                    {/* Donut merkez etiketi: HTML overlay, donut merkeziyle hizali */}
-                    <div className={`pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center transition-opacity duration-150 ${chartActive ? 'opacity-0' : 'opacity-100'}`}>
-                        <span className="text-xs leading-tight text-muted-foreground">toplam bütçe</span>
-                        <span className="text-xl font-semibold leading-tight text-foreground">{centerTotalStr}</span>
-                        <span className="text-sm font-semibold leading-tight" style={{ color: remainColor }}>{remainStr}</span>
+                    {/* Donut merkezi: dilim aktifse o dilimin bilgisi, yoksa toplam bütçe */}
+                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                        <div className="flex max-w-[150px] flex-col items-center text-center">
+                            {activeSlice ? (
+                                <>
+                                    <span className="text-xs leading-snug" style={{ color: activeSlice.color }}>{activeSlice.name}</span>
+                                    <span className="mt-1 text-xl font-semibold leading-tight text-foreground">{activeSliceValueStr}</span>
+                                    <span className="text-sm font-semibold leading-tight" style={{ color: activeSlice.color }}>%{activeSlicePct}</span>
+                                </>
+                            ) : (
+                                <>
+                                    <span className="text-xs leading-tight text-muted-foreground">toplam bütçe</span>
+                                    <span className="text-xl font-semibold leading-tight text-foreground">{centerTotalStr}</span>
+                                    <span className="text-sm font-semibold leading-tight" style={{ color: remainColor }}>{remainStr}</span>
+                                </>
+                            )}
+                        </div>
                     </div>
                 </div>
                 {/* Legend: HTML, pieData sirasiyla (Kalan, Gunluk, Yatirim, sonra sabit giderler) */}
