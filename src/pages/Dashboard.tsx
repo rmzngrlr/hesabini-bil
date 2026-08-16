@@ -151,6 +151,17 @@ export default function Dashboard() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Bir dilim aktifken (tooltip açıkken) donut merkez yazısını gizle ki üst üste binmesin.
+  const [chartActive, setChartActive] = useState(false);
+  const chartRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const onDoc = (e: MouseEvent) => {
+      if (chartRef.current && !chartRef.current.contains(e.target as Node)) setChartActive(false);
+    };
+    document.addEventListener('click', onDoc);
+    return () => document.removeEventListener('click', onDoc);
+  }, []);
+
   const [isVaultExpanded, setIsVaultExpanded] = useState<boolean>(() => {
     try {
       const stored = localStorage.getItem('dashboard_vault_expanded');
@@ -734,7 +745,7 @@ export default function Dashboard() {
         {/* Pie Chart Section */}
         {pieData.length > 0 && (
             <div className="mt-2">
-                <div className={`relative w-full ${isMobile ? 'h-[300px]' : 'h-[320px]'}`}>
+                <div ref={chartRef} className={`relative w-full ${isMobile ? 'h-[300px]' : 'h-[320px]'}`}>
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                             <Pie
@@ -750,6 +761,8 @@ export default function Dashboard() {
                                 endAngle={-270}
                                 stroke="none"
                                 activeShape={renderActiveShape}
+                                onMouseEnter={() => setChartActive(true)}
+                                onMouseLeave={() => setChartActive(false)}
                             >
                                 {pieData.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={entry.color} />
@@ -759,7 +772,7 @@ export default function Dashboard() {
                         </PieChart>
                     </ResponsiveContainer>
                     {/* Donut merkez etiketi: HTML overlay, donut merkeziyle hizali */}
-                    <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+                    <div className={`pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center transition-opacity duration-150 ${chartActive ? 'opacity-0' : 'opacity-100'}`}>
                         <span className="text-xs leading-tight text-muted-foreground">toplam bütçe</span>
                         <span className="text-xl font-semibold leading-tight text-foreground">{centerTotalStr}</span>
                         <span className="text-sm font-semibold leading-tight" style={{ color: remainColor }}>{remainStr}</span>
