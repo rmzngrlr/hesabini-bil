@@ -80,6 +80,7 @@ function CurrencyAssetCard({ fullTitle, isoCode, symbol, value, colors }: {
   value: number;
   colors: { card: string; value: string };
 }) {
+  const cardRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLHeadingElement>(null);
   const measureRef = useRef<HTMLSpanElement>(null);
   const [truncated, setTruncated] = useState(false);
@@ -100,15 +101,20 @@ function CurrencyAssetCard({ fullTitle, isoCode, symbol, value, colors }: {
 
   const canReveal = truncated && isoCode !== fullTitle;
 
+  // Dışarı tıklayınca kapat. contains() ile: kartın KENDİ tıklaması (açan tap) asla
+  // kapatmaz; yalnızca kart DIŞINA tıklama kapatır. Böylece mobildeki "aç-anında-kapan"
+  // zamanlama yarışı tamamen biter.
   useEffect(() => {
-    if (!open) return;
-    const close = () => setOpen(false);
-    document.addEventListener('click', close);
-    return () => document.removeEventListener('click', close);
-  }, [open]);
+    const onDoc = (e: MouseEvent) => {
+      if (cardRef.current && !cardRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('click', onDoc);
+    return () => document.removeEventListener('click', onDoc);
+  }, []);
 
   return (
     <div
+      ref={cardRef}
       className={`relative p-4 rounded-xl glass bg-gradient-to-br from-transparent ${colors.card} ${canReveal ? 'cursor-pointer' : ''}`}
       onClick={() => { if (canReveal) setOpen(o => !o); }}
     >
@@ -728,15 +734,15 @@ export default function Dashboard() {
         {/* Pie Chart Section */}
         {pieData.length > 0 && (
             <div className="mt-2">
-                <div className={`relative w-full ${isMobile ? 'h-[240px]' : 'h-64'}`}>
+                <div className={`relative w-full ${isMobile ? 'h-[300px]' : 'h-[320px]'}`}>
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                             <Pie
                                 data={pieData}
                                 cx="50%"
                                 cy="50%"
-                                innerRadius={isMobile ? 58 : 66}
-                                outerRadius={isMobile ? 96 : 108}
+                                innerRadius={isMobile ? 78 : 88}
+                                outerRadius={isMobile ? 124 : 140}
                                 paddingAngle={2}
                                 cornerRadius={6}
                                 dataKey="value"
@@ -754,9 +760,9 @@ export default function Dashboard() {
                     </ResponsiveContainer>
                     {/* Donut merkez etiketi: HTML overlay, donut merkeziyle hizali */}
                     <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-                        <span className="text-[11px] leading-tight text-muted-foreground">toplam bütçe</span>
-                        <span className="text-lg font-semibold leading-tight text-foreground">{centerTotalStr}</span>
-                        <span className="text-xs font-semibold leading-tight" style={{ color: remainColor }}>{remainStr}</span>
+                        <span className="text-xs leading-tight text-muted-foreground">toplam bütçe</span>
+                        <span className="text-xl font-semibold leading-tight text-foreground">{centerTotalStr}</span>
+                        <span className="text-sm font-semibold leading-tight" style={{ color: remainColor }}>{remainStr}</span>
                     </div>
                 </div>
                 {/* Legend: HTML, pieData sirasiyla (Kalan, Gunluk, Yatirim, sonra sabit giderler) */}
