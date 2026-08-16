@@ -744,7 +744,11 @@ export default function Dashboard() {
                                 onMouseLeave={() => setActiveSliceIndex(null)}
                             >
                                 {pieData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                    <Cell
+                                        key={`cell-${index}`}
+                                        fill={entry.color}
+                                        fillOpacity={activeSliceIndex === null || activeSliceIndex === index ? 1 : 0.3}
+                                    />
                                 ))}
                             </Pie>
                         </PieChart>

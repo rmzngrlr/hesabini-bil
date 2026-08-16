@@ -185,3 +185,8 @@
 .recharts-sector:focus {
   outline: none;
 }
+
+/* Aktif dilim vurgusu: pasif dilimler soluklaşırken yumuşak geçiş. */
+.recharts-sector {
+  transition: fill-opacity 0.15s ease;
+}
