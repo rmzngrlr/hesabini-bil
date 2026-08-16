@@ -5,7 +5,7 @@ import { MonthNavigator } from '../components/MonthNavigator';
 import { useBudget } from '../context/BudgetContext';
 import { isDebtPending } from '../lib/utils';
 import { Card } from '../components/ui/Card';
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Sector } from 'recharts';
 import { ProgressBar } from '../components/ui/ProgressBar';
 
 const isGoldType = (type: string) => {
@@ -542,6 +542,14 @@ export default function Dashboard() {
   const activeSliceValueStr = activeSlice ? `${Math.round(activeSlice.value).toLocaleString('tr-TR')} ₺` : '';
   const activeSlicePct = activeSlice && totalPieValue > 0 ? ((activeSlice.value / totalPieValue) * 100).toFixed(1) : '0';
 
+  // Aktif dilim büyütme (recharts activeShape). v3'te aktif durumu görünmez Tooltip sürüyor.
+  const renderActiveShape = (props: any) => {
+    const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
+    return (
+      <Sector cx={cx} cy={cy} innerRadius={innerRadius} outerRadius={outerRadius + 8} startAngle={startAngle} endAngle={endAngle} fill={fill} cornerRadius={6} />
+    );
+  };
+
   return (
     <div className="space-y-6 p-4">
       <header className="flex flex-col gap-4">
@@ -740,6 +748,7 @@ export default function Dashboard() {
                                 startAngle={90}
                                 endAngle={-270}
                                 stroke="none"
+                                activeShape={renderActiveShape}
                                 onMouseEnter={(_, i) => setActiveSliceIndex(i)}
                                 onMouseLeave={() => setActiveSliceIndex(null)}
                             >
@@ -751,6 +760,8 @@ export default function Dashboard() {
                                     />
                                 ))}
                             </Pie>
+                            {/* Görünmez tooltip: yalnızca activeShape (dilim büyütme) tetiklensin diye; kutu çıkmaz */}
+                            <Tooltip content={() => null} />
                         </PieChart>
                     </ResponsiveContainer>
                     {/* Donut merkezi: dilim aktifse o dilimin bilgisi, yoksa toplam bütçe */}
