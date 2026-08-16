@@ -70,6 +70,35 @@ const FALLBACK_CURRENCY_COLOR = { card: 'to-slate-500/12 border-slate-500/30', v
 
 const getCurrencyColors = (asset: string) => CURRENCY_COLORS[currencyColorKey(asset)] || FALLBACK_CURRENCY_COLOR;
 
+// Kart başlığı: kısa etiket + tam adı gösteren küçük tooltip. Native title dokunmatikte
+// çalışmadığı için hem fare (hover) hem dokunmatik (tap) ile açılır; dışarı tıklayınca kapanır.
+function AssetLabel({ short, full }: { short: string; full: string }) {
+  const [open, setOpen] = useState(false);
+  const hasTip = !!full && full !== short;
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [open]);
+  return (
+    <span
+      className={`relative inline-block whitespace-nowrap align-bottom ${hasTip ? 'cursor-help' : ''}`}
+      aria-label={hasTip ? full : undefined}
+      onMouseEnter={() => hasTip && setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onClick={() => { if (hasTip) setOpen(true); }}
+    >
+      {short}
+      {open && hasTip && (
+        <span className="absolute left-0 top-full z-30 mt-1 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 text-xs font-normal text-popover-foreground shadow-lg">
+          {full}
+        </span>
+      )}
+    </span>
+  );
+}
+
 export default function Dashboard() {
   const { state, viewDate, showMealCard, vaultRecords, activeCurrencies, todayStr } = useBudget();
 
@@ -210,6 +239,30 @@ export default function Dashboard() {
 
     const fallback = name.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
     return mapping[lower] || fallback;
+  };
+
+  // Uzun döviz adları için uluslararası ISO kısaltması (BAM, USD, GBP…).
+  const getAssetIsoCode = (asset: string): string => {
+    const t = asset.trim();
+    if (/^[A-Za-zÇĞİıÖŞÜçğıöşü]{2,4}$/.test(t)) return t.toUpperCase();
+    const key = currencyColorKey(asset);
+    if (key) return key.toUpperCase();
+    const codeMap: Record<string, string> = {
+      'isviçre frangı': 'CHF', 'kanada doları': 'CAD', 'avustralya doları': 'AUD',
+      'japon yeni': 'JPY', 'çin yuanı': 'CNY', 'katar riyali': 'QAR',
+      'birleşik arap emirlikleri dirhemi': 'AED', 'kuveyt dinarı': 'KWD', 'irak dinarı': 'IQD',
+      'ukrayna grivnası': 'UAH', 'hindistan rupisi': 'INR', 'güney kore wonu': 'KRW',
+      'isveç kronu': 'SEK', 'norveç kronu': 'NOK', 'danimarka kronu': 'DKK',
+    };
+    return codeMap[t.toLowerCase()] || t.substring(0, 3).toUpperCase();
+  };
+
+  // Mobil döviz etiketi: kısa isim olduğu gibi kalır ("Euro"); uzunsa ISO koduna döner.
+  // full = tam ad (tooltip'te gösterilir). Altın ve masaüstü bu fonksiyonu kullanmaz.
+  const getCardLabel = (asset: string): { short: string; full: string } => {
+    const full = getAssetFullTitle(asset);
+    const isShortName = full.length <= 8 && !full.includes(' ');
+    return { short: isShortName ? full : getAssetIsoCode(asset), full };
   };
 
 
@@ -583,7 +636,7 @@ export default function Dashboard() {
                 }
                 const colors = getCurrencyColors(asset);
                 return (
-                  <Card key={asset} title={getAssetFullTitle(asset)} className={`bg-gradient-to-br from-transparent ${colors.card}`}>
+                  <Card key={asset} title={isMobile ? <AssetLabel {...getCardLabel(asset)} /> : getAssetFullTitle(asset)} className={`bg-gradient-to-br from-transparent ${colors.card}`}>
                     <div className={`text-2xl font-bold mt-2 ${value < 0 ? 'text-red-500' : colors.value}`}>
                       {value.toLocaleString('tr-TR')}{getAssetSymbol(asset)}
                     </div>
