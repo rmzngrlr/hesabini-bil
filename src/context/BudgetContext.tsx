@@ -173,11 +173,39 @@ interface BudgetContextType {
 
 const BudgetContext = createContext<BudgetContextType | undefined>(undefined);
 
-function generateId() {
+export function generateId() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID();
   }
   return Math.random().toString(36).substring(2, 15);
+}
+
+// paymentLinkId'ye sahip TL cikisini (daily expense) tum kovalardan (bu ay + gecmis) siler.
+// { state, historyChanged } doner; historyChanged true ise cagiran recalc etmelidir.
+function removeLinkedDaily(state: BudgetState, linkId: string): { state: BudgetState; historyChanged: boolean } {
+  let historyChanged = false;
+  const newHistory = state.history.map(h => {
+    const list = h.dailyExpenses || [];
+    const filtered = list.filter(e => e.paymentLinkId !== linkId);
+    if (filtered.length !== list.length) { historyChanged = true; return { ...h, dailyExpenses: filtered }; }
+    return h;
+  });
+  const newDaily = state.dailyExpenses.filter(e => e.paymentLinkId !== linkId);
+  return { state: { ...state, dailyExpenses: newDaily, history: newHistory }, historyChanged };
+}
+
+// paymentLinkId'ye sahip TL cikisini tum kovalardaki alanlariyla gunceller.
+function patchLinkedDaily(state: BudgetState, linkId: string, patch: Partial<DailyExpense>): { state: BudgetState; historyChanged: boolean } {
+  let historyChanged = false;
+  const newHistory = state.history.map(h => {
+    const list = h.dailyExpenses || [];
+    let changed = false;
+    const upd = list.map(e => { if (e.paymentLinkId === linkId) { changed = true; return { ...e, ...patch }; } return e; });
+    if (changed) { historyChanged = true; return { ...h, dailyExpenses: upd }; }
+    return h;
+  });
+  const newDaily = state.dailyExpenses.map(e => e.paymentLinkId === linkId ? { ...e, ...patch } : e);
+  return { state: { ...state, dailyExpenses: newDaily, history: newHistory }, historyChanged };
 }
 
 // Helper to add months to a date string YYYY-MM
@@ -2004,137 +2032,113 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const deleteCCDebt = (id: string) => {
     setRealState(prev => {
+        // Silinecek borcun paymentLinkId'sini bul (goruntulenen ay kovasindan)
+        let linkId: string | undefined;
         if (viewDate === prev.currentMonth) {
-            let updatedFixed = prev.fixedExpenses;
-            if (id.startsWith('bill-cc-')) {
-                const billId = id.replace('bill-cc-', '');
-                updatedFixed = prev.fixedExpenses.map(ex =>
-                    ex.id === billId ? { ...ex, isPaid: false } : ex
-                );
-            }
-            return {
-              ...prev,
-              ccDebts: prev.ccDebts.filter(d => d.id !== id),
-              fixedExpenses: updatedFixed
-            };
+            linkId = prev.ccDebts.find(d => d.id === id)?.paymentLinkId;
+        } else if (viewDate > prev.currentMonth) {
+            linkId = (prev.futureData[viewDate]?.ccDebts || []).find(d => d.id === id)?.paymentLinkId;
+        } else {
+            linkId = prev.history.find(h => h.month === viewDate)?.ccDebts.find(d => d.id === id)?.paymentLinkId;
+        }
+
+        // bill-cc faturasini "odenmedi" yapan yardimci
+        const markBillUnpaid = (list: FixedExpense[]): FixedExpense[] => {
+            if (!id.startsWith('bill-cc-')) return list;
+            const billId = id.replace('bill-cc-', '');
+            return list.map(ex => (ex.id === billId ? { ...ex, isPaid: false } : ex));
+        };
+
+        // 1. Borcu ilgili kovadan sil
+        let next: BudgetState = prev;
+        let historyTouched = false;
+        if (viewDate === prev.currentMonth) {
+            next = { ...prev, ccDebts: prev.ccDebts.filter(d => d.id !== id), fixedExpenses: markBillUnpaid(prev.fixedExpenses) };
         } else if (viewDate > prev.currentMonth) {
             const future = prev.futureData[viewDate] || {};
-            const currentDebts = future.ccDebts || [];
-            let updatedFixed = future.fixedExpenses || [];
-            if (id.startsWith('bill-cc-')) {
-                const billId = id.replace('bill-cc-', '');
-                updatedFixed = updatedFixed.map(ex =>
-                    ex.id === billId ? { ...ex, isPaid: false } : ex
-                );
-            }
-            return {
-                ...prev,
-                futureData: {
-                    ...prev.futureData,
-                    [viewDate]: {
-                        ...future,
-                        ccDebts: currentDebts.filter(d => d.id !== id),
-                        fixedExpenses: updatedFixed
-                    }
-                }
-            };
-        } else if (viewDate < prev.currentMonth) {
+            next = { ...prev, futureData: { ...prev.futureData, [viewDate]: { ...future, ccDebts: (future.ccDebts || []).filter(d => d.id !== id), fixedExpenses: markBillUnpaid(future.fixedExpenses || []) } } };
+        } else {
             const histIndex = prev.history.findIndex(h => h.month === viewDate);
-            if (histIndex !== -1) {
-                const newHistory = [...prev.history];
-                let updatedFixed = newHistory[histIndex].fixedExpenses;
-                if (id.startsWith('bill-cc-')) {
-                    const billId = id.replace('bill-cc-', '');
-                    updatedFixed = newHistory[histIndex].fixedExpenses.map(ex =>
-                        ex.id === billId ? { ...ex, isPaid: false } : ex
-                    );
-                }
-                newHistory[histIndex] = {
-                    ...newHistory[histIndex],
-                    ccDebts: newHistory[histIndex].ccDebts.filter(d => d.id !== id),
-                    fixedExpenses: updatedFixed
-                };
-                return recalculateHistoryAndCurrent({ ...prev, history: newHistory });
-            }
-            return prev;
+            if (histIndex === -1) return prev;
+            const newHistory = [...prev.history];
+            newHistory[histIndex] = { ...newHistory[histIndex], ccDebts: newHistory[histIndex].ccDebts.filter(d => d.id !== id), fixedExpenses: markBillUnpaid(newHistory[histIndex].fixedExpenses) };
+            next = { ...prev, history: newHistory };
+            historyTouched = true;
         }
-        return prev;
+
+        // 2. Bagli TL cikisini (paymentLinkId) tum daily kovalardan sil
+        if (linkId) {
+            const res = removeLinkedDaily(next, linkId);
+            next = res.state;
+            if (res.historyChanged) historyTouched = true;
+        }
+
+        // 3. Gecmis degistiyse yeniden hesapla
+        return historyTouched ? recalculateHistoryAndCurrent(next) : next;
     });
   };
 
   const updateCCDebt = (id: string, debt: Partial<CCDebt>) => {
-    if (viewDate === realState.currentMonth) {
-        setRealState(prev => ({
-          ...prev,
-          ccDebts: prev.ccDebts.map(d =>
-            d.id === id ? { ...d, ...debt } : d
-          ),
-        }));
-    } else if (viewDate > realState.currentMonth) {
-        // Handle override for projected installment
-        // Check if ID is projected installment ID: proj-{instId}-{month}
-        if (id.startsWith('proj-') && debt.amount !== undefined) {
-             // Extract installment ID? Or just use the fact that `derivedState` has it mapped.
-             // We need to store: `futureData[viewDate].installmentOverrides[originalInstallmentId] = amount`
-
-             // Find the item in derivedState to get original installmentId
-             const item = derivedState.ccDebts.find(d => d.id === id);
-             if (item && item.installmentId) {
-                 setRealState(prev => {
-                     const future = prev.futureData[viewDate] || {};
-                     const overrides = future.installmentOverrides || {};
-
-                     return {
-                         ...prev,
-                         futureData: {
-                             ...prev.futureData,
-                             [viewDate]: {
-                                 ...future,
-                                 installmentOverrides: {
-                                     ...overrides,
-                                     [item.installmentId as string]: debt.amount as number
-                                 }
-                             }
-                         }
-                     };
-                 });
-             }
-        } else {
-            // Handle Manual Future Debt Update
+    // Gelecek aydaki PROJEKSIYON taksiti icin sadece tutar override'i (degismiyor)
+    if (viewDate > realState.currentMonth && id.startsWith('proj-') && debt.amount !== undefined) {
+        const item = derivedState.ccDebts.find(d => d.id === id);
+        if (item && item.installmentId) {
             setRealState(prev => {
                 const future = prev.futureData[viewDate] || {};
-                const currentDebts = future.ccDebts || [];
-
-                const updatedDebts = currentDebts.map(d => d.id === id ? { ...d, ...debt } : d);
-
+                const overrides = future.installmentOverrides || {};
                 return {
                     ...prev,
                     futureData: {
                         ...prev.futureData,
                         [viewDate]: {
                             ...future,
-                            ccDebts: updatedDebts
+                            installmentOverrides: { ...overrides, [item.installmentId as string]: debt.amount as number }
                         }
                     }
                 };
             });
         }
-    } else if (viewDate < realState.currentMonth) {
-        setRealState(prev => {
-            const histIndex = prev.history.findIndex(h => h.month === viewDate);
-            if (histIndex !== -1) {
-                const newHistory = [...prev.history];
-                newHistory[histIndex] = {
-                    ...newHistory[histIndex],
-                    ccDebts: newHistory[histIndex].ccDebts.map(d =>
-                        d.id === id ? { ...d, ...debt } : d
-                    )
-                };
-                return recalculateHistoryAndCurrent({ ...prev, history: newHistory });
-            }
-            return prev;
-        });
+        return;
     }
+
+    setRealState(prev => {
+        // Guncellenen borcun paymentLinkId'sini bul + borcu ilgili kovada guncelle
+        let linkId: string | undefined;
+        let next: BudgetState = prev;
+        let historyTouched = false;
+
+        if (viewDate === prev.currentMonth) {
+            linkId = prev.ccDebts.find(d => d.id === id)?.paymentLinkId;
+            next = { ...prev, ccDebts: prev.ccDebts.map(d => (d.id === id ? { ...d, ...debt } : d)) };
+        } else if (viewDate > prev.currentMonth) {
+            const future = prev.futureData[viewDate] || {};
+            linkId = (future.ccDebts || []).find(d => d.id === id)?.paymentLinkId;
+            next = { ...prev, futureData: { ...prev.futureData, [viewDate]: { ...future, ccDebts: (future.ccDebts || []).map(d => (d.id === id ? { ...d, ...debt } : d)) } } };
+        } else {
+            const histIndex = prev.history.findIndex(h => h.month === viewDate);
+            if (histIndex === -1) return prev;
+            linkId = prev.history[histIndex].ccDebts.find(d => d.id === id)?.paymentLinkId;
+            const newHistory = [...prev.history];
+            newHistory[histIndex] = { ...newHistory[histIndex], ccDebts: newHistory[histIndex].ccDebts.map(d => (d.id === id ? { ...d, ...debt } : d)) };
+            next = { ...prev, history: newHistory };
+            historyTouched = true;
+        }
+
+        // Bagli TL cikisini de guncelle (odeme kaydiysa): tutar negatif, aciklama/tarih ayni
+        if (linkId) {
+            const patch: Partial<DailyExpense> = {};
+            if (debt.description !== undefined) patch.description = debt.description;
+            if (debt.date !== undefined) patch.date = debt.date;
+            if (debt.amount !== undefined) patch.amount = -Math.abs(debt.amount);
+            if (Object.keys(patch).length > 0) {
+                const res = patchLinkedDaily(next, linkId, patch);
+                next = res.state;
+                if (res.historyChanged) historyTouched = true;
+            }
+        }
+
+        return historyTouched ? recalculateHistoryAndCurrent(next) : next;
+    });
   };
 
   const addInstallment = (installment: Omit<Installment, 'id' | 'remainingInstallments'>) => {

@@ -59,6 +59,8 @@ export interface DailyExpense {
   description: string;
   amount: number;
   type: ExpenseType;
+  /** KK ödemesiyle birlikte oluşan TL çıkışını, ilgili KK borç kaydına bağlar. */
+  paymentLinkId?: string;
 }
 
 export interface CCDebt {
@@ -76,6 +78,8 @@ export interface CCDebt {
    *  - true      => bildirim kullanici tarafindan (X) kapatildi.
    */
   dueNoticeSeen?: boolean;
+  /** KK ödemesi (PAY) ise, birlikte oluşan TL çıkışıyla ortak bağ. Silme/düzenlemede eşlenir. */
+  paymentLinkId?: string;
 }
 
 export interface Installment {

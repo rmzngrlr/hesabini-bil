@@ -1,5 +1,5 @@
 import { useDraftState } from '../hooks/useDraftState';
-import { useBudget } from '../context/BudgetContext';
+import { useBudget, generateId } from '../context/BudgetContext';
 import { Card } from '../components/ui/Card';
 import React, { useMemo, useState } from 'react';
 import { Plus, Trash2, CalendarClock, CreditCard, Pencil, X } from 'lucide-react';
@@ -96,7 +96,9 @@ export default function Debt() {
         setEditingId(null);
     } else {
         if (transactionType === 'PAY') {
-            addCCDebt({ description, amount: Math.abs(numAmount), date });
+            // Ortak bag: KK ödeme kaydi ile TL çıkışını bagla (silme/düzenlemede eşlenir).
+            const paymentLinkId = generateId();
+            addCCDebt({ description, amount: Math.abs(numAmount), date, paymentLinkId });
             // Otomatik olarak nakitten de düşmesini sağlıyoruz (Nakit gider olarak eklenir)
             addDailyExpense({
                 // `date` zaten yerel "YYYY-MM-DD"; ISO'ya çevrilirse tam zaman damgası
@@ -104,7 +106,8 @@ export default function Debt() {
                 date,
                 description: description,
                 amount: -Math.abs(numAmount),
-                type: 'NAKIT'
+                type: 'NAKIT',
+                paymentLinkId
             });
         } else {
             const debtAmount = -Math.abs(numAmount);
