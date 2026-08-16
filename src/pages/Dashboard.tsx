@@ -5,7 +5,7 @@ import { MonthNavigator } from '../components/MonthNavigator';
 import { useBudget } from '../context/BudgetContext';
 import { isDebtPending } from '../lib/utils';
 import { Card } from '../components/ui/Card';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, Sector, Label } from 'recharts';
 import { ProgressBar } from '../components/ui/ProgressBar';
 
 const isGoldType = (type: string) => {
@@ -70,29 +70,35 @@ const FALLBACK_CURRENCY_COLOR = { card: 'to-slate-500/12 border-slate-500/30', v
 
 const getCurrencyColors = (asset: string) => CURRENCY_COLORS[currencyColorKey(asset)] || FALLBACK_CURRENCY_COLOR;
 
-// Kart başlığı: tam adı gösterir; kutuya (tek satıra) SIĞMIYORSA ISO koduna düşer.
-// Kısaltma yalnızca gerçek taşma olunca olur (masaüstü/mobil ayrımı gerekmez, ölçümle çözülür).
-// Kısaltılmışsa üzerine gelince (fare) veya dokununca (mobil) tam adı tooltip'te gösterir.
-function AssetLabel({ short, full }: { short: string; full: string }) {
-  const boxRef = useRef<HTMLSpanElement>(null);
+// Döviz kartı: tam ad kutuya (tek satıra) SIĞMIYORSA ISO koduna düşer (ölçümle; masaüstü/
+// mobil ayrımı gerekmez). Kısaltılmışsa KARTIN HERHANGİ bir yerine dokununca (mobil) veya
+// fareyle üzerine gelince tam adı tooltip'te gösterir; dışarı dokununca kapanır.
+function CurrencyAssetCard({ fullTitle, isoCode, symbol, value, colors }: {
+  fullTitle: string;
+  isoCode: string;
+  symbol: string;
+  value: number;
+  colors: { card: string; value: string };
+}) {
+  const labelRef = useRef<HTMLHeadingElement>(null);
   const measureRef = useRef<HTMLSpanElement>(null);
   const [truncated, setTruncated] = useState(false);
   const [open, setOpen] = useState(false);
 
   useLayoutEffect(() => {
     const measure = () => {
-      const box = boxRef.current;
+      const box = labelRef.current;
       const m = measureRef.current;
       if (!box || !m) return;
-      // Tam adin tek satirdaki dogal genisligi kutuya sigmiyorsa taşar -> koda dön.
+      // Tam adin tek satirdaki dogal genisligi etiket alanina sigmiyorsa -> koda dön.
       setTruncated(m.scrollWidth > box.clientWidth + 0.5);
     };
     measure();
     window.addEventListener('resize', measure);
     return () => window.removeEventListener('resize', measure);
-  }, [short, full]);
+  }, [fullTitle, isoCode]);
 
-  const showCode = truncated && !!short && short !== full;
+  const canReveal = truncated && isoCode !== fullTitle;
 
   useEffect(() => {
     if (!open) return;
@@ -102,24 +108,30 @@ function AssetLabel({ short, full }: { short: string; full: string }) {
   }, [open]);
 
   return (
-    <span ref={boxRef} className="relative block">
-      {/* Gizli olcum: tam ad, tek satir, dogal genislik */}
-      <span ref={measureRef} aria-hidden className="invisible absolute left-0 top-0 whitespace-nowrap">{full}</span>
-      <span
-        className={`block truncate ${showCode ? 'cursor-help' : ''}`}
-        aria-label={showCode ? full : undefined}
-        onMouseEnter={() => showCode && setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
-        onClick={() => { if (showCode) setOpen(true); }}
-      >
-        {showCode ? short : full}
-      </span>
-      {open && showCode && (
-        <span className="absolute left-0 top-full z-30 mt-1 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 text-xs font-normal text-popover-foreground shadow-lg">
-          {full}
-        </span>
+    <div
+      className={`relative p-4 rounded-xl glass bg-gradient-to-br from-transparent ${colors.card} ${canReveal ? 'cursor-help' : ''}`}
+      onMouseEnter={() => canReveal && setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onClick={() => { if (canReveal) setOpen(true); }}
+    >
+      <h3 ref={labelRef} className="relative block text-sm font-medium text-muted-foreground mb-1">
+        {/* Gizli olcum: tam ad, tek satir, dogal genislik */}
+        <span ref={measureRef} aria-hidden className="invisible absolute left-0 top-0 whitespace-nowrap">{fullTitle}</span>
+        <span className="block truncate" aria-label={canReveal ? fullTitle : undefined}>{canReveal ? isoCode : fullTitle}</span>
+      </h3>
+      <div className={`text-2xl font-bold mt-2 ${value < 0 ? 'text-red-500' : colors.value}`}>
+        {value.toLocaleString('tr-TR')}{symbol}
+      </div>
+      {/* Tam ad tooltip: kartın ÜSTÜNDE, aşağı bakan ok ile */}
+      {open && canReveal && (
+        <div className="absolute bottom-full left-1/2 z-30 mb-2 -translate-x-1/2">
+          <div className="relative whitespace-nowrap rounded-lg border border-border bg-popover px-2.5 py-1 text-xs font-medium text-popover-foreground shadow-lg">
+            {fullTitle}
+            <span className="absolute left-1/2 top-full h-2 w-2 -translate-x-1/2 -translate-y-1/2 rotate-45 border-b border-r border-border bg-popover" />
+          </div>
+        </div>
       )}
-    </span>
+    </div>
   );
 }
 
@@ -281,13 +293,6 @@ export default function Dashboard() {
     return codeMap[t.toLowerCase()] || t.substring(0, 3).toUpperCase();
   };
 
-  // Döviz kart etiketi: short = ISO kod (yalnızca tam ad kutuya sığmazsa gösterilir),
-  // full = tam ad. Sığıp sığmama ölçümünü AssetLabel yapar.
-  const getCardLabel = (asset: string): { short: string; full: string } => ({
-    short: getAssetIsoCode(asset),
-    full: getAssetFullTitle(asset),
-  });
-
 
 
   // Calculations based on Derived State
@@ -419,7 +424,9 @@ export default function Dashboard() {
 
   // Pie Chart Data
   const pieData: { name: string; value: number; fill?: string; color?: string }[] = [];
-  const COLORS = ['#FFBB28', '#FF8042', '#8884D8', '#A28DFF', '#FF6666', '#0088FE', '#00C49F'];
+  // Sabit gider dilimleri için uyumlu, yumuşatılmış palet. Semantik renkler
+  // (Kalan=yeşil, Harcama=kırmızı, Yatırım=sarı) burada YOK; onlar ayrıca atanıyor.
+  const COLORS = ['#6366f1', '#0ea5e9', '#8b5cf6', '#14b8a6', '#f472b6', '#3b82f6', '#a855f7', '#06b6d4'];
 
   // The pie chart must represent the TOTAL MONTHLY INCOME.
   let totalBudgetedFixed = 0;
@@ -506,6 +513,51 @@ export default function Dashboard() {
   });
 
   const totalPieValue = pieData.reduce((sum, item) => sum + item.value, 0);
+
+  // --- Premium donut yardımcıları ---
+  // Merkez: toplam bütçe + "%X kalan" (açık varsa "%X açık" kırmızı).
+  const centerTotalStr = `${Math.round(totalCashResources).toLocaleString('tr-TR')} ₺`;
+  const remainPct = totalCashResources > 0 ? Math.round((trueRemaining / totalCashResources) * 100) : 0;
+  const remainStr = trueRemaining >= 0 ? `%${remainPct} kalan` : `%${Math.abs(remainPct)} açık`;
+  const remainColor = trueRemaining >= 0 ? '#22c55e' : '#ef4444';
+
+  const renderCenterLabel = ({ viewBox }: any) => {
+    if (!viewBox) return null;
+    const { cx, cy } = viewBox;
+    return (
+      <g style={{ pointerEvents: 'none' }}>
+        <text x={cx} y={cy - 15} textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize={11}>toplam bütçe</text>
+        <text x={cx} y={cy + 4} textAnchor="middle" fill="hsl(var(--foreground))" fontSize={18} fontWeight={600}>{centerTotalStr}</text>
+        <text x={cx} y={cy + 22} textAnchor="middle" fill={remainColor} fontSize={12} fontWeight={600}>{remainStr}</text>
+      </g>
+    );
+  };
+
+  // Aktif (hover/tap) dilim: hafifçe büyür — çirkin odak çerçevesi yerine.
+  const renderActiveShape = (props: any) => {
+    const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
+    return (
+      <Sector cx={cx} cy={cy} innerRadius={innerRadius} outerRadius={outerRadius + 7} startAngle={startAngle} endAngle={endAngle} fill={fill} cornerRadius={6} />
+    );
+  };
+
+  // Tema uyumlu cam tooltip.
+  const renderChartTooltip = ({ active, payload }: any) => {
+    if (!active || !payload || !payload.length) return null;
+    const p = payload[0];
+    const pct = totalPieValue > 0 ? ((Number(p.value) / totalPieValue) * 100).toFixed(1) : '0';
+    return (
+      <div className="rounded-lg border border-border bg-popover px-3 py-2 shadow-lg">
+        <div className="flex items-center gap-2 text-xs font-medium text-popover-foreground">
+          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: p.payload?.color }} />
+          {p.name}
+        </div>
+        <div className="mt-0.5 text-xs text-muted-foreground">
+          {Number(p.value).toLocaleString('tr-TR')} ₺ · %{pct}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6 p-4">
@@ -659,11 +711,14 @@ export default function Dashboard() {
                 }
                 const colors = getCurrencyColors(asset);
                 return (
-                  <Card key={asset} title={<AssetLabel {...getCardLabel(asset)} />} className={`bg-gradient-to-br from-transparent ${colors.card}`}>
-                    <div className={`text-2xl font-bold mt-2 ${value < 0 ? 'text-red-500' : colors.value}`}>
-                      {value.toLocaleString('tr-TR')}{getAssetSymbol(asset)}
-                    </div>
-                  </Card>
+                  <CurrencyAssetCard
+                    key={asset}
+                    fullTitle={getAssetFullTitle(asset)}
+                    isoCode={getAssetIsoCode(asset)}
+                    symbol={getAssetSymbol(asset)}
+                    value={value}
+                    colors={colors}
+                  />
                 );
               });
             })()}
@@ -693,24 +748,22 @@ export default function Dashboard() {
                             data={pieData}
                             cx="50%"
                             cy={isMobile ? "45%" : "50%"}
-                            innerRadius={0}
+                            innerRadius={isMobile ? 58 : 66}
                             outerRadius={isMobile ? 100 : 110}
-                            paddingAngle={0}
+                            paddingAngle={2}
+                            cornerRadius={6}
                             dataKey="value"
                             startAngle={90}
                             endAngle={-270}
+                            stroke="none"
+                            activeShape={renderActiveShape}
                         >
                             {pieData.map((entry, index) => (
                                 <Cell key={`cell-${index}`} fill={entry.color} />
                             ))}
+                            <Label content={renderCenterLabel} position="center" />
                         </Pie>
-                        <Tooltip
-                            formatter={(value, name) => {
-                                const percent = totalPieValue > 0 ? ((Number(value) / totalPieValue) * 100).toFixed(1) : 0;
-                                return [`${Number(value).toLocaleString('tr-TR')} ₺ (%${percent})`, name];
-                            }}
-                            contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)' }}
-                        />
+                        <Tooltip content={renderChartTooltip} />
                         <Legend
                             content={(props) => {
                                 const { payload } = props;

@@ -177,3 +177,11 @@
     }
   }
 }
+
+/* Recharts: dilime tıklanınca çıkan varsayılan odak çerçevesini (siyah dikdörtgen) kaldır. */
+.recharts-wrapper:focus,
+.recharts-wrapper *:focus,
+.recharts-surface:focus,
+.recharts-sector:focus {
+  outline: none;
+}
