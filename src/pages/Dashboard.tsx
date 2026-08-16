@@ -5,7 +5,7 @@ import { MonthNavigator } from '../components/MonthNavigator';
 import { useBudget } from '../context/BudgetContext';
 import { isDebtPending } from '../lib/utils';
 import { Card } from '../components/ui/Card';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, Sector, Label } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Sector } from 'recharts';
 import { ProgressBar } from '../components/ui/ProgressBar';
 
 const isGoldType = (type: string) => {
@@ -109,10 +109,8 @@ function CurrencyAssetCard({ fullTitle, isoCode, symbol, value, colors }: {
 
   return (
     <div
-      className={`relative p-4 rounded-xl glass bg-gradient-to-br from-transparent ${colors.card} ${canReveal ? 'cursor-help' : ''}`}
-      onMouseEnter={() => canReveal && setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-      onClick={() => { if (canReveal) setOpen(true); }}
+      className={`relative p-4 rounded-xl glass bg-gradient-to-br from-transparent ${colors.card} ${canReveal ? 'cursor-pointer' : ''}`}
+      onClick={() => { if (canReveal) setOpen(o => !o); }}
     >
       <h3 ref={labelRef} className="relative block text-sm font-medium text-muted-foreground mb-1">
         {/* Gizli olcum: tam ad, tek satir, dogal genislik */}
@@ -521,18 +519,6 @@ export default function Dashboard() {
   const remainStr = trueRemaining >= 0 ? `%${remainPct} kalan` : `%${Math.abs(remainPct)} açık`;
   const remainColor = trueRemaining >= 0 ? '#22c55e' : '#ef4444';
 
-  const renderCenterLabel = ({ viewBox }: any) => {
-    if (!viewBox) return null;
-    const { cx, cy } = viewBox;
-    return (
-      <g style={{ pointerEvents: 'none' }}>
-        <text x={cx} y={cy - 15} textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize={11}>toplam bütçe</text>
-        <text x={cx} y={cy + 4} textAnchor="middle" fill="hsl(var(--foreground))" fontSize={18} fontWeight={600}>{centerTotalStr}</text>
-        <text x={cx} y={cy + 22} textAnchor="middle" fill={remainColor} fontSize={12} fontWeight={600}>{remainStr}</text>
-      </g>
-    );
-  };
-
   // Aktif (hover/tap) dilim: hafifçe büyür — çirkin odak çerçevesi yerine.
   const renderActiveShape = (props: any) => {
     const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
@@ -741,60 +727,47 @@ export default function Dashboard() {
 
         {/* Pie Chart Section */}
         {pieData.length > 0 && (
-            <div className={`w-full mt-2 ${isMobile ? 'h-[280px]' : 'h-64'}`}>
-                <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                        <Pie
-                            data={pieData}
-                            cx="50%"
-                            cy={isMobile ? "45%" : "50%"}
-                            innerRadius={isMobile ? 58 : 66}
-                            outerRadius={isMobile ? 100 : 110}
-                            paddingAngle={2}
-                            cornerRadius={6}
-                            dataKey="value"
-                            startAngle={90}
-                            endAngle={-270}
-                            stroke="none"
-                            activeShape={renderActiveShape}
-                        >
-                            {pieData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                            <Label content={renderCenterLabel} position="center" />
-                        </Pie>
-                        <Tooltip content={renderChartTooltip} />
-                        <Legend
-                            content={(props) => {
-                                const { payload } = props;
-                                if (!payload) return null;
-
-                                // We want to force the exact order of pieData:
-                                // Kalan TL, Günlük Harcamalar, then Sabit Giderler.
-                                // Recharts provides the payload, we just re-order it based on pieData.
-                                const sortedPayload = [...payload].sort((a, b) => {
-                                    const indexA = pieData.findIndex(item => item.name === a.value);
-                                    const indexB = pieData.findIndex(item => item.name === b.value);
-                                    return indexA - indexB;
-                                });
-
-                                return (
-                                    <ul className="recharts-default-legend" style={{ padding: '0px', margin: '0px', textAlign: 'center' }}>
-                                        {sortedPayload.map((entry, index) => (
-                                            <li key={`item-${index}`} className={`recharts-legend-item legend-item-${index}`} style={{ display: 'inline-block', marginRight: '10px' }}>
-                                                <svg className="recharts-surface" width="14" height="14" viewBox="0 0 32 32" style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '4px' }}>
-                                                    <path fill={entry.color} cx="16" cy="16" type="square" className="recharts-legend-icon" d="M0,0h32v32h-32z"></path>
-                                                </svg>
-                                                <span className="recharts-legend-item-text" style={{ color: entry.color }}>{entry.value}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                );
-                            }}
-                            wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
-                        />
-                    </PieChart>
-                </ResponsiveContainer>
+            <div className="mt-2">
+                <div className={`relative w-full ${isMobile ? 'h-[240px]' : 'h-64'}`}>
+                    <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                            <Pie
+                                data={pieData}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={isMobile ? 58 : 66}
+                                outerRadius={isMobile ? 96 : 108}
+                                paddingAngle={2}
+                                cornerRadius={6}
+                                dataKey="value"
+                                startAngle={90}
+                                endAngle={-270}
+                                stroke="none"
+                                activeShape={renderActiveShape}
+                            >
+                                {pieData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
+                            </Pie>
+                            <Tooltip content={renderChartTooltip} />
+                        </PieChart>
+                    </ResponsiveContainer>
+                    {/* Donut merkez etiketi: HTML overlay, donut merkeziyle hizali */}
+                    <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+                        <span className="text-[11px] leading-tight text-muted-foreground">toplam bütçe</span>
+                        <span className="text-lg font-semibold leading-tight text-foreground">{centerTotalStr}</span>
+                        <span className="text-xs font-semibold leading-tight" style={{ color: remainColor }}>{remainStr}</span>
+                    </div>
+                </div>
+                {/* Legend: HTML, pieData sirasiyla (Kalan, Gunluk, Yatirim, sonra sabit giderler) */}
+                <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1.5 text-xs">
+                    {pieData.map((entry, i) => (
+                        <span key={i} className="flex items-center gap-1.5 text-muted-foreground">
+                            <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: entry.color }} />
+                            {entry.name}
+                        </span>
+                    ))}
+                </div>
             </div>
         )}
       </Card>
