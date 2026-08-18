@@ -435,6 +435,12 @@ export default function DailyExpenses() {
   const [type, setType] = useDraftState<string>('daily_draft_type', 'NAKIT');
   const [transactionType, setTransactionType] = useDraftState<'INCOME' | 'EXPENSE'>('daily_draft_tx_type', 'EXPENSE');
   const [activeTab, setActiveTab] = useDraftState<string>('daily_draft_tab', 'NAKIT');
+  // Sekme (aktif varlık) degisince formdaki "Varlik / Para Birimi" (type) de ona
+  // esitlensin: YK sekmesine gecince form otomatik YK, Dolar'da Dolar... Mount'ta da
+  // calistigi icin Bilanco'dan kaydirmayla gelisi ve manuel sekme secimini kapsar.
+  useEffect(() => {
+    setType(activeTab);
+  }, [activeTab, setType]);
   const [editingId, setEditingId] = useDraftState<string | null>('daily_draft_editing_id', null);
   const [customCurrencyCode, setCustomCurrencyCode] = useState('');
 
