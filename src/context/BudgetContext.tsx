@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useMemo, useRef, type ReactNode } from 'react';
-import { getTodayStr, toLocalMonthStr, statementMonth } from '../lib/utils';
+import { getTodayStr, toLocalMonthStr, statementMonth, isDebtPending } from '../lib/utils';
 import type { BudgetState, FixedExpense, CustomIncome, DailyExpense, CCDebt, Installment, MonthlyHistory, GoldRecord } from '../types';
 import { fetchWithAuth } from '../services/api';
 import { useAuth } from './AuthContext';
@@ -1391,8 +1391,10 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         };
     });
 
-    // 2. Initial CC Debt (from current month)
-    let lastMonthCCDebt = Math.abs(realState.ccDebts.reduce((sum, d) => sum + d.amount, 0));
+    // 2. Initial CC Debt (from current month) — Borç sayfasıyla AYNI kural:
+    // günü gelmemiş (bu ay + ileri tarihli) kalemler hariç. Böylece bir sonraki ayın
+    // "Kredi Kartı Borcu (Geçen Ay)" gideri = bu ayın Borç sayfası toplamı.
+    let lastMonthCCDebt = Math.abs(realState.ccDebts.filter(d => !isDebtPending(d.date, true, getTodayStr())).reduce((sum, d) => sum + d.amount, 0));
 
     // Iterate intervening months
     let iterMonth = addMonths(realState.currentMonth, 1);
