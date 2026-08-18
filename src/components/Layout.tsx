@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Wallet, CreditCard, ArrowRightLeft, Settings, Sun, Moon, LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -21,6 +21,12 @@ const navItems = [
 export function Layout({ children }: LayoutProps) {
   const currentNavItems = navItems;
   const location = useLocation();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  // Rota degisince ana kaydirma kutusunu en uste al (onceki sayfanin scroll
+  // konumunda acilmasin). useLayoutEffect: boyamadan once -> titremesiz.
+  useLayoutEffect(() => {
+    scrollRef.current?.scrollTo(0, 0);
+  }, [location.pathname]);
   const { dueBillsCount, dueFixedExpensesCount, autoPaidBillsCount, ccDueNoticeCount, theme, toggleTheme } = useBudget();
   const { username, logout, avatar } = useAuth();
 
@@ -177,7 +183,7 @@ export function Layout({ children }: LayoutProps) {
       </button>
 
       {/* Main Content Area */}
-      <div className={cn(
+      <div ref={scrollRef} className={cn(
         "flex-1 flex flex-col h-full overflow-y-auto pb-20 md:pb-0 transition-all duration-300 min-w-0",
         collapsed ? "md:pl-20" : "md:pl-64"
       )}>
