@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import type { ReactNode, PointerEvent as RPE, KeyboardEvent as RKE } from 'react';
+import type { ReactNode, PointerEvent as RPE } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 interface SwipeNavCardProps {
@@ -59,26 +59,18 @@ export function SwipeNavCard({ to, icon, revealClassName = 'bg-secondary/70 text
     const decided = axisRef.current;
     const off = offsetRef.current;
     reset();
-    if (decided === null) go();                          // neredeyse hareketsiz -> tık
-    else if (decided === 'h' && -off >= THRESHOLD) go(); // eşiği geçen sola-kaydırma
-    // aksi halde geri yaslan (offset zaten 0)
-  };
-
-  const onKeyDown = (e: RKE<HTMLDivElement>) => {
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); }
+    // Yalnız sola-kaydırma: eşiği geçince git. Tık/klavye ile navigasyon YOK.
+    if (decided === 'h' && -off >= THRESHOLD) go();
   };
 
   return (
     <div
-      role="button"
-      tabIndex={0}
-      className="relative h-full overflow-hidden rounded-xl outline-none cursor-pointer select-none"
+      className="relative h-full overflow-hidden rounded-xl cursor-pointer select-none"
       style={{ touchAction: 'pan-y' }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={reset}
-      onKeyDown={onKeyDown}
     >
       <div className={`absolute inset-y-0 right-0 flex items-center justify-end overflow-hidden ${revealClassName}`} style={{ width: -offset }}>
         <div className="flex w-24 items-center justify-center">{icon}</div>
