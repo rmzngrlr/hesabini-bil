@@ -573,7 +573,7 @@ export default function Dashboard() {
 
       {/* Top Summary Cards */}
       <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
-        <SwipeNavCard to="/islemler" beforeNavigate={() => sessionStorage.setItem('daily_draft_tab', JSON.stringify('NAKIT'))} icon={<span className="text-2xl font-bold">₺</span>} revealClassName="bg-secondary/70 text-foreground">
+        <SwipeNavCard to="/islemler" beforeNavigate={() => sessionStorage.setItem('daily_draft_tab', JSON.stringify('NAKIT'))} icon={<span className="text-2xl font-bold">₺</span>} revealClassName="text-foreground">
         <Card title={isFuture ? "Tahmini Kalan Türk Lirası" : "Kalan Türk Lirası"} className="bg-gradient-to-br from-transparent to-secondary/20 h-full">
 
            <div className={`text-3xl font-bold mt-2 ${remainingCash < 0 ? 'text-red-500' : 'text-foreground'}`}>
@@ -591,7 +591,7 @@ export default function Dashboard() {
         </SwipeNavCard>
 
         {showMealCard && (
-            <SwipeNavCard to="/islemler" beforeNavigate={() => sessionStorage.setItem('daily_draft_tab', JSON.stringify('YK'))} icon={<Utensils size={24} />} revealClassName="bg-orange-500/15 text-orange-600 dark:text-orange-500">
+            <SwipeNavCard to="/islemler" beforeNavigate={() => sessionStorage.setItem('daily_draft_tab', JSON.stringify('YK'))} icon={<Utensils size={24} />} revealClassName="text-orange-600 dark:text-orange-500">
             <Card title="Kalan Yemek Kartı" className="bg-gradient-to-br from-transparent to-orange-500/15 border-orange-500/30 h-full">
             <div className="text-3xl font-bold text-orange-600 mt-2">
                 {finalRemainingYk.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}
@@ -608,7 +608,7 @@ export default function Dashboard() {
             </SwipeNavCard>
         )}
 
-        <SwipeNavCard to="/borc" icon={<CreditCard size={24} />} revealClassName="bg-red-500/12 text-red-500">
+        <SwipeNavCard to="/borc" icon={<CreditCard size={24} />} revealClassName="text-red-500">
         <Card title={isFuture ? "Tahmini Kredi Kartı Ödemesi" : "Toplam Kredi Kartı Borcu"} className="bg-gradient-to-br from-transparent to-red-500/10 border-red-500/25 h-full">
            <div className="text-3xl font-bold text-red-500 mt-2">
              {totalCCDebt.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}
@@ -782,7 +782,7 @@ export default function Dashboard() {
                                 </>
                             ) : (
                                 <>
-                                    <span className="text-xs leading-tight text-muted-foreground">toplam bütçe</span>
+                                    <span className="text-xs leading-tight text-muted-foreground">Toplam Bütçe</span>
                                     <span className="text-xl font-semibold leading-tight text-foreground">{centerTotalStr}</span>
                                     <span className="text-sm font-semibold leading-tight" style={{ color: remainColor }}>{remainStr}</span>
                                 </>
