@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useMemo, useRef, type ReactNode } from 'react';
-import { getTodayStr, toLocalMonthStr, statementMonth, isDebtPending } from '../lib/utils';
+import { getTodayStr, toLocalMonthStr, statementMonth } from '../lib/utils';
 import type { BudgetState, FixedExpense, CustomIncome, DailyExpense, CCDebt, Installment, MonthlyHistory, GoldRecord } from '../types';
 import { fetchWithAuth } from '../services/api';
 import { useAuth } from './AuthContext';
@@ -1391,10 +1391,14 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         };
     });
 
-    // 2. Initial CC Debt (from current month) — Borç sayfasıyla AYNI kural:
-    // günü gelmemiş (bu ay + ileri tarihli) kalemler hariç. Böylece bir sonraki ayın
-    // "Kredi Kartı Borcu (Geçen Ay)" gideri = bu ayın Borç sayfası toplamı.
-    let lastMonthCCDebt = Math.abs(realState.ccDebts.filter(d => !isDebtPending(d.date, true, getTodayStr())).reduce((sum, d) => sum + d.amount, 0));
+    // 2. Initial CC Debt (from current month) — onumuzdeki ayin "Gecen Ay" gideri icin
+    // cari ayin TAM kart ekstresi tahmini: tum kart harcamalari (gunu gelmis + GELMEMIS)
+    // + odenmemis KK faturalari (gunu gelince karta dusecek). NOT: Borc sayfasi ve Bilanco
+    // "Toplam KK Borcu" karti "su ana kadar olusan"i gosterir; onlar bu hesaba dahil DEGIL.
+    const unpaidKKBills = realState.fixedExpenses
+      .filter(e => e.isBill && e.paymentMethod === 'KK' && !e.isPaid)
+      .reduce((sum, e) => sum + Math.abs(e.amount), 0);
+    let lastMonthCCDebt = Math.abs(realState.ccDebts.reduce((sum, d) => sum + d.amount, 0)) + unpaidKKBills;
 
     // Iterate intervening months
     let iterMonth = addMonths(realState.currentMonth, 1);
