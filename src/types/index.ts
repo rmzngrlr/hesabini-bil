@@ -38,6 +38,12 @@ export interface FixedExpense {
    * Faturalar sekmesindeki bildirim kartı X ile kapatılınca false'a döner.
    */
   autoPaidPending?: boolean;
+  /**
+   * KK odemeli fatura, kesim gunune gore bir SONRAKI ekstreye dustuyse o ekstrenin ayi
+   * (YYYY-MM). Set ise: kart borcu cari aya degil o aya yazilir (futureData'da 'stmtbill-'
+   * olarak) ve syncCCDebtsForList bu faturayi atlar (cari aya cift yazilmasin).
+   */
+  ccStatementRouted?: string;
 }
 
 export interface CustomIncome {

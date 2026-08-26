@@ -274,7 +274,7 @@ const getCurrencyVaultExpenses = (records: GoldRecord[]): DailyExpense[] => {
 };
 
 const syncCCDebtsForList = (fixedExpenses: FixedExpense[], ccDebts: CCDebt[]): CCDebt[] => {
-  const activePaidBills = (fixedExpenses || []).filter(e => e.isBill && e.paymentMethod === 'KK' && e.isPaid);
+  const activePaidBills = (fixedExpenses || []).filter(e => e.isBill && e.paymentMethod === 'KK' && e.isPaid && !e.ccStatementRouted);
   const activeBillIds = new Set(activePaidBills.map(e => `bill-cc-${e.id}`));
 
   let updatedDebts = (ccDebts || []).filter(d => {
@@ -2514,13 +2514,30 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     );
     if (!hasDue) return;
     setRealState(prev => {
-      const newFixed = (prev.fixedExpenses || []).map(e =>
-        (e.isBill && e.paymentMethod === 'KK' && !e.isPaid && !!e.date && e.date <= todayStr)
-          ? { ...e, isPaid: true, autoPaidPending: true }
-          : e
-      );
+      const cutoff = prev.statementCutoffDay;
+      let futureData = prev.futureData;
+      const newFixed = (prev.fixedExpenses || []).map(e => {
+        const isDue = e.isBill && e.paymentMethod === 'KK' && !e.isPaid && !!e.date && e.date <= todayStr;
+        if (!isDue) return e;
+        // Faturanin dustugu ekstre (kesim gunune gore). Cari aydan SONRAYSA kart borcunu o
+        // ekstrenin ayina yaz (bill-cc- yerine 'stmtbill-' olarak futureData'ya) ve faturayi
+        // ccStatementRouted ile isaretle -> syncCCDebtsForList atlar, cari aya cift yazilmaz.
+        const sm = statementMonth(e.date, cutoff) || prev.currentMonth;
+        if (sm > prev.currentMonth) {
+          const routedId = `stmtbill-${e.id}`;
+          const fd = futureData[sm] || {};
+          if (!(fd.ccDebts || []).some(d => d.id === routedId)) {
+            futureData = {
+              ...futureData,
+              [sm]: { ...fd, ccDebts: [...(fd.ccDebts || []), { id: routedId, description: e.title, amount: -Math.abs(e.amount), date: e.date }] },
+            };
+          }
+          return { ...e, isPaid: true, autoPaidPending: true, ccStatementRouted: sm };
+        }
+        return { ...e, isPaid: true, autoPaidPending: true };
+      });
       const updatedCCDebts = syncCCDebtsForList(newFixed, prev.ccDebts);
-      return { ...prev, fixedExpenses: newFixed, ccDebts: updatedCCDebts };
+      return { ...prev, fixedExpenses: newFixed, ccDebts: updatedCCDebts, futureData };
     });
   }, [realState.fixedExpenses, todayStr, isLoading, isAuthenticated]);
 
