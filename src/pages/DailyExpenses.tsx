@@ -2040,7 +2040,9 @@ export default function DailyExpenses() {
       {/* Normal / Döviz Altın Sekmeleri ve Listeleri */}
       {activeSubTab !== 'BILLS' && (
         <>
-          {availableTabs.length > 1 && (
+          {/* Tek tur (tek doviz/altin ya da yalniz Nakit) olsa bile o ismin sekmesi gorunur.
+              Yalnizca hic sekme yokken (>=1 saglanmaz) cubuk cizilmez. */}
+          {availableTabs.length >= 1 && (
             <div className="flex p-1 bg-secondary rounded-xl overflow-x-auto whitespace-nowrap scrollbar-none gap-1">
                 {availableTabs.map((tab) => (
                   <button
