@@ -286,6 +286,27 @@ const clearRoutedStmtBill = (
   return { ...futureData, [routedMonth]: { ...fd, ccDebts: (fd.ccDebts || []).filter(d => d.id !== rid) } };
 };
 
+// Bir faturanin CC routing'ini (yeniden) hesaplar: once eski 'stmtbill-'i temizler; fatura
+// ODENMIS bir KK faturasi VE ekstre ayi (statementMonth) cari aydan SONRAYSA yeni 'stmtbill-'
+// ekler + ccStatementRouted set eder; aksi halde ccStatementRouted'u temizler.
+const routePaidBill = (
+  bill: FixedExpense,
+  futureData: BudgetState['futureData'],
+  cutoff: number | null | undefined,
+  currentMonth: string
+): { bill: FixedExpense; futureData: BudgetState['futureData'] } => {
+  let fd = clearRoutedStmtBill(futureData, bill.id, bill.ccStatementRouted);
+  const isDueKKBill = !!bill.isBill && bill.paymentMethod === 'KK' && !!bill.isPaid && !!bill.date;
+  const sm = isDueKKBill ? (statementMonth(bill.date, cutoff) || currentMonth) : currentMonth;
+  if (isDueKKBill && sm > currentMonth) {
+    const rid = `stmtbill-${bill.id}`;
+    const existing = fd[sm] || {};
+    fd = { ...fd, [sm]: { ...existing, ccDebts: [...(existing.ccDebts || []), { id: rid, description: bill.title, amount: -Math.abs(bill.amount), date: bill.date }] } };
+    return { bill: { ...bill, ccStatementRouted: sm }, futureData: fd };
+  }
+  return { bill: { ...bill, ccStatementRouted: undefined }, futureData: fd };
+};
+
 const syncCCDebtsForList = (fixedExpenses: FixedExpense[], ccDebts: CCDebt[]): CCDebt[] => {
   const activePaidBills = (fixedExpenses || []).filter(e => e.isBill && e.paymentMethod === 'KK' && e.isPaid && !e.ccStatementRouted);
   const activeBillIds = new Set(activePaidBills.map(e => `bill-cc-${e.id}`));
@@ -2218,16 +2239,23 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const updateFixedExpense = (id: string, expense: Partial<FixedExpense>) => {
     setRealState(prev => {
         if (viewDate === prev.currentMonth) {
-            const newFixedExpenses = prev.fixedExpenses.map(ex =>
-              ex.id === id ? { ...ex, ...expense } : ex
-            );
+            const cutoff = prev.statementCutoffDay;
+            let futureData = prev.futureData;
+            const newFixedExpenses = prev.fixedExpenses.map(ex => {
+              if (ex.id !== id) return ex;
+              // Duzenlenen fatura -> routing'i yeniden hesapla (tutar/tarih/ekstre ayi degisebilir).
+              const routed = routePaidBill({ ...ex, ...expense }, futureData, cutoff, prev.currentMonth);
+              futureData = routed.futureData;
+              return routed.bill;
+            });
             const updatedCCDebts = syncCCDebtsForList(newFixedExpenses, prev.ccDebts);
             const updatedDaily = syncDailyExpensesForList(newFixedExpenses, prev.dailyExpenses, viewDate, prev.currentMonth);
             return {
               ...prev,
               fixedExpenses: newFixedExpenses,
               ccDebts: updatedCCDebts,
-              dailyExpenses: updatedDaily
+              dailyExpenses: updatedDaily,
+              futureData
             };
         } else if (viewDate > prev.currentMonth) {
             const future = prev.futureData[viewDate] || {};
@@ -2540,22 +2568,10 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       const newFixed = (prev.fixedExpenses || []).map(e => {
         const isDue = e.isBill && e.paymentMethod === 'KK' && !e.isPaid && !!e.date && e.date <= todayStr;
         if (!isDue) return e;
-        // Faturanin dustugu ekstre (kesim gunune gore). Cari aydan SONRAYSA kart borcunu o
-        // ekstrenin ayina yaz (bill-cc- yerine 'stmtbill-' olarak futureData'ya) ve faturayi
-        // ccStatementRouted ile isaretle -> syncCCDebtsForList atlar, cari aya cift yazilmaz.
-        const sm = statementMonth(e.date, cutoff) || prev.currentMonth;
-        if (sm > prev.currentMonth) {
-          const routedId = `stmtbill-${e.id}`;
-          const fd = futureData[sm] || {};
-          if (!(fd.ccDebts || []).some(d => d.id === routedId)) {
-            futureData = {
-              ...futureData,
-              [sm]: { ...fd, ccDebts: [...(fd.ccDebts || []), { id: routedId, description: e.title, amount: -Math.abs(e.amount), date: e.date }] },
-            };
-          }
-          return { ...e, isPaid: true, autoPaidPending: true, ccStatementRouted: sm };
-        }
-        return { ...e, isPaid: true, autoPaidPending: true };
+        // Fatura odendi say + kesime gore dogru ekstre ayina yonlendir (tek kaynak: routePaidBill).
+        const routed = routePaidBill({ ...e, isPaid: true, autoPaidPending: true }, futureData, cutoff, prev.currentMonth);
+        futureData = routed.futureData;
+        return routed.bill;
       });
       const updatedCCDebts = syncCCDebtsForList(newFixed, prev.ccDebts);
       return { ...prev, fixedExpenses: newFixed, ccDebts: updatedCCDebts, futureData };
