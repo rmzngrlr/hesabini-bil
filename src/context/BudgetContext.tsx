@@ -273,6 +273,19 @@ const getCurrencyVaultExpenses = (records: GoldRecord[]): DailyExpense[] => {
     });
 };
 
+// Yonlendirilmis (ccStatementRouted) faturanin futureData'daki 'stmtbill-' kaydini siler.
+const clearRoutedStmtBill = (
+  futureData: BudgetState['futureData'],
+  billId: string,
+  routedMonth: string | undefined
+): BudgetState['futureData'] => {
+  if (!routedMonth) return futureData;
+  const fd = futureData[routedMonth];
+  const rid = `stmtbill-${billId}`;
+  if (!fd || !(fd.ccDebts || []).some(d => d.id === rid)) return futureData;
+  return { ...futureData, [routedMonth]: { ...fd, ccDebts: (fd.ccDebts || []).filter(d => d.id !== rid) } };
+};
+
 const syncCCDebtsForList = (fixedExpenses: FixedExpense[], ccDebts: CCDebt[]): CCDebt[] => {
   const activePaidBills = (fixedExpenses || []).filter(e => e.isBill && e.paymentMethod === 'KK' && e.isPaid && !e.ccStatementRouted);
   const activeBillIds = new Set(activePaidBills.map(e => `bill-cc-${e.id}`));
@@ -1755,16 +1768,20 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const toggleFixedExpense = (id: string) => {
     setRealState(prev => {
         if (viewDate === prev.currentMonth) {
+            const target = prev.fixedExpenses.find(ex => ex.id === id);
             const newFixedExpenses = prev.fixedExpenses.map(ex =>
-              ex.id === id ? { ...ex, isPaid: !ex.isPaid } : ex
+              ex.id === id ? { ...ex, isPaid: !ex.isPaid, ccStatementRouted: undefined } : ex
             );
             const updatedCCDebts = syncCCDebtsForList(newFixedExpenses, prev.ccDebts);
             const updatedDaily = syncDailyExpensesForList(newFixedExpenses, prev.dailyExpenses, viewDate, prev.currentMonth);
+            // Yonlendirilmis fatura toggle'laninca (or. elle "odenmedi") 'stmtbill-'i temizle.
+            const futureData = clearRoutedStmtBill(prev.futureData, id, target?.ccStatementRouted);
             return {
               ...prev,
               fixedExpenses: newFixedExpenses,
               ccDebts: updatedCCDebts,
-              dailyExpenses: updatedDaily
+              dailyExpenses: updatedDaily,
+              futureData
             };
         } else if (viewDate > prev.currentMonth) {
              const future = prev.futureData[viewDate] || {};
@@ -1816,14 +1833,18 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const deleteFixedExpense = (id: string) => {
     setRealState(prev => {
         if (viewDate === prev.currentMonth) {
+            const target = prev.fixedExpenses.find(ex => ex.id === id);
             const newFixedExpenses = prev.fixedExpenses.filter(ex => ex.id !== id);
             const updatedCCDebts = syncCCDebtsForList(newFixedExpenses, prev.ccDebts);
             const updatedDaily = syncDailyExpensesForList(newFixedExpenses, prev.dailyExpenses, viewDate, prev.currentMonth);
+            // Yonlendirilmis fatura silinince futureData'daki 'stmtbill-'i de temizle.
+            const futureData = clearRoutedStmtBill(prev.futureData, id, target?.ccStatementRouted);
             return {
               ...prev,
               fixedExpenses: newFixedExpenses,
               ccDebts: updatedCCDebts,
-              dailyExpenses: updatedDaily
+              dailyExpenses: updatedDaily,
+              futureData
             };
         } else if (viewDate > prev.currentMonth) {
             const future = prev.futureData[viewDate] || {};
