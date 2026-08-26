@@ -1395,10 +1395,19 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     // cari ayin TAM kart ekstresi tahmini: tum kart harcamalari (gunu gelmis + GELMEMIS)
     // + odenmemis KK faturalari (gunu gelince karta dusecek). NOT: Borc sayfasi ve Bilanco
     // "Toplam KK Borcu" karti "su ana kadar olusan"i gosterir; onlar bu hesaba dahil DEGIL.
-    const unpaidKKBills = realState.fixedExpenses
-      .filter(e => e.isBill && e.paymentMethod === 'KK' && !e.isPaid)
+    // Odenmemis KK faturalari, KESIM GUNUNE gore hangi ekstreye dusuyorsa o ekstrenin
+    // "Gecen Ay"ina gitmeli: cari ay (Agustos) ekstresi -> Eylul "Gecen Ay" (tohum);
+    // kesimden sonrakiler (Eylul ekstresi) -> Ekim "Gecen Ay" (dongude eklenir).
+    const cutoff = realState.statementCutoffDay;
+    const nextMonth = addMonths(realState.currentMonth, 1);
+    const unpaidKKBillItems = realState.fixedExpenses.filter(e => e.isBill && e.paymentMethod === 'KK' && !e.isPaid);
+    const currentStatementBillsSum = unpaidKKBillItems
+      .filter(e => (statementMonth(e.date, cutoff) || realState.currentMonth) === realState.currentMonth)
       .reduce((sum, e) => sum + Math.abs(e.amount), 0);
-    let lastMonthCCDebt = Math.abs(realState.ccDebts.reduce((sum, d) => sum + d.amount, 0)) + unpaidKKBills;
+    const nextStatementBillsSum = unpaidKKBillItems
+      .filter(e => (statementMonth(e.date, cutoff) || realState.currentMonth) === nextMonth)
+      .reduce((sum, e) => sum + Math.abs(e.amount), 0);
+    let lastMonthCCDebt = Math.abs(realState.ccDebts.reduce((sum, d) => sum + d.amount, 0)) + currentStatementBillsSum;
 
     // Iterate intervening months
     let iterMonth = addMonths(realState.currentMonth, 1);
@@ -1532,6 +1541,13 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
         // Calculate total CC Debt for THIS month (to become Fixed Expense in NEXT month)
         lastMonthCCDebt = Math.abs(allCCDebts.reduce((sum, d) => sum + d.amount, 0));
+
+        // Kesimden SONRAKI cari-ay KK faturalari nextMonth (Eylul) ekstresine ait; o ekstre
+        // bir sonraki ay odenir. Bu iterasyonun (nextMonth) toplamina eklenince, bir SONRAKI
+        // ayin (Ekim) "Gecen Ay" giderinde gorunur. Yalniz ilk iterasyonda (iterMonth==nextMonth).
+        if (iterMonth === nextMonth) {
+            lastMonthCCDebt += nextStatementBillsSum;
+        }
 
         if (isTarget) {
             // Filter and project installments for view (Active Installments List)
