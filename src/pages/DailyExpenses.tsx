@@ -673,17 +673,24 @@ export default function DailyExpenses() {
 
   // Fallback if active tab disappears (e.g. settings changed)
   useEffect(() => {
-    if (!availableTabs.includes(activeTab)) {
+    // Doviz/Altin + Altin modundayken aktif sekme bir ALTIN turudur; onu availableTabs'a
+    // (yalnizca dovizler) gore "gecersiz" sayip sifirlama -> yoksa altin-modu senkron efekti
+    // ile catisip sonsuz donguye girer (sekme "Gram <-> aldigin doviz" titremesi).
+    const inGoldMode = activeSubTab === 'EXCHANGE' && exchangeTabMode === 'GOLD';
+    if (!inGoldMode && !availableTabs.includes(activeTab)) {
       setActiveTab(availableTabs[0] || 'NAKIT');
     }
     if (type !== 'NEW_CURRENCY' && !allFormTypes.currencies.includes(type) && !allFormTypes.golds.includes(type)) {
       setType('NAKIT');
     }
-  }, [availableTabs, allFormTypes, activeTab, type]);
+  }, [availableTabs, allFormTypes, activeTab, type, activeSubTab, exchangeTabMode]);
 
 
-  // Ensure 'type' is set to a valid gold type when switching to GOLD mode
+  // Ensure 'type' is set to a valid gold type when switching to GOLD mode.
+  // Yalnizca Doviz/Altin (EXCHANGE) sekmesinde calisir: altin modu acik kalmisken
+  // Nakit/Faturalar sekmesine gecilirse tip'i altina zorlayip fallback ile donguye girmesin.
   useEffect(() => {
+    if (activeSubTab !== 'EXCHANGE') return;
     if (exchangeTabMode === 'GOLD' && !isGoldType(type)) {
       if (allFormTypes.golds.length > 0) {
         setType(allFormTypes.golds[0]);
@@ -693,7 +700,7 @@ export default function DailyExpenses() {
         setType('NAKIT');
         setActiveTab('NAKIT');
     }
-  }, [exchangeTabMode, allFormTypes.golds, type, setType, setActiveTab, isGoldType]);
+  }, [activeSubTab, exchangeTabMode, allFormTypes.golds, type, setType, setActiveTab, isGoldType]);
 
   // Reset date draft if it belongs to a past day.
   // todayStr'e bağlı: uygulama açıkken gece yarısı geçse de yeniden çalışır.
