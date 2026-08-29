@@ -121,8 +121,8 @@ export default function DailyExpenses() {
 
     // Currency types
     const mapping: Record<string, string> = {
-      'nakit': 'Türk Lirası',
-      'tl': 'Türk Lirası',
+      'nakit': 'TL',
+      'tl': 'TL',
       'yk': 'Yemek Kartı',
       'yemek kartı': 'Yemek Kartı',
       'bam': 'Bosna-Hersek Markı',
@@ -686,7 +686,7 @@ export default function DailyExpenses() {
 
   const availableTabs = useMemo(() => {
     if (activeSubTab === 'NORMAL') {
-      return ['NAKIT', ...(showMealCard ? ['YK'] : [])];
+      return ['NAKIT', ...(showMealCard ? ['YK'] : []), ...activeCurrenciesFiltered];
     }
     if (activeSubTab === 'EXCHANGE') {
       return activeCurrenciesFiltered;
@@ -700,7 +700,10 @@ export default function DailyExpenses() {
     // (yalnizca dovizler) gore "gecersiz" sayip sifirlama -> yoksa altin-modu senkron efekti
     // ile catisip sonsuz donguye girer (sekme "Gram <-> aldigin doviz" titremesi).
     const inGoldMode = activeSubTab === 'EXCHANGE' && exchangeTabMode === 'GOLD';
-    if (!inGoldMode && !availableTabs.includes(activeTab)) {
+    // Secilen bilinen bir varlik (doviz/altin) availableTabs'ta olmasa da sifirlanmasin;
+    // yoksa Normal'de doviz butonu secince fallback onu TL'ye geri ceker (revert).
+    const isKnownAsset = allFormTypes.currencies.includes(activeTab) || allFormTypes.golds.includes(activeTab);
+    if (!inGoldMode && !availableTabs.includes(activeTab) && !isKnownAsset) {
       setActiveTab(availableTabs[0] || 'NAKIT');
     }
     if (type !== 'NEW_CURRENCY' && !allFormTypes.currencies.includes(type) && !allFormTypes.golds.includes(type)) {
@@ -1334,7 +1337,7 @@ export default function DailyExpenses() {
 
   const assetOptions = (
     <>
-      <option value="NAKIT">Türk Lirası</option>
+      <option value="NAKIT">TL</option>
       {showMealCard && <option value="YK">Yemek Kartı</option>}
       {activeCurrencies.map(curr => (<option key={curr} value={curr}>{getAssetFullTitle(curr)}</option>))}
       <option value="NEW_CURRENCY">+ Diğer Para Birimi Ekle...</option>
@@ -1429,23 +1432,23 @@ export default function DailyExpenses() {
 
           {exchangeTabMode === 'CURRENCY' ? (
           <form onSubmit={handleExchangeSubmit} className="space-y-3 mt-2">
-            <div className="flex gap-2 items-center">
+            <div className="flex flex-col md:flex-row gap-2 md:items-end">
               <div className="flex-1 space-y-1">
                  <label className="text-xs text-muted-foreground">Verilen Birim</label>
-                 <select value={exchangeFromType} onChange={e => setExchangeFromType(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary">
+                 <select value={exchangeFromType} onChange={e => setExchangeFromType(e.target.value)} className="w-full h-11 px-3 rounded-xl bg-secondary focus:ring-2 focus:ring-primary">
                    <optgroup label="Para Birimleri">{assetOptions}</optgroup>
                  </select>
               </div>
               <div className="flex-1 space-y-1">
                  <label className="text-xs text-muted-foreground">Tutar</label>
-                 <input type="number" step="0.001" required placeholder="0.00" value={exchangeFromAmount} onChange={e => handleFromAmountChange(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary" />
+                 <input type="number" step="0.001" required placeholder="0.00" value={exchangeFromAmount} onChange={e => handleFromAmountChange(e.target.value)} className="w-full h-11 px-3 rounded-xl bg-secondary focus:ring-2 focus:ring-primary" />
               </div>
             </div>
 
             {exchangeFromType === 'NEW_CURRENCY' && (
                <div className="space-y-1 mb-2">
                  <label className="text-xs text-muted-foreground">Yeni Verilen Para Birimi Adı (Örn: Dolar)</label>
-                 <input type="text" required placeholder="Para Birimi Girin" value={exchangeFromCustomCode} onChange={e => setExchangeFromCustomCode(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary font-medium" />
+                 <input type="text" required placeholder="Para Birimi Girin" value={exchangeFromCustomCode} onChange={e => setExchangeFromCustomCode(e.target.value)} className="w-full h-11 px-3 rounded-xl bg-secondary focus:ring-2 focus:ring-primary font-medium" />
                </div>
             )}
 
@@ -1453,23 +1456,23 @@ export default function DailyExpenses() {
               <ArrowRightLeft size={20} className="rotate-90" />
             </div>
 
-            <div className="flex gap-2 items-center">
+            <div className="flex flex-col md:flex-row gap-2 md:items-end">
               <div className="flex-1 space-y-1">
                  <label className="text-xs text-muted-foreground">Alınan Birim</label>
-                 <select value={exchangeToType} onChange={e => setExchangeToType(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary">
+                 <select value={exchangeToType} onChange={e => setExchangeToType(e.target.value)} className="w-full h-11 px-3 rounded-xl bg-secondary focus:ring-2 focus:ring-primary">
                    <optgroup label="Para Birimleri">{assetOptions}</optgroup>
                  </select>
               </div>
               <div className="flex-1 space-y-1">
                  <label className="text-xs text-muted-foreground">Tutar</label>
-                 <input type="number" step="0.001" required placeholder="0.00" value={exchangeToAmount} onChange={e => handleToAmountChange(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary" />
+                 <input type="number" step="0.001" required placeholder="0.00" value={exchangeToAmount} onChange={e => handleToAmountChange(e.target.value)} className="w-full h-11 px-3 rounded-xl bg-secondary focus:ring-2 focus:ring-primary" />
               </div>
             </div>
 
             {exchangeToType === 'NEW_CURRENCY' && (
                <div className="space-y-1 mt-1 mb-2">
                  <label className="text-xs text-muted-foreground">Yeni Alınan Para Birimi Adı (Örn: Dolar)</label>
-                 <input type="text" required placeholder="Para Birimi Girin" value={exchangeToCustomCode} onChange={e => setExchangeToCustomCode(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary font-medium" />
+                 <input type="text" required placeholder="Para Birimi Girin" value={exchangeToCustomCode} onChange={e => setExchangeToCustomCode(e.target.value)} className="w-full h-11 px-3 rounded-xl bg-secondary focus:ring-2 focus:ring-primary font-medium" />
                </div>
             )}
 
@@ -1481,7 +1484,7 @@ export default function DailyExpenses() {
                  placeholder="Birim Fiyat (Otomatik hesaplanır veya girin)"
                  value={exchangeRate}
                  onChange={e => handleExchangeRateChange(e.target.value)}
-                 className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary font-medium"
+                 className="w-full h-11 px-3 rounded-xl bg-secondary focus:ring-2 focus:ring-primary font-medium"
                />
             </div>
 
@@ -1493,35 +1496,35 @@ export default function DailyExpenses() {
 
             <div className="space-y-1">
                <label className="text-xs text-muted-foreground">Not</label>
-               <input type="text" placeholder="Özel not veya kur bilgisi (İsteğe bağlı)" value={exchangeNote} onChange={e => setExchangeNote(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary font-medium" />
+               <input type="text" placeholder="Özel not veya kur bilgisi (İsteğe bağlı)" value={exchangeNote} onChange={e => setExchangeNote(e.target.value)} className="w-full h-11 px-3 rounded-xl bg-secondary focus:ring-2 focus:ring-primary font-medium" />
             </div>
 
             <div className="flex gap-2 pt-2">
-              <button type="submit" className="w-full py-3 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/95 transition-colors">
+              <button type="submit" className="w-full h-11 bg-primary text-primary-foreground font-medium rounded-xl hover:bg-primary/95 transition-colors">
                 {isFuture ? 'Döviz Takası Planla' : 'Döviz Takası Kaydet'}
               </button>
             </div>
           </form>
           ) : (
           <form onSubmit={handleSubmit} className="space-y-3 mt-2">
-             <div className="grid grid-cols-3 gap-2 items-center">
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:items-end">
                <div className="space-y-1 col-span-1">
                   <label className="text-xs text-muted-foreground">Miktar (Adet/Gram)</label>
-                  <input type="number" step="0.001" required placeholder="Örn: 5" value={amount} onChange={e => setAmount(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary font-medium" />
+                  <input type="number" step="0.001" required placeholder="Örn: 5" value={amount} onChange={e => setAmount(e.target.value)} className="w-full h-11 px-3 rounded-xl bg-secondary focus:ring-2 focus:ring-primary font-medium" />
                </div>
                <div className="space-y-1 col-span-1">
                   <label className="text-xs text-muted-foreground">Toplam Tutar (TL)</label>
-                  <input type="number" step="0.01" required placeholder="Örn: 15000" value={goldPriceTL} onChange={e => setGoldPriceTL(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary font-medium" />
+                  <input type="number" step="0.01" required placeholder="Örn: 15000" value={goldPriceTL} onChange={e => setGoldPriceTL(e.target.value)} className="w-full h-11 px-3 rounded-xl bg-secondary focus:ring-2 focus:ring-primary font-medium" />
                </div>
                <div className="space-y-1 col-span-1">
                   <label className="text-xs text-muted-foreground">Birim Fiyat (TL)</label>
-                  <input type="text" readOnly value={calculatedGoldUnitPrice} className="w-full px-3 py-2 rounded-lg bg-secondary/50 text-muted-foreground border border-dashed border-border focus:outline-none font-mono font-bold cursor-not-allowed text-center text-sm" />
+                  <input type="text" readOnly value={calculatedGoldUnitPrice} className="w-full h-11 px-3 rounded-xl bg-secondary/50 text-muted-foreground border border-dashed border-border focus:outline-none font-mono font-bold cursor-not-allowed text-center text-sm" />
                </div>
              </div>
 
             <div className="space-y-1">
                <label className="text-xs text-muted-foreground">Kime Ait (Kasa Sahibi)</label>
-               <input type="text" required placeholder="Örn: Ahmet, Ayşe veya Ortak" value={goldOwner} onChange={e => setGoldOwner(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary font-medium" />
+               <input type="text" required placeholder="Örn: Ahmet, Ayşe veya Ortak" value={goldOwner} onChange={e => setGoldOwner(e.target.value)} className="w-full h-11 px-3 rounded-xl bg-secondary focus:ring-2 focus:ring-primary font-medium" />
                {goldOwner.trim() && ownerCheck && (
                  ownerCheck.isUser && !ownerCheck.isSelf ? (
                    <div className="flex items-start gap-2 text-xs rounded-lg px-3 py-2 bg-primary/10 text-primary border border-primary/20">
@@ -1536,21 +1539,21 @@ export default function DailyExpenses() {
 
             <div className="space-y-1">
                <label className="text-xs text-muted-foreground">Not</label>
-               <input type="text" placeholder="Özel not (İsteğe bağlı)" value={goldNote} onChange={e => setGoldNote(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary font-medium" />
+               <input type="text" placeholder="Özel not (İsteğe bağlı)" value={goldNote} onChange={e => setGoldNote(e.target.value)} className="w-full h-11 px-3 rounded-xl bg-secondary focus:ring-2 focus:ring-primary font-medium" />
             </div>
 
             <div className="flex gap-2 pt-1">
                 <button
                 type="button"
                 onClick={() => { setGoldTransactionType('Birikim'); setTransactionType('INCOME'); }}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${goldTransactionType === 'Birikim' ? 'bg-green-500/10 border-green-500 text-green-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
+                className={`flex-1 flex items-center justify-center gap-2 h-11 rounded-xl border transition-colors ${goldTransactionType === 'Birikim' ? 'bg-green-500/10 border-green-500 text-green-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
                 >
                 Birikim
                 </button>
                 <button
                 type="button"
                 onClick={() => { setGoldTransactionType('Bozdurma'); setTransactionType('EXPENSE'); }}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${goldTransactionType === 'Bozdurma' ? 'bg-red-500/10 border-red-500 text-red-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
+                className={`flex-1 flex items-center justify-center gap-2 h-11 rounded-xl border transition-colors ${goldTransactionType === 'Bozdurma' ? 'bg-red-500/10 border-red-500 text-red-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
                 >
                 Bozdurma
                 </button>
@@ -1561,7 +1564,7 @@ export default function DailyExpenses() {
               <select
                 value={type}
                 onChange={(e) => { setType(e.target.value); setActiveTab(e.target.value); }}
-                className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+                className="w-full h-11 px-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
               >
                 <optgroup label="Altın Türleri (Kasa)">
                   {allFormTypes.golds.map(gold => (
@@ -1580,7 +1583,7 @@ export default function DailyExpenses() {
                 placeholder="Para Birimi Girin (Örn: Dolar, $, Euro)"
                 value={customCurrencyCode}
                 onChange={(e) => setCustomCurrencyCode(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+                className="w-full h-11 px-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
               />
             </div>
           )}
@@ -1590,14 +1593,14 @@ export default function DailyExpenses() {
               <button
                   type="button"
                   onClick={cancelEdit}
-                  className="flex-1 py-3 bg-secondary text-foreground font-medium rounded-lg hover:bg-secondary/80 transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 h-11 bg-secondary text-foreground font-medium rounded-xl hover:bg-secondary/80 transition-colors flex items-center justify-center gap-2"
               >
                   <X size={20} /> İptal
               </button>
               )}
               <button
               type="submit"
-              className="flex-[2] py-3 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors"
+              className="flex-[2] h-11 bg-primary text-primary-foreground font-medium rounded-xl hover:bg-primary/90 transition-colors"
               >
               {editingId ? 'Güncelle' : 'Altın İşlemini Kaydet'}
               </button>
@@ -1618,7 +1621,7 @@ export default function DailyExpenses() {
                   value={date}
                   disabled={isFuture}
                   onChange={(e) => setDate(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full h-11 px-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60 disabled:cursor-not-allowed"
               />
               </div>
               <div className="space-y-1">
@@ -1629,7 +1632,7 @@ export default function DailyExpenses() {
                   placeholder="0.00"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full h-11 px-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               />
               </div>
           </div>
@@ -1643,7 +1646,7 @@ export default function DailyExpenses() {
                 placeholder="Bu para nereden geldi/nereye gitti?"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full h-11 px-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               />
               <datalist id="daily-expense-suggestions">
                 {uniqueDescriptions.map((desc, idx) => (
@@ -1656,14 +1659,14 @@ export default function DailyExpenses() {
                 <button
                 type="button"
                 onClick={() => setTransactionType('INCOME')}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${transactionType === 'INCOME' ? 'bg-green-500/10 border-green-500 text-green-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
+                className={`flex-1 flex items-center justify-center gap-2 h-11 rounded-xl border transition-colors ${transactionType === 'INCOME' ? 'bg-green-500/10 border-green-500 text-green-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
                 >
                 Gelir (+)
                 </button>
                 <button
                 type="button"
                 onClick={() => setTransactionType('EXPENSE')}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors ${transactionType === 'EXPENSE' ? 'bg-red-500/10 border-red-500 text-red-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
+                className={`flex-1 flex items-center justify-center gap-2 h-11 rounded-xl border transition-colors ${transactionType === 'EXPENSE' ? 'bg-red-500/10 border-red-500 text-red-500' : 'bg-secondary border-transparent text-muted-foreground'}`}
                 >
                 Gider (-)
                 </button>
@@ -1671,15 +1674,31 @@ export default function DailyExpenses() {
 
           <div className="space-y-1">
               <label className="text-xs text-muted-foreground">Varlık / Para Birimi</label>
-              <select
-                value={type}
-                onChange={(e) => { setType(e.target.value); if (e.target.value !== 'NEW_CURRENCY') setActiveTab(e.target.value); }}
-                className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
-              >
-                <optgroup label="Para Birimleri">
-                  {assetOptions}
-                </optgroup>
-              </select>
+              <div className="flex gap-1 p-1 bg-secondary rounded-xl overflow-x-auto whitespace-nowrap scrollbar-none">
+                {[{ v: 'NAKIT', l: 'TL' }, ...(showMealCard ? [{ v: 'YK', l: 'Yemek Kartı' }] : []), ...activeCurrencies.map(c => ({ v: c, l: getAssetFullTitle(c) }))].map(opt => (
+                  <button
+                    key={opt.v}
+                    type="button"
+                    onClick={() => { setType(opt.v); setActiveTab(opt.v); }}
+                    className={cn(
+                      "shrink-0 h-10 px-4 rounded-lg text-sm transition-all",
+                      type === opt.v ? "bg-background shadow-sm text-foreground font-medium" : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {opt.l}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setType('NEW_CURRENCY')}
+                  className={cn(
+                    "shrink-0 h-10 px-4 rounded-lg text-sm transition-all flex items-center gap-1",
+                    type === 'NEW_CURRENCY' ? "bg-background shadow-sm text-foreground font-medium" : "text-primary hover:text-primary/80"
+                  )}
+                >
+                  + Diğer
+                </button>
+              </div>
           </div>
 
           {type === 'NEW_CURRENCY' && (
@@ -1691,7 +1710,7 @@ export default function DailyExpenses() {
                 placeholder="Para Birimi Girin (Örn: Dolar, $, Euro)"
                 value={customCurrencyCode}
                 onChange={(e) => setCustomCurrencyCode(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+                className="w-full h-11 px-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
               />
             </div>
           )}
@@ -1701,14 +1720,14 @@ export default function DailyExpenses() {
               <button
                   type="button"
                   onClick={cancelEdit}
-                  className="flex-1 py-3 bg-secondary text-foreground font-medium rounded-lg hover:bg-secondary/80 transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 h-11 bg-secondary text-foreground font-medium rounded-xl hover:bg-secondary/80 transition-colors flex items-center justify-center gap-2"
               >
                   <X size={20} /> İptal
               </button>
               )}
               <button
               type="submit"
-              className="flex-[2] py-3 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors"
+              className="flex-[2] h-11 bg-primary text-primary-foreground font-medium rounded-xl hover:bg-primary/90 transition-colors"
               >
               {editingId ? 'Güncelle' : 'Ekle'}
               </button>
@@ -1720,65 +1739,65 @@ export default function DailyExpenses() {
       {activeSubTab === 'BILLS' && (
         <Card title={editingBillId ? "Faturayı Düzenle" : "Yeni Fatura Ekle"}>
           <form onSubmit={handleBillSubmit} className="space-y-4 mt-2">
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex flex-col md:flex-row gap-3">
               <div className="flex-[2] space-y-1">
-                <label className="text-xs text-muted-foreground font-medium">Fatura Adı</label>
+                <label className="text-xs text-muted-foreground">Fatura Adı</label>
                 <input
                   type="text"
                   placeholder="Elektrik, Su, İnternet vb."
                   value={billTitle}
                   onChange={(e) => setBillTitle(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+                  className="w-full h-11 px-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
                   required
                 />
               </div>
               <div className="flex-1 space-y-1">
-                <label className="text-xs text-muted-foreground font-medium">Tutar (TL)</label>
+                <label className="text-xs text-muted-foreground">Tutar (TL)</label>
                 <input
                   type="number"
                   step="0.01"
                   placeholder="0.00"
                   value={billAmount}
                   onChange={(e) => setBillAmount(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+                  className="w-full h-11 px-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
                   required
                 />
               </div>
               <div className="flex-1 space-y-1">
-                <label className="text-xs text-muted-foreground font-medium">Ödeme Yöntemi</label>
+                <label className="text-xs text-muted-foreground">Ödeme Yöntemi</label>
                 <select
                   value={billPaymentMethod}
                   onChange={(e) => setBillPaymentMethod(e.target.value as 'NAKIT' | 'KK')}
-                  className="w-full px-2 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+                  className="w-full h-11 px-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
                 >
                   <option value="NAKIT">Nakit (TL)</option>
                   <option value="KK">Kredi Kartı</option>
                 </select>
               </div>
               <div className="flex-1 space-y-1">
-                <label className="text-xs text-muted-foreground font-medium">Tarih</label>
+                <label className="text-xs text-muted-foreground">Tarih</label>
                 <input
                   type="date"
                   value={billDate}
                   onChange={(e) => setBillDate(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+                  className="w-full h-11 px-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
                   required
                 />
               </div>
             </div>
-            <div className="flex gap-2 justify-end pt-1">
+            <div className="flex gap-2 pt-1">
               {editingBillId && (
                 <button
                   type="button"
                   onClick={handleCancelEditBill}
-                  className="px-4 py-2 rounded-lg bg-secondary text-foreground hover:bg-secondary/80 font-medium transition-colors"
+                  className="flex-1 h-11 rounded-xl bg-secondary text-foreground hover:bg-secondary/80 font-medium transition-colors"
                 >
                   İptal
                 </button>
               )}
               <button
                 type="submit"
-                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/95 font-medium transition-colors"
+                className="flex-[2] h-11 rounded-xl bg-primary text-primary-foreground hover:bg-primary/95 font-medium transition-colors"
               >
                 {editingBillId ? 'Güncelle' : 'Fatura Ekle'}
               </button>
