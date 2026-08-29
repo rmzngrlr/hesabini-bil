@@ -150,6 +150,7 @@ interface BudgetContextType {
   acceptVaultRecord: (id: number) => Promise<void>;
   rejectVaultRecord: (id: number) => Promise<void>;
   resolveGoldOwner: (username: string) => Promise<{ isUser: boolean; isSelf: boolean }>;
+  pendingIncomingGoldCount: number;
   updateVaultOrder: (order: string[]) => Promise<void>;
   updateAssetIncome: (assetType: string, amount: number) => void;
   updateAssetRollover: (assetType: string, amount: number) => void;
@@ -893,6 +894,12 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   // Tuketicilere verilen 'vaultRecords' = toplama giren alt kume (drop-in: tum kart/toplam/tespit
   // otomatik dogru). Emanet/gelen kayitlar ayrica 'allVaultRecords' ile (yeni UI icin) sunulur.
   const countedVaultRecords = useMemo(() => vaultRecords.filter(countsForMe), [vaultRecords]);
+
+  // Bana emanet edilen, henuz kabul/ret verilmemis altin sayisi (bildirim rozeti icin).
+  const pendingIncomingGoldCount = useMemo(
+    () => vaultRecords.filter(r => r.relation === 'incoming' && r.owner_status === 'pending').length,
+    [vaultRecords]
+  );
 
   const loadVaultRecords = async () => {
     if (!isAuthenticated || !isAdmin) return;
@@ -2748,6 +2755,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             acceptVaultRecord,
             rejectVaultRecord,
             resolveGoldOwner,
+            pendingIncomingGoldCount,
             updateVaultOrder,
             updateAssetIncome,
             updateAssetRollover,

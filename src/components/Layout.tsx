@@ -27,7 +27,7 @@ export function Layout({ children }: LayoutProps) {
   useLayoutEffect(() => {
     scrollRef.current?.scrollTo(0, 0);
   }, [location.pathname]);
-  const { dueBillsCount, dueFixedExpensesCount, autoPaidBillsCount, ccDueNoticeCount, theme, toggleTheme } = useBudget();
+  const { dueBillsCount, dueFixedExpensesCount, autoPaidBillsCount, ccDueNoticeCount, pendingIncomingGoldCount, theme, toggleTheme } = useBudget();
   const { username, logout, avatar } = useAuth();
 
   // Masaustu menu daraltma durumu (localStorage'da hatirlanir).
@@ -44,6 +44,7 @@ export function Layout({ children }: LayoutProps) {
 
   // Menu butonlarindaki KIRMIZI uyari rozetleri (senin odemen gereken): yol -> sayi.
   const badgeCounts: Record<string, number> = {
+    '/': pendingIncomingGoldCount,
     '/islemler': dueBillsCount,
     '/varliklarim': dueFixedExpensesCount,
   };

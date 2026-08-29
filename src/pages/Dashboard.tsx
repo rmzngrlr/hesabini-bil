@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useLayoutEffect } from 'react';
-import { ChevronDown, ChevronUp, Utensils, CreditCard } from 'lucide-react';
+import { ChevronDown, ChevronUp, Utensils, CreditCard, Check, X, Gift } from 'lucide-react';
 import { SwipeNavCard } from '../components/SwipeNavCard';
 import { MobileProfileMenu } from '../components/MobileProfileMenu';
 import { MonthNavigator } from '../components/MonthNavigator';
@@ -141,7 +141,12 @@ function CurrencyAssetCard({ fullTitle, isoCode, symbol, value, colors }: {
 }
 
 export default function Dashboard() {
-  const { state, viewDate, showMealCard, vaultRecords, activeCurrencies, todayStr } = useBudget();
+  const { state, viewDate, showMealCard, vaultRecords, activeCurrencies, todayStr, allVaultRecords, acceptVaultRecord, rejectVaultRecord } = useBudget();
+
+  // Altin emanetleri (yalniz gorunum icin tam liste 'allVaultRecords'tan): bana gelen bekleyenler
+  // (kabul/ret) ve benim baskasina emanet ettiklerim (durum). Sayilan toplamlar 'vaultRecords'ta.
+  const incomingPending = (allVaultRecords || []).filter(r => r.relation === 'incoming' && r.owner_status === 'pending');
+  const sentGold = (allVaultRecords || []).filter(r => r.relation === 'sent');
 
   // Track window size for responsive chart rendering
   const [isMobile, setIsMobile] = useState(false);
@@ -617,6 +622,59 @@ export default function Dashboard() {
         </Card>
         </SwipeNavCard>
       </div>
+
+      {/* Altin emanetleri: bana gelen (kabul/ret) + benim gonderdiklerim (durum) */}
+      {(incomingPending.length > 0 || sentGold.length > 0) && (
+        <div className="space-y-3 mt-6">
+          <h2 className="text-lg font-bold tracking-tight text-muted-foreground flex items-center gap-2">
+            <Gift size={18} /> Altın Emanetleri
+          </h2>
+
+          {incomingPending.length > 0 && (
+            <div className="rounded-xl glass border border-primary/30 p-4 space-y-3">
+              <div className="text-sm font-semibold text-foreground">Size emanet edilen altınlar</div>
+              {incomingPending.map(r => (
+                <div key={r.id} className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="text-sm">
+                    <span className="font-semibold">{r.amount} {getAssetSymbol(r.gold_type)}</span>
+                    <span className="text-muted-foreground"> {getAssetFullTitle(r.gold_type)} — {r.creator_username} ekledi</span>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button onClick={() => acceptVaultRecord(r.id!)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-green-500/10 text-green-600 dark:text-green-500 border border-green-500/30 text-xs font-medium hover:bg-green-500/20 transition-colors">
+                      <Check size={15} /> Kabul
+                    </button>
+                    <button onClick={() => rejectVaultRecord(r.id!)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-500/10 text-red-500 border border-red-500/30 text-xs font-medium hover:bg-red-500/20 transition-colors">
+                      <X size={15} /> Reddet
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {sentGold.length > 0 && (
+            <div className="rounded-xl glass p-4 space-y-2">
+              <div className="text-sm font-semibold text-foreground">Emanet ettiğim altınlar</div>
+              {sentGold.map(r => {
+                const st = r.owner_status === 'accepted'
+                  ? { label: 'Kabul etti — toplamınızda değil', cls: 'text-green-600 dark:text-green-500' }
+                  : r.owner_status === 'rejected'
+                  ? { label: 'Reddetti', cls: 'text-red-500' }
+                  : { label: 'Onay bekliyor', cls: 'text-amber-600 dark:text-amber-500' };
+                return (
+                  <div key={r.id} className="flex items-center justify-between gap-3 text-sm flex-wrap">
+                    <div>
+                      <span className="font-semibold">{r.amount} {getAssetSymbol(r.gold_type)}</span>
+                      <span className="text-muted-foreground"> {getAssetFullTitle(r.gold_type)} → {r.owner_username}</span>
+                    </div>
+                    <span className={`text-xs font-medium shrink-0 ${st.cls}`}>{st.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Diğer Varlıklar */}
       {(vaultRecords.length > 0 || activeCurrencies.length > 0) && (

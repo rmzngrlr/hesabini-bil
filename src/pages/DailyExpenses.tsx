@@ -1,5 +1,6 @@
 import { useDraftState } from '../hooks/useDraftState';
 import { useBudget } from '../context/BudgetContext';
+import { useAuth } from '../context/AuthContext';
 import type { DailyExpense } from '../types';
 import { Card } from '../components/ui/Card';
 import { Trash2, Banknote, CreditCard, Pencil, X, ArrowRightLeft, CheckCircle, Circle, Wallet, AlertTriangle } from 'lucide-react';
@@ -24,6 +25,7 @@ export default function DailyExpenses() {
     addVaultRecord,
     updateVaultRecord,
     deleteVaultRecord,
+    resolveGoldOwner,
     activeCurrencies,
     askConfirmation,
     addFixedExpense,
@@ -38,6 +40,7 @@ export default function DailyExpenses() {
     dismissAutoPaidBill,
     todayStr
   } = useBudget();
+  const { username } = useAuth();
 
   const getLocalMonth = () => {
     const d = new Date();
@@ -448,6 +451,26 @@ export default function DailyExpenses() {
   const [goldNote, setGoldNote] = useDraftState('daily_draft_gold_note', '');
   const [goldPriceTL, setGoldPriceTL] = useDraftState('daily_draft_gold_price_tl', '');
   const [goldTransactionType, setGoldTransactionType] = useDraftState<'Birikim' | 'Bozdurma'>('daily_draft_gold_tx_type', 'Birikim');
+
+  // Altin "Kime Ait": yazilan ad kayitli bir kullaniciysa emanet. Anlik onay satiri icin
+  // debounce'li kontrol (yalniz backend'e sorar; ben miyim / kullanici mi).
+  const [ownerCheck, setOwnerCheck] = useState<{ isUser: boolean; isSelf: boolean } | null>(null);
+  useEffect(() => {
+    const name = goldOwner.trim();
+    if (!name) { setOwnerCheck(null); return; }
+    let cancelled = false;
+    const t = setTimeout(() => {
+      resolveGoldOwner(name).then(r => { if (!cancelled) setOwnerCheck(r); });
+    }, 350);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [goldOwner]);
+  // Varsayilan sahip = kendi kullanici adim (bir kez, alan bossa; kullanici adi yuklenince).
+  const ownerPrefilledRef = useRef(false);
+  useEffect(() => {
+    if (ownerPrefilledRef.current || !username) return;
+    ownerPrefilledRef.current = true;
+    if (!goldOwner.trim()) setGoldOwner(username);
+  }, [username]);
 
   const [activeSubTab, setActiveSubTab] = useState<'NORMAL' | 'EXCHANGE' | 'BILLS'>('NORMAL');
   const [billTitle, setBillTitle] = useState('');
@@ -1499,6 +1522,16 @@ export default function DailyExpenses() {
             <div className="space-y-1">
                <label className="text-xs text-muted-foreground">Kime Ait (Kasa Sahibi)</label>
                <input type="text" required placeholder="Örn: Ahmet, Ayşe veya Ortak" value={goldOwner} onChange={e => setGoldOwner(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary focus:ring-2 focus:ring-primary font-medium" />
+               {goldOwner.trim() && ownerCheck && (
+                 ownerCheck.isUser && !ownerCheck.isSelf ? (
+                   <div className="flex items-start gap-2 text-xs rounded-lg px-3 py-2 bg-primary/10 text-primary border border-primary/20">
+                     <span aria-hidden="true">👤</span>
+                     <span><span className="font-semibold">{goldOwner.trim()}</span> kullanıcısına gönderilecek — kabul edene dek sizin toplamınızda görünür, kabul edince onun hesabına geçer.</span>
+                   </div>
+                 ) : ownerCheck.isSelf ? (
+                   <div className="text-xs text-muted-foreground px-1">Kendi altınınız — toplamınıza eklenir.</div>
+                 ) : null
+               )}
             </div>
 
             <div className="space-y-1">
