@@ -142,10 +142,14 @@ interface BudgetContextType {
   toggleShowVault: () => void;
   // Vault state & operations
   vaultRecords: GoldRecord[];
+  allVaultRecords: GoldRecord[];
   vaultOrder: string[];
   addVaultRecord: (record: Omit<GoldRecord, 'id'>) => Promise<void>;
   deleteVaultRecord: (id: number) => Promise<void>;
   updateVaultRecord: (id: number, record: Partial<GoldRecord>) => Promise<void>;
+  acceptVaultRecord: (id: number) => Promise<void>;
+  rejectVaultRecord: (id: number) => Promise<void>;
+  resolveGoldOwner: (username: string) => Promise<{ isUser: boolean; isSelf: boolean }>;
   updateVaultOrder: (order: string[]) => Promise<void>;
   updateAssetIncome: (assetType: string, amount: number) => void;
   updateAssetRollover: (assetType: string, amount: number) => void;
@@ -242,6 +246,10 @@ const isGoldType = (type: string) => {
   const goldKeywords = ['gram', 'çeyrek', 'yarım', 'tam', 'ata', 'reşat', 'ayar', 'bilezik', 'altın', 'has', 'külçe'];
   return goldKeywords.some(kw => lower.includes(kw));
 };
+
+// Bir altin kaydinin ISTEYENIN toplamina girip girmedigi. Backend 'counts_for_me' isaretler
+// (gercek sahip = accepted ? owner_user_id : user_id). Eski/isaretsiz kayitlar bugunku gibi sayilir.
+const countsForMe = (r: GoldRecord) => r.counts_for_me !== false;
 
 const getKasaSum = (records: GoldRecord[], type: string, filterFn: (date: string) => boolean) => {
   return records
@@ -875,10 +883,16 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [vaultRecords, setVaultRecords] = useState<GoldRecord[]>([]);
   const [vaultOrder, setVaultOrder] = useState<string[]>([]);
 
-  // Update module-level variable for recalculateHistoryAndCurrent
+  // Update module-level variable for recalculateHistoryAndCurrent.
+  // Recalc/rollover TOPLAMLARI icin yalnizca BENIM sayilan altinlarim (emanet-kabul edilenler
+  // dusulur, bana-kabul edilenler eklenir). Doviz kayitlari her zaman sayilir -> etkilenmez.
   useEffect(() => {
-    globalVaultRecords = vaultRecords;
+    globalVaultRecords = vaultRecords.filter(countsForMe);
   }, [vaultRecords]);
+
+  // Tuketicilere verilen 'vaultRecords' = toplama giren alt kume (drop-in: tum kart/toplam/tespit
+  // otomatik dogru). Emanet/gelen kayitlar ayrica 'allVaultRecords' ile (yeni UI icin) sunulur.
+  const countedVaultRecords = useMemo(() => vaultRecords.filter(countsForMe), [vaultRecords]);
 
   const loadVaultRecords = async () => {
     if (!isAuthenticated || !isAdmin) return;
@@ -993,6 +1007,43 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   };
 
+  // Bana emanet edilen altini kabul/reddet (yalnizca sahip, pending iken). Kabul -> benim
+  // toplamima gecer; ret -> ekleyende kalir, listemden duser.
+  const acceptVaultRecord = async (id: number) => {
+    try {
+      const res = await fetchWithAuth(`/vault/${id}/accept`, { method: 'POST' });
+      if (!res.ok) throw new Error('Kayıt kabul edilemedi.');
+      await loadVaultRecords();
+      setRealState(prev => recalculateHistoryAndCurrent(prev));
+    } catch (err) {
+      console.error(err);
+      throw err;
+    }
+  };
+
+  const rejectVaultRecord = async (id: number) => {
+    try {
+      const res = await fetchWithAuth(`/vault/${id}/reject`, { method: 'POST' });
+      if (!res.ok) throw new Error('Kayıt reddedilemedi.');
+      await loadVaultRecords();
+      setRealState(prev => recalculateHistoryAndCurrent(prev));
+    } catch (err) {
+      console.error(err);
+      throw err;
+    }
+  };
+
+  // Form icin: yazilan owner kayitli kullanici mi / ben miyim?
+  const resolveGoldOwner = async (username: string): Promise<{ isUser: boolean; isSelf: boolean }> => {
+    try {
+      const res = await fetchWithAuth(`/vault/resolve-owner?username=${encodeURIComponent(username)}`);
+      if (!res.ok) return { isUser: false, isSelf: false };
+      return await res.json();
+    } catch {
+      return { isUser: false, isSelf: false };
+    }
+  };
+
   const updateVaultOrder = async (order: string[]) => {
     try {
       setVaultOrder(order); // Optimistic
@@ -1081,7 +1132,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                  const vaultData = await vaultRes.json();
                  const cleanRecords = (vaultData.records || []).filter((r: any) => r.gold_type !== 'PLANNED_VAULT');
                  setVaultRecords(cleanRecords);
-                 globalVaultRecords = cleanRecords;
+                 globalVaultRecords = cleanRecords.filter(countsForMe);
 
                  // Delete corrupt vault records from database
                  const corruptRecords = (vaultData.records || []).filter((r: any) => r.gold_type === 'PLANNED_VAULT');
@@ -2688,11 +2739,15 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             toggleShowMealCard,
             showVault,
             toggleShowVault,
-            vaultRecords,
+            vaultRecords: countedVaultRecords,
+            allVaultRecords: vaultRecords,
             vaultOrder,
             addVaultRecord,
             deleteVaultRecord,
             updateVaultRecord,
+            acceptVaultRecord,
+            rejectVaultRecord,
+            resolveGoldOwner,
             updateVaultOrder,
             updateAssetIncome,
             updateAssetRollover,

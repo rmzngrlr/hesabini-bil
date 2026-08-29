@@ -12,6 +12,13 @@ export interface GoldRecord {
     note?: string;
     record_date?: string;
   };
+  // --- Coklu-kullanici altin emaneti (backend gold_records + GET annotate) ---
+  owner_user_id?: number | null;      // altinin gercek sahibi (kabul edilince onun toplamina)
+  owner_status?: 'pending' | 'accepted' | 'rejected' | null;
+  creator_username?: string;          // kaydi ekleyen
+  owner_username?: string | null;     // emanet edilen kullanici adi
+  relation?: 'own' | 'sent' | 'incoming';  // isteyene gore: kendi / emanet ettigim / bana gelen
+  counts_for_me?: boolean;            // bu kayit BENIM toplamima giriyor mu
 }
 
 export interface FixedExpense {

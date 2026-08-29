@@ -125,6 +125,28 @@ export const getDb = async () => {
             `);
         }
 
+        // Altin emaneti (baska kullaniciya): owner_user_id = altinin gercek sahibi (kabul
+        // edilince onun toplamina sayilir), owner_status = 'pending' | 'accepted' | 'rejected'.
+        // Ikisi de NULL => bugunku davranis: kayit ekleyene (user_id) aittir.
+        const [grOwnerCols] = await connection.query<mysql.RowDataPacket[]>(`
+            SELECT COLUMN_NAME
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_NAME = 'gold_records' AND COLUMN_NAME IN ('owner_user_id', 'owner_status') AND TABLE_SCHEMA = DATABASE()
+        `);
+        const grOwnerColNames = grOwnerCols.map((col: any) => col.COLUMN_NAME);
+        if (!grOwnerColNames.includes('owner_user_id')) {
+            await connection.query(`
+                ALTER TABLE gold_records
+                ADD COLUMN owner_user_id INT DEFAULT NULL;
+            `);
+        }
+        if (!grOwnerColNames.includes('owner_status')) {
+            await connection.query(`
+                ALTER TABLE gold_records
+                ADD COLUMN owner_status VARCHAR(20) DEFAULT NULL;
+            `);
+        }
+
         // Migrate old transaction types to new naming convention
         await connection.query(`
             UPDATE gold_records
