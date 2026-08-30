@@ -707,24 +707,23 @@ export default function DailyExpenses() {
     return plans;
   }, [viewDate, state.currentMonth, state.history, state.dailyExpenses, state.fixedExpenses, state.customIncomes, activeTab]);
 
-  const activeCurrenciesFiltered = useMemo(() => {
-    if (isFuture) {
-      return activeCurrencies;
-    }
-    return activeCurrencies.filter(curr => {
-      return activeExpenses.some(e => e.type === curr);
-    });
-  }, [activeCurrencies, activeExpenses, isFuture]);
-
   const availableTabs = useMemo(() => {
     if (activeSubTab === 'NORMAL') {
-      return ['NAKIT', ...(showMealCard ? ['YK'] : []), ...activeCurrenciesFiltered];
+      // Normal'de bir doviz sekmesi ancak o dovizde DOGRUDAN bir islem (harcama/gelir) varsa
+      // gorunur; yalniz alim (takas) yapildiysa Normal'de sekme cikmaz (o Doviz-Altin'a ait).
+      const cur = isFuture
+        ? activeCurrencies
+        : activeCurrencies.filter(c => activeExpenses.some(e => passesSubTabFilter(e, c, 'NORMAL', isFuture)));
+      return ['NAKIT', ...(showMealCard ? ['YK'] : []), ...cur];
     }
     if (activeSubTab === 'EXCHANGE') {
-      return activeCurrenciesFiltered;
+      // Doviz-Altin'da bir doviz sekmesi ancak o dovizde alim/satis/takas varsa gorunur.
+      return isFuture
+        ? activeCurrencies
+        : activeCurrencies.filter(c => activeExpenses.some(e => passesSubTabFilter(e, c, 'EXCHANGE', isFuture)));
     }
     return [];
-  }, [showMealCard, activeCurrenciesFiltered, activeSubTab]);
+  }, [showMealCard, activeCurrencies, activeExpenses, activeSubTab, isFuture]);
 
   // Fallback if active tab disappears (e.g. settings changed)
   useEffect(() => {
