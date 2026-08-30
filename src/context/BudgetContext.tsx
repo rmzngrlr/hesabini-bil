@@ -213,6 +213,27 @@ function patchLinkedDaily(state: BudgetState, linkId: string, patch: Partial<Dai
   return { state: { ...state, dailyExpenses: newDaily, history: newHistory }, historyChanged };
 }
 
+// paymentLinkId'li yeni TL cikisini (odeme bacagini) dogru aya ekler (addDailyExpense ile ayni
+// kovalama: gecmis ay -> ilgili history, yoksa olustur; aksi -> bu ay). { state, historyChanged }.
+function addLinkedDaily(state: BudgetState, daily: DailyExpense, currentMonth: string): { state: BudgetState; historyChanged: boolean } {
+  const targetMonth = (daily.date && String(daily.date).substring(0, 7)) || currentMonth;
+  if (targetMonth < currentMonth) {
+    const idx = state.history.findIndex(h => h.month === targetMonth);
+    if (idx !== -1) {
+      const newHistory = [...state.history];
+      newHistory[idx] = { ...newHistory[idx], dailyExpenses: [...(newHistory[idx].dailyExpenses || []), daily] };
+      return { state: { ...state, history: newHistory }, historyChanged: true };
+    }
+    const newMonth: MonthlyHistory = {
+      month: targetMonth, income: 0, rollover: 0, ykIncome: 0, ykRollover: 0,
+      fixedExpenses: [], customIncomes: [], dailyExpenses: [daily], ccDebts: [],
+    };
+    const newHistory = [...state.history, newMonth].sort((a, b) => a.month.localeCompare(b.month));
+    return { state: { ...state, history: newHistory }, historyChanged: true };
+  }
+  return { state: { ...state, dailyExpenses: [...state.dailyExpenses, daily] }, historyChanged: false };
+}
+
 // Helper to add months to a date string YYYY-MM
 function addMonths(dateStr: string, months: number): string {
   let [y, m] = dateStr.split('-').map(Number);
@@ -2224,40 +2245,81 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
 
     setRealState(prev => {
-        // Guncellenen borcun paymentLinkId'sini bul + borcu ilgili kovada guncelle
-        let linkId: string | undefined;
+        // Eski borcu + paymentLinkId'sini dogru kovada bul (harcama<->odeme gecisini bilmek icin)
+        let oldDebt: CCDebt | undefined;
+        if (viewDate === prev.currentMonth) oldDebt = prev.ccDebts.find(d => d.id === id);
+        else if (viewDate > prev.currentMonth) oldDebt = (prev.futureData[viewDate]?.ccDebts || []).find(d => d.id === id);
+        else oldDebt = prev.history.find(h => h.month === viewDate)?.ccDebts.find(d => d.id === id);
+        if (!oldDebt) return prev;
+
+        const linkId = oldDebt.paymentLinkId;
+        const wasPayment = !!linkId;                              // eski kayit odeme miydi (bagli TL cikisi)
+        const newAmount = debt.amount !== undefined ? debt.amount : oldDebt.amount;
+        const nowPayment = newAmount > 0;                        // odeme = pozitif, harcama = negatif
+
+        // Turetilmis satirlar (bill-cc-/proj-) syncCCDebtsForList tarafindan yeniden yazilir ve
+        // paymentLinkId korunmaz -> onlarda nakit-bacagi KURMA (yoksa hayalet TL cikisi kalir).
+        // Ayrica gecisi yalniz tutar GERCEKTEN verildiginde degerlendir (salt aciklama/tarih
+        // duzenlemesi yanlislikla odeme uydurmasin).
+        const isDerived = id.startsWith('bill-cc-') || id.startsWith('proj-');
+        const canTransition = !isDerived && debt.amount !== undefined;
+
+        // Borca uygulanacak patch; harcama<->odeme gecislerinde paymentLinkId de degisir
+        const debtPatch: Partial<CCDebt> = { ...debt };
+        let newLinkId: string | undefined;
+        if (canTransition && !wasPayment && nowPayment) {
+            newLinkId = generateId();                            // Harcama -> Odeme: yeni bag kur
+            debtPatch.paymentLinkId = newLinkId;
+        } else if (canTransition && wasPayment && !nowPayment) {
+            debtPatch.paymentLinkId = undefined;                 // Odeme -> Harcama: bagi kaldir
+        }
+
+        // Borcu ilgili kovada guncelle
         let next: BudgetState = prev;
         let historyTouched = false;
-
         if (viewDate === prev.currentMonth) {
-            linkId = prev.ccDebts.find(d => d.id === id)?.paymentLinkId;
-            next = { ...prev, ccDebts: prev.ccDebts.map(d => (d.id === id ? { ...d, ...debt } : d)) };
+            next = { ...prev, ccDebts: prev.ccDebts.map(d => (d.id === id ? { ...d, ...debtPatch } : d)) };
         } else if (viewDate > prev.currentMonth) {
             const future = prev.futureData[viewDate] || {};
-            linkId = (future.ccDebts || []).find(d => d.id === id)?.paymentLinkId;
-            next = { ...prev, futureData: { ...prev.futureData, [viewDate]: { ...future, ccDebts: (future.ccDebts || []).map(d => (d.id === id ? { ...d, ...debt } : d)) } } };
+            next = { ...prev, futureData: { ...prev.futureData, [viewDate]: { ...future, ccDebts: (future.ccDebts || []).map(d => (d.id === id ? { ...d, ...debtPatch } : d)) } } };
         } else {
             const histIndex = prev.history.findIndex(h => h.month === viewDate);
             if (histIndex === -1) return prev;
-            linkId = prev.history[histIndex].ccDebts.find(d => d.id === id)?.paymentLinkId;
             const newHistory = [...prev.history];
-            newHistory[histIndex] = { ...newHistory[histIndex], ccDebts: newHistory[histIndex].ccDebts.map(d => (d.id === id ? { ...d, ...debt } : d)) };
+            newHistory[histIndex] = { ...newHistory[histIndex], ccDebts: newHistory[histIndex].ccDebts.map(d => (d.id === id ? { ...d, ...debtPatch } : d)) };
             next = { ...prev, history: newHistory };
             historyTouched = true;
         }
 
-        // Bagli TL cikisini de guncelle (odeme kaydiysa): tutar negatif, aciklama/tarih ayni
-        if (linkId) {
+        // Nakit (TL cikisi) bacagini yonet
+        if (wasPayment && nowPayment && linkId) {
+            // Odeme -> Odeme: bagli TL cikisini guncelle
             const patch: Partial<DailyExpense> = {};
             if (debt.description !== undefined) patch.description = debt.description;
             if (debt.date !== undefined) patch.date = debt.date;
             if (debt.amount !== undefined) patch.amount = -Math.abs(debt.amount);
             if (Object.keys(patch).length > 0) {
                 const res = patchLinkedDaily(next, linkId, patch);
-                next = res.state;
-                if (res.historyChanged) historyTouched = true;
+                next = res.state; if (res.historyChanged) historyTouched = true;
             }
+        } else if (wasPayment && !nowPayment && linkId) {
+            // Odeme -> Harcama: bagli TL cikisini SIL
+            const res = removeLinkedDaily(next, linkId);
+            next = res.state; if (res.historyChanged) historyTouched = true;
+        } else if (!wasPayment && nowPayment && newLinkId) {
+            // Harcama -> Odeme: yeni TL cikisi (NAKIT) OLUSTUR
+            const cashDaily: DailyExpense = {
+                id: generateId(),
+                date: debt.date ?? oldDebt.date ?? getTodayStr(),
+                description: debt.description !== undefined ? debt.description : oldDebt.description,
+                amount: -Math.abs(newAmount),
+                type: 'NAKIT',
+                paymentLinkId: newLinkId,
+            };
+            const res = addLinkedDaily(next, cashDaily, prev.currentMonth);
+            next = res.state; if (res.historyChanged) historyTouched = true;
         }
+        // Harcama -> Harcama: nakit bacagi yok, bir sey yapma
 
         return historyTouched ? recalculateHistoryAndCurrent(next) : next;
     });
