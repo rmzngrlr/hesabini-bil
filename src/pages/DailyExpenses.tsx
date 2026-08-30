@@ -29,6 +29,21 @@ const isExchangeEntry = (e: DailyExpense): boolean => {
   return EXCHANGE_KUR.test(d) || EXCHANGE_TAKAS.test(d) || EXCHANGE_DONUSUM.test(d) || EXCHANGE_TLLEG.test(d);
 };
 
+// Bir kaydin aktif (alt-sekme + varlik sekmesi) gorunumune girip girmedigi. Liste VE ozet
+// kartlari AYNI suzgeci kullansin (uyumlu kalsinlar) diye tek kaynak. NORMAL/doviz: yalniz
+// dogrudan harcama/gelir; NORMAL/TL(NAKIT),YK: hepsi; DOVIZ-ALTIN: yalniz alim/satis/takas.
+// Gelecek-ayda suzgec yok.
+const passesSubTabFilter = (e: DailyExpense, activeTab: string, activeSubTab: string, isFuture: boolean): boolean => {
+  if (e.type !== activeTab) return false;
+  if (isFuture) return true;
+  if (activeSubTab === 'NORMAL') {
+    if (activeTab !== 'NAKIT' && activeTab !== 'YK') return !isExchangeEntry(e);
+    return true;
+  }
+  if (activeSubTab === 'EXCHANGE') return isExchangeEntry(e);
+  return true;
+};
+
 export default function DailyExpenses() {
   const {
     state,
@@ -790,15 +805,15 @@ export default function DailyExpenses() {
 
   const currentMonthSpent = useMemo(() => {
     return activeExpenses
-      .filter(e => e.type === activeTab && e.amount < 0)
+      .filter(e => passesSubTabFilter(e, activeTab, activeSubTab, isFuture) && e.amount < 0)
       .reduce((sum, e) => sum + Math.abs(e.amount), 0);
-  }, [activeExpenses, activeTab]);
+  }, [activeExpenses, activeTab, activeSubTab, isFuture]);
 
   const currentMonthIncome = useMemo(() => {
     return activeExpenses
-      .filter(e => e.type === activeTab && e.amount > 0)
+      .filter(e => passesSubTabFilter(e, activeTab, activeSubTab, isFuture) && e.amount > 0)
       .reduce((sum, e) => sum + e.amount, 0);
-  }, [activeExpenses, activeTab]);
+  }, [activeExpenses, activeTab, activeSubTab, isFuture]);
 
   const handleEdit = (expense: DailyExpense) => {
     setEditingId(expense.id);
@@ -1280,24 +1295,7 @@ export default function DailyExpenses() {
   };
 
   const filteredExpenses = useMemo(() => {
-    let list = activeExpenses.filter(e => e.type === activeTab);
-
-    // Cari/gecmis ayda alim/satis/takas ile dogrudan harcamayi ayir: DOVIZ-ALTIN yalniz alim/
-    // satis/takas gosterir. NORMAL/doviz sekmesi yalniz dogrudan harcama/gelir (doviz-tarafi
-    // alim orada gizli, Doviz-Altin'a ait). NORMAL/TL(NAKIT) ve YK'de ise filtre YOK: takasin
-    // TL-bacagi ("2500 TL cikti, dolar almak icin") gercek bir TL hareketidir, gorunmeli.
-    // Gelecek-ay planlari etkilenmez.
-    if (!isFuture) {
-      if (activeSubTab === 'NORMAL') {
-        if (activeTab !== 'NAKIT' && activeTab !== 'YK') {
-          list = list.filter(e => !isExchangeEntry(e));
-        }
-      } else if (activeSubTab === 'EXCHANGE') {
-        list = list.filter(e => isExchangeEntry(e));
-      }
-    }
-
-    return list;
+    return activeExpenses.filter(e => passesSubTabFilter(e, activeTab, activeSubTab, isFuture));
   }, [activeExpenses, activeTab, activeSubTab, isFuture]);
 
   const groupedExpenses = filteredExpenses.reduce((groups, expense) => {
