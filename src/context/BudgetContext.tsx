@@ -199,6 +199,27 @@ function removeLinkedDaily(state: BudgetState, linkId: string): { state: BudgetS
   return { state: { ...state, dailyExpenses: newDaily, history: newHistory }, historyChanged };
 }
 
+// removeLinkedDaily'nin TERSI: paymentLinkId'li KK odeme borcunu (ccDebt) tum kovalardan
+// (bu ay + gelecek + gecmis) siler. TL cikisi silinince bagli odeme de gitsin diye (simetri).
+function removeLinkedDebt(state: BudgetState, linkId: string): { state: BudgetState; historyChanged: boolean } {
+  let historyChanged = false;
+  const newHistory = state.history.map(h => {
+    const list = h.ccDebts || [];
+    const filtered = list.filter(d => d.paymentLinkId !== linkId);
+    if (filtered.length !== list.length) { historyChanged = true; return { ...h, ccDebts: filtered }; }
+    return h;
+  });
+  const newCcDebts = state.ccDebts.filter(d => d.paymentLinkId !== linkId);
+  let futureData = state.futureData;
+  for (const m of Object.keys(futureData)) {
+    const fd = futureData[m];
+    const list = fd?.ccDebts || [];
+    const filtered = list.filter(d => d.paymentLinkId !== linkId);
+    if (filtered.length !== list.length) { futureData = { ...futureData, [m]: { ...fd, ccDebts: filtered } }; }
+  }
+  return { state: { ...state, ccDebts: newCcDebts, history: newHistory, futureData }, historyChanged };
+}
+
 // paymentLinkId'ye sahip TL cikisini tum kovalardaki alanlariyla gunceller.
 function patchLinkedDaily(state: BudgetState, linkId: string, patch: Partial<DailyExpense>): { state: BudgetState; historyChanged: boolean } {
   let historyChanged = false;
@@ -2029,6 +2050,9 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const deleteDailyExpense = (id: string) => {
     setRealState(prev => {
         if (viewDate === prev.currentMonth) {
+            // Simetri: silinen TL cikisi bir KK odemesine bagliysa (paymentLinkId) o odeme
+            // borcunu (ccDebt) da sil (deleteCCDebt'in tersi).
+            const linkId = prev.dailyExpenses.find(ex => ex.id === id)?.paymentLinkId;
             let updatedFixed = prev.fixedExpenses;
             if (id.startsWith('bill-cash-')) {
                 const billId = id.replace('bill-cash-', '');
@@ -2036,14 +2060,22 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                     ex.id === billId ? { ...ex, isPaid: false } : ex
                 );
             }
-            return {
+            let next: BudgetState = {
               ...prev,
               dailyExpenses: prev.dailyExpenses.filter(ex => ex.id !== id),
               fixedExpenses: updatedFixed
             };
+            let historyTouched = false;
+            if (linkId) {
+                const res = removeLinkedDebt(next, linkId);
+                next = res.state;
+                if (res.historyChanged) historyTouched = true;
+            }
+            return historyTouched ? recalculateHistoryAndCurrent(next) : next;
         } else if (viewDate < prev.currentMonth) {
             const histIndex = prev.history.findIndex(h => h.month === viewDate);
             if (histIndex !== -1) {
+                const linkId = prev.history[histIndex].dailyExpenses.find(ex => ex.id === id)?.paymentLinkId;
                 const newHistory = [...prev.history];
                 let updatedFixed = newHistory[histIndex].fixedExpenses;
                 if (id.startsWith('bill-cash-')) {
@@ -2057,7 +2089,12 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                     dailyExpenses: newHistory[histIndex].dailyExpenses.filter(ex => ex.id !== id),
                     fixedExpenses: updatedFixed
                 };
-                return recalculateHistoryAndCurrent({ ...prev, history: newHistory });
+                let next: BudgetState = { ...prev, history: newHistory };
+                if (linkId) {
+                    const res = removeLinkedDebt(next, linkId);
+                    next = res.state;
+                }
+                return recalculateHistoryAndCurrent(next);
             }
             return prev;
         }
