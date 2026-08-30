@@ -802,17 +802,20 @@ export default function DailyExpenses() {
     }
   }, [viewDate]);
 
+  // Kartlar o varligin GERCEK aylik toplamini gosterir (alt-sekmeden bagimsiz): ornegin Dolar
+  // icin "Bu Ayki Giris" = tum Dolar girisi (275 alim dahil), "Bu Ay Harcanan" = tum Dolar cikisi.
+  // Liste ve sekmeler alt-sekmeye gore suzulur; kartlar varlik OZETIDIR.
   const currentMonthSpent = useMemo(() => {
     return activeExpenses
-      .filter(e => passesSubTabFilter(e, activeTab, activeSubTab, isFuture) && e.amount < 0)
+      .filter(e => e.type === activeTab && e.amount < 0)
       .reduce((sum, e) => sum + Math.abs(e.amount), 0);
-  }, [activeExpenses, activeTab, activeSubTab, isFuture]);
+  }, [activeExpenses, activeTab]);
 
   const currentMonthIncome = useMemo(() => {
     return activeExpenses
-      .filter(e => passesSubTabFilter(e, activeTab, activeSubTab, isFuture) && e.amount > 0)
+      .filter(e => e.type === activeTab && e.amount > 0)
       .reduce((sum, e) => sum + e.amount, 0);
-  }, [activeExpenses, activeTab, activeSubTab, isFuture]);
+  }, [activeExpenses, activeTab]);
 
   const handleEdit = (expense: DailyExpense) => {
     setEditingId(expense.id);
