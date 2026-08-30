@@ -1282,11 +1282,16 @@ export default function DailyExpenses() {
   const filteredExpenses = useMemo(() => {
     let list = activeExpenses.filter(e => e.type === activeTab);
 
-    // Cari/gecmis ayda alim/satis/takas ile dogrudan harcamayi ayir: NORMAL yalniz dogrudan
-    // harcama/gelir; DOVIZ-ALTIN yalniz alim/satis/takas gosterir. Gelecek-ay planlari etkilenmez.
+    // Cari/gecmis ayda alim/satis/takas ile dogrudan harcamayi ayir: DOVIZ-ALTIN yalniz alim/
+    // satis/takas gosterir. NORMAL/doviz sekmesi yalniz dogrudan harcama/gelir (doviz-tarafi
+    // alim orada gizli, Doviz-Altin'a ait). NORMAL/TL(NAKIT) ve YK'de ise filtre YOK: takasin
+    // TL-bacagi ("2500 TL cikti, dolar almak icin") gercek bir TL hareketidir, gorunmeli.
+    // Gelecek-ay planlari etkilenmez.
     if (!isFuture) {
       if (activeSubTab === 'NORMAL') {
-        list = list.filter(e => !isExchangeEntry(e));
+        if (activeTab !== 'NAKIT' && activeTab !== 'YK') {
+          list = list.filter(e => !isExchangeEntry(e));
+        }
       } else if (activeSubTab === 'EXCHANGE') {
         list = list.filter(e => isExchangeEntry(e));
       }
