@@ -12,6 +12,23 @@ import { cn, scrollToElement, getTodayStr } from '../lib/utils';
 
 const billColors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f43f5e', '#06b6d4'];
 
+// Bir dailyExpense OTOMATIK uretilmis bir alim/satis/takas (ya da kasa) kaydi mi, yoksa
+// kullanicinin serbest yazdigi DOGRUDAN harcama/gelir mi? (bayrak yok; imza tabanli.)
+// true => Doviz-Altin dunyasi; false => Normal (dogrudan harcama/gelir).
+const EXCHANGE_KUR = /\(Kur:/;                                // tum takas alim/satis bacaklari kur notu tasir
+const EXCHANGE_TAKAS = /\(Takas\)/;                           // doviz<->doviz takas eki
+const EXCHANGE_DONUSUM = /^Dönüşüm (Çıkışı|Girişi):/;         // fallback (nakit<->nakit; pratikte olusmaz)
+const EXCHANGE_TLLEG = /^(Altın|Döviz) (Alımı|Satışı):\s*\d/; // TL-maliyet bacagi (type=NAKIT; kur notu olmayabilir)
+const isExchangeEntry = (e: DailyExpense): boolean => {
+  if (typeof e.id === 'string' && e.id.startsWith('vault-curr-')) return true;
+  const d = (e.description || '').trim();
+  if (!d) return false;
+  // Takas bacaklari DAIMA "(Kur: ...)" ya da "(Takas)" tasir -> kullanicinin serbest yazdigi
+  // "3 Kitap Alımı" gibi gercek bir harcama yanlislikla alim sanilmaz. TL-maliyet bacagi ise
+  // "Altın/Döviz Alımı: N" imzasindan yakalanir.
+  return EXCHANGE_KUR.test(d) || EXCHANGE_TAKAS.test(d) || EXCHANGE_DONUSUM.test(d) || EXCHANGE_TLLEG.test(d);
+};
+
 export default function DailyExpenses() {
   const {
     state,
@@ -702,7 +719,7 @@ export default function DailyExpenses() {
     const inGoldMode = activeSubTab === 'EXCHANGE' && exchangeTabMode === 'GOLD';
     // Secilen bilinen bir varlik (doviz/altin) availableTabs'ta olmasa da sifirlanmasin;
     // yoksa Normal'de doviz butonu secince fallback onu TL'ye geri ceker (revert).
-    const isKnownAsset = allFormTypes.currencies.includes(activeTab) || allFormTypes.golds.includes(activeTab);
+    const isKnownAsset = (allFormTypes.currencies.includes(activeTab) && activeTab !== 'NAKIT' && activeTab !== 'YK') || allFormTypes.golds.includes(activeTab);
     if (!inGoldMode && !availableTabs.includes(activeTab) && !isKnownAsset) {
       setActiveTab(availableTabs[0] || 'NAKIT');
     }
@@ -1264,13 +1281,19 @@ export default function DailyExpenses() {
 
   const filteredExpenses = useMemo(() => {
     let list = activeExpenses.filter(e => e.type === activeTab);
-    
-    if (activeSubTab === 'NORMAL') {
-      list = list.filter(e => !e.description?.startsWith('Dönüşüm:') && !e.description?.includes('Dönüşüm:'));
+
+    // Cari/gecmis ayda alim/satis/takas ile dogrudan harcamayi ayir: NORMAL yalniz dogrudan
+    // harcama/gelir; DOVIZ-ALTIN yalniz alim/satis/takas gosterir. Gelecek-ay planlari etkilenmez.
+    if (!isFuture) {
+      if (activeSubTab === 'NORMAL') {
+        list = list.filter(e => !isExchangeEntry(e));
+      } else if (activeSubTab === 'EXCHANGE') {
+        list = list.filter(e => isExchangeEntry(e));
+      }
     }
-    
+
     return list;
-  }, [activeExpenses, activeTab, activeSubTab]);
+  }, [activeExpenses, activeTab, activeSubTab, isFuture]);
 
   const groupedExpenses = filteredExpenses.reduce((groups, expense) => {
     const date = expense.date;
