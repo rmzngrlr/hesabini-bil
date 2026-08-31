@@ -1661,9 +1661,14 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             }
         });
 
-        // Gather paid KK bills for this iteration month
+        // Gather paid KK bills for this iteration month.
+        // CIFT-SAYIM ONLEME: Fatura bu gelecek-ay gorunumunde "odendi" yapildiysa toggle,
+        // syncCCDebtsForList ile o aya KALICI bir 'bill-cc-<id>' (tarihli, silinebilir) yazar
+        // -> future.ccDebts (allCCDebts) icinde durur. Ayni faturayi burada proj-bill-cc- olarak
+        // TEKRAR uretme; yoksa ekstrede iki satir + toplamda cift para olur. bill-cc- yoksa
+        // (or. baska yoldan odendi) proj-bill-cc- yedek olarak uretilir.
         const monthlyKKBillDebts: CCDebt[] = monthFixedExpenses
-          .filter(e => e.isBill && e.paymentMethod === 'KK' && e.isPaid)
+          .filter(e => e.isBill && e.paymentMethod === 'KK' && e.isPaid && !allCCDebts.some(d => d.id === `bill-cc-${e.id}`))
           .map(e => ({
             id: `proj-bill-cc-${e.id}`,
             description: `Fatura: ${e.title}`,
