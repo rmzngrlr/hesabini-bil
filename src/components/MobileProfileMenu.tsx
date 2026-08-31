@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Settings as SettingsIcon, Sun, Moon, LogOut } from 'lucide-react';
+import { Settings as SettingsIcon, Sun, Moon, LogOut, Search } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Avatar } from './ui/Avatar';
 import { useBudget } from '../context/BudgetContext';
 import { useAuth } from '../context/AuthContext';
+import { useSearch } from '../context/SearchContext';
 
 /**
  * Mobil Bilanço sağ üstündeki profil butonu: kullanıcı adı + avatar tek buton.
@@ -13,6 +14,7 @@ import { useAuth } from '../context/AuthContext';
 export function MobileProfileMenu() {
   const { theme, toggleTheme } = useBudget();
   const { username, logout, avatar } = useAuth();
+  const { openSearch } = useSearch();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const initial = (username?.trim().charAt(0) || '?').toUpperCase();
@@ -41,6 +43,9 @@ export function MobileProfileMenu() {
         <Link to="/ayarlar" aria-label="Ayarlar" onClick={() => setOpen(false)} className={cn(iconBtn, "text-muted-foreground hover:text-primary")}>
           <SettingsIcon size={18} />
         </Link>
+        <button onClick={() => { setOpen(false); openSearch(); }} aria-label="Ara" className={cn(iconBtn, "text-muted-foreground hover:text-primary")}>
+          <Search size={18} />
+        </button>
         <button onClick={logout} aria-label="Çıkış" className={cn(iconBtn, "text-red-500 hover:bg-red-500/10")}>
           <LogOut size={18} />
         </button>

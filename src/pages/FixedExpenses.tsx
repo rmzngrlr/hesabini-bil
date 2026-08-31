@@ -5,7 +5,10 @@ import { useAuth } from '../context/AuthContext';
 import { Card } from '../components/ui/Card';
 import { Plus, Trash2, CheckCircle, Circle, Pencil, X, Check } from 'lucide-react';
 import { MonthNavigator } from '../components/MonthNavigator';
-import { cn, scrollToElement } from '../lib/utils';
+import { cn, scrollToElement, scrollToSearchKey } from '../lib/utils';
+import { searchKeyFor } from '../lib/search';
+import { SearchTrigger } from '../components/SearchTrigger';
+import { useLocation, useNavigate } from 'react-router-dom';
 import type { FixedExpense } from '../types';
 import { VaultSection } from '../components/VaultSection';
 import { PlannedVaultSection } from '../components/PlannedVaultSection';
@@ -38,6 +41,17 @@ export default function FixedExpenses() {
     vaultRecords,
     askConfirmation
   } = useBudget();
+
+  // --- Global arama deep-link tuketimi (viewDate goToRecord'da ayarlanir; burada scroll + temizlik) ---
+  const dlLocation = useLocation();
+  const dlNavigate = useNavigate();
+  useEffect(() => {
+    const dl = (dlLocation.state as { deepLink?: { key?: string } } | null)?.deepLink;
+    if (!dl || !dl.key) return;
+    scrollToSearchKey(dl.key);
+    dlNavigate(dlLocation.pathname, { replace: true, state: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dlLocation.key]);
 
   const isGoldType = (type: string) => {
     const lower = type.toLowerCase();
@@ -183,6 +197,7 @@ export default function FixedExpenses() {
       <header className="flex flex-col gap-4">
         <div className="flex items-center gap-2 flex-wrap min-h-[40px]">
           <h1 className="text-3xl font-extrabold tracking-tight text-primary">Varlıklarım</h1>
+          <SearchTrigger className="hidden md:flex ml-auto" />
         </div>
         <MonthNavigator />
       </header>
@@ -298,7 +313,7 @@ export default function FixedExpenses() {
 
         <div className="space-y-2">
           {state.customIncomes?.map((income) => (
-            <div key={income.id} className="flex items-center justify-between p-3 rounded-lg glass gap-2">
+            <div key={income.id} data-search-key={searchKeyFor('income', income.id)} className="flex items-center justify-between p-3 rounded-lg glass gap-2">
               <span className="font-medium break-words min-w-0">{income.title}</span>
               <div className="flex items-center gap-3 shrink-0">
                 <span className="font-bold text-green-500">
@@ -473,6 +488,7 @@ export default function FixedExpenses() {
         {state.fixedExpenses.filter(e => e.type !== 'PLANNED_VAULT' && !e.isBill).map((expense) => (
           <div
             key={expense.id}
+            data-search-key={searchKeyFor('fixed', expense.id)}
             className={cn(
               "flex items-center justify-between p-4 rounded-xl glass transition-all",
               // Kira ve Kredi Karti icin uyari: bu ayda, odenmemisse kirmizi.
@@ -556,7 +572,10 @@ export default function FixedExpenses() {
       {isAdmin && showVault && (
         <div className="space-y-6">
           <PlannedVaultSection />
-          <VaultSection />
+          {/* Altin kasasi arama deep-link capasi (goToRecord 'vaultsection' anahtarina kaydirir). */}
+          <div data-search-key="vaultsection">
+            <VaultSection />
+          </div>
         </div>
       )}
     </div>

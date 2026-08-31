@@ -4,6 +4,7 @@ import type { BudgetState, FixedExpense, CustomIncome, DailyExpense, CCDebt, Ins
 import { fetchWithAuth } from '../services/api';
 import { useAuth } from './AuthContext';
 import { ConfirmationModal } from '../components/ConfirmationModal';
+import { buildSearchIndex, type SearchRecord } from '../lib/search';
 
 const getCurrentMonth = () => {
   const d = new Date();
@@ -143,6 +144,8 @@ interface BudgetContextType {
   // Vault state & operations
   vaultRecords: GoldRecord[];
   allVaultRecords: GoldRecord[];
+  /** Global arama indeksi (salt-okunur; realState + history + futureData + vaultRecords). */
+  searchIndex: SearchRecord[];
   vaultOrder: string[];
   addVaultRecord: (record: Omit<GoldRecord, 'id'>) => Promise<void>;
   deleteVaultRecord: (id: number) => Promise<void>;
@@ -1151,6 +1154,9 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   };
 
   const [realState, setRealState] = useState<BudgetState>(initialState);
+  // Global arama indeksi: SALT-OKUNUR, yalniz veri degisince (realState/vaultRecords) yeniden
+  // kurulur. Sorgu bu memoya DAHIL DEGIL — filtreleme tuketen bilesende debounce ile yapilir.
+  const searchIndex = useMemo(() => buildSearchIndex(realState, vaultRecords), [realState, vaultRecords]);
 
   const [viewDate, setViewDate] = useState<string>(getCurrentMonth());
 
@@ -2852,6 +2858,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             toggleShowVault,
             vaultRecords: countedVaultRecords,
             allVaultRecords: vaultRecords,
+            searchIndex,
             vaultOrder,
             addVaultRecord,
             deleteVaultRecord,

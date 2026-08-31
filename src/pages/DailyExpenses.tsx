@@ -8,7 +8,10 @@ import { MonthNavigator } from '../components/MonthNavigator';
 import { format } from 'date-fns';
 import React, { useMemo, useEffect, useState, useRef } from 'react';
 import { tr } from 'date-fns/locale';
-import { cn, scrollToElement, getTodayStr } from '../lib/utils';
+import { cn, scrollToElement, scrollToSearchKey, getTodayStr } from '../lib/utils';
+import { searchKeyFor } from '../lib/search';
+import { SearchTrigger } from '../components/SearchTrigger';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const billColors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f43f5e', '#06b6d4'];
 
@@ -520,6 +523,21 @@ export default function DailyExpenses() {
   const [exchangeNote, setExchangeNote] = useState('');
   const [exchangeFromCustomCode, setExchangeFromCustomCode] = useState('');
   const [exchangeToCustomCode, setExchangeToCustomCode] = useState('');
+
+  // --- Global arama deep-link tuketimi ---
+  // Layout'un pathname scroll-reset useLayoutEffect'inden SONRA calissin diye useEffect (+rAF).
+  const dlLocation = useLocation();
+  const dlNavigate = useNavigate();
+  useEffect(() => {
+    const dl = (dlLocation.state as { deepLink?: { key?: string; subTab?: 'NORMAL' | 'EXCHANGE' | 'BILLS' | null; exchangeMode?: 'CURRENCY' | 'GOLD' | null; assetTab?: string | null } } | null)?.deepLink;
+    if (!dl || !dl.key) return;
+    if (dl.subTab) setActiveSubTab(dl.subTab);
+    if (dl.exchangeMode) setExchangeTabMode(dl.exchangeMode);
+    if (dl.assetTab) setActiveTab(dl.assetTab);
+    scrollToSearchKey(dl.key);
+    dlNavigate(dlLocation.pathname, { replace: true, state: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dlLocation.key]);
 
   const calculatedExchangeRate = useMemo(() => {
     const fromAmt = parseFloat(exchangeFromAmount);
@@ -1378,6 +1396,7 @@ export default function DailyExpenses() {
         <div className="flex items-center gap-2 flex-wrap min-h-[40px]">
           <h1 className="text-3xl font-extrabold tracking-tight text-primary">İşlem Tutanağı</h1>
           {isFuture && <span className="text-xs bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded">Planlama Modu</span>}
+          <SearchTrigger className="hidden md:flex ml-auto" />
         </div>
         <MonthNavigator />
       </header>
@@ -1977,6 +1996,7 @@ export default function DailyExpenses() {
                   {groupedBills.groups[date].map((bill) => (
                     <div
                       key={bill.id}
+                      data-search-key={searchKeyFor('bill', bill.id)}
                       className={cn(
                         "flex items-center justify-between p-4 rounded-xl glass transition-all",
                         // Odeme gunu gelmis ama hala odenmemisse uyari cercevesi.
@@ -2055,6 +2075,7 @@ export default function DailyExpenses() {
                 {groupedBills.noDateGroup.map((bill) => (
                   <div
                     key={bill.id}
+                    data-search-key={searchKeyFor('bill', bill.id)}
                     className={cn(
                       "flex items-center justify-between p-4 rounded-xl glass transition-all",
                       bill.isPaid && "opacity-60"
@@ -2162,7 +2183,7 @@ export default function DailyExpenses() {
                 {groupedExpenses[date].map((expense) => {
                   const isGold = isGoldType(expense.type);
                   return (
-                  <div key={expense.id} className="flex items-center justify-between p-4 rounded-xl glass">
+                  <div key={expense.id} data-search-key={searchKeyFor('daily', expense.id)} className="flex items-center justify-between p-4 rounded-xl glass">
                     <div className="flex items-center gap-3">
                         <div className={`p-2 rounded-full ${expense.type === 'NAKIT' ? 'bg-green-500/10 text-green-500' : isGold ? 'bg-yellow-500/10 text-yellow-500' : 'bg-blue-500/10 text-blue-500'}`}>
                           {expense.type === 'NAKIT' ? <Banknote size={20} /> : <CreditCard size={20} />}

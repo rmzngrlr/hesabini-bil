@@ -74,3 +74,35 @@ export const scrollToElement = (id: string) => {
     }
   }, 100);
 };
+
+/**
+ * Global arama deep-link'i: data-search-key eslesen satiri bulup ana kaydirma kutusu
+ * icinde ortalar ve kisa bir vurgu (ring flash) uygular.
+ *
+ * DIKKAT: Cagiran taraf bunu useLayoutEffect'te DEGIL, useEffect icinde cagirmalidir;
+ * boylece Layout'un pathname-scroll-reset useLayoutEffect'inden SONRA calisir ve kazanir.
+ * Ay/sekme degisimiyle liste henuz render olmamis olabilir; rAF ile birkac kare denenir.
+ */
+export const scrollToSearchKey = (key: string, maxFrames = 30) => {
+  const safe = key.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  const selector = `[data-search-key="${safe}"]`;
+  let frames = 0;
+  const attempt = () => {
+    const el = document.querySelector(selector) as HTMLElement | null;
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      try {
+        el.animate(
+          [
+            { boxShadow: '0 0 0 2px rgba(59,130,246,0.65)' },
+            { boxShadow: '0 0 0 2px rgba(59,130,246,0)' },
+          ],
+          { duration: 1600, easing: 'ease-out' }
+        );
+      } catch { /* animate desteklenmiyorsa yoksay */ }
+      return;
+    }
+    if (frames++ < maxFrames) requestAnimationFrame(attempt);
+  };
+  requestAnimationFrame(attempt);
+};

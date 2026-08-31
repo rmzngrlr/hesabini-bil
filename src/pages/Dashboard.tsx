@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { ChevronDown, ChevronUp, Utensils, CreditCard, Check, X, Gift } from 'lucide-react';
 import { SwipeNavCard } from '../components/SwipeNavCard';
 import { MobileProfileMenu } from '../components/MobileProfileMenu';
+import { SearchTrigger } from '../components/SearchTrigger';
 import { MonthNavigator } from '../components/MonthNavigator';
 import { useBudget } from '../context/BudgetContext';
 import { isDebtPending } from '../lib/utils';
@@ -561,9 +562,13 @@ export default function Dashboard() {
       <header className="flex flex-col gap-4">
         <div className="flex justify-between items-center min-h-[40px]">
           <h1 className="text-3xl font-extrabold tracking-tight text-primary">Bilanço</h1>
-          {/* Mobilde profil menusu (avatar akordiyonu); masaustunde sol menude. */}
-          <div className="md:hidden">
-            <MobileProfileMenu />
+          <div className="flex items-center gap-1">
+            {/* Masaustu: sag ustte arama. Mobil: arama profil menusunde (Ayarlar'in yaninda). */}
+            <SearchTrigger className="hidden md:flex" />
+            {/* Mobilde profil menusu (avatar akordiyonu); masaustunde sol menude. */}
+            <div className="md:hidden">
+              <MobileProfileMenu />
+            </div>
           </div>
         </div>
 

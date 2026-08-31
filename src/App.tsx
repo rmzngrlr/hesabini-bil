@@ -10,6 +10,7 @@ import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { BudgetProvider } from './context/BudgetContext';
+import { SearchProvider } from './context/SearchContext';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -24,7 +25,9 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <BudgetProvider>
-      <Layout>{children}</Layout>
+      <SearchProvider>
+        <Layout>{children}</Layout>
+      </SearchProvider>
     </BudgetProvider>
   );
 };

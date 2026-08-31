@@ -1,9 +1,12 @@
 import { useDraftState } from '../hooks/useDraftState';
 import { useBudget, generateId } from '../context/BudgetContext';
 import { Card } from '../components/ui/Card';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Plus, Trash2, CalendarClock, CreditCard, Pencil, X } from 'lucide-react';
-import { cn, scrollToElement, getTodayStr, isDebtPending, statementMonth } from '../lib/utils';
+import { cn, scrollToElement, scrollToSearchKey, getTodayStr, isDebtPending, statementMonth } from '../lib/utils';
+import { searchKeyFor } from '../lib/search';
+import { SearchTrigger } from '../components/SearchTrigger';
 import { MonthNavigator } from '../components/MonthNavigator';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
@@ -11,6 +14,18 @@ import type { CCDebt } from '../types';
 
 export default function Debt() {
   const { state, viewDate, setViewDate, addCCDebt, updateCCDebt, deleteCCDebt, addInstallment, deleteInstallment, addDailyExpense, askConfirmation, todayStr, ccDueNotices, dismissCCDueNotice, statementCutoffDay } = useBudget();
+
+  // --- Global arama deep-link tuketimi (viewDate goToRecord'da ayarlanir; burada scroll + temizlik) ---
+  const dlLocation = useLocation();
+  const dlNavigate = useNavigate();
+  useEffect(() => {
+    const dl = (dlLocation.state as { deepLink?: { key?: string } } | null)?.deepLink;
+    if (!dl || !dl.key) return;
+    scrollToSearchKey(dl.key);
+    dlNavigate(dlLocation.pathname, { replace: true, state: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dlLocation.key]);
+
   const [description, setDescription] = useDraftState('debt_draft_desc', '');
   const [amount, setAmount] = useDraftState('debt_draft_amount', '');
   const [date, setDate] = useDraftState('debt_draft_date', getTodayStr());
@@ -201,6 +216,7 @@ export default function Debt() {
         <div className="flex items-center gap-2 flex-wrap min-h-[40px]">
           <h1 className="text-3xl font-extrabold tracking-tight text-primary">Kredi Kartı Borçları</h1>
           {isFuture && <span className="text-xs bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded">Planlama Modu</span>}
+          <SearchTrigger className="hidden md:flex ml-auto" />
         </div>
         <MonthNavigator />
       </header>
@@ -383,7 +399,7 @@ export default function Debt() {
                const current = inst.installmentCount - inst.remainingInstallments + 1;
 
                return (
-                 <div key={inst.id} className="p-4 rounded-xl bg-secondary/30 border border-border">
+                 <div key={inst.id} data-search-key={searchKeyFor('installment', inst.id)} className="p-4 rounded-xl bg-secondary/30 border border-border">
                     <div className="flex justify-between items-start mb-2">
                        <div>
                          <div className="font-medium">{inst.description}</div>
@@ -459,7 +475,7 @@ export default function Debt() {
               </div>
 
               {groupedDebts.groups[date].map((debt) => (
-                <div key={debt.id} className="flex items-center justify-between p-4 rounded-xl glass">
+                <div key={debt.id} data-search-key={searchKeyFor('ccdebt', debt.id)} className="flex items-center justify-between p-4 rounded-xl glass">
                   <div className="flex items-center gap-3">
                      <div className={cn("p-2 rounded-full", debt.amount > 0 ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500")}>
                        <CreditCard size={20} />
@@ -509,7 +525,7 @@ export default function Debt() {
             </div>
 
             {groupedDebts.noDateGroup.map((debt) => (
-              <div key={debt.id} className="flex items-center justify-between p-4 rounded-xl glass">
+              <div key={debt.id} data-search-key={searchKeyFor('ccdebt', debt.id)} className="flex items-center justify-between p-4 rounded-xl glass">
                 <div className="flex items-center gap-3">
                    <div className={cn("p-2 rounded-full", debt.amount > 0 ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500")}>
                      <CreditCard size={20} />
