@@ -124,14 +124,14 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex justify-center bg-black/40 backdrop-blur-sm px-4 pt-[12vh] pb-6"
+      className="fixed inset-0 z-[100] flex items-start justify-center bg-black/40 backdrop-blur-sm px-4 pt-[12vh] pb-6"
       onMouseDown={onClose}
       role="dialog"
       aria-modal="true"
       aria-label="Arama"
     >
       <div
-        className="w-full max-w-lg max-h-full flex flex-col rounded-2xl border border-border bg-card shadow-2xl overflow-hidden"
+        className="w-full max-w-lg max-h-[78vh] flex flex-col rounded-2xl border border-border bg-card shadow-2xl overflow-hidden"
         onMouseDown={e => e.stopPropagation()}
       >
         {/* Arama cubugu */}
