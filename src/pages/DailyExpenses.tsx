@@ -853,12 +853,21 @@ export default function DailyExpenses() {
       setGoldOwner(ownerMatch ? ownerMatch[1].trim() : '');
       setGoldNote(noteMatch ? noteMatch[1].trim() : '');
       setDescription('');
+    } else if (expense.id.startsWith('vault-curr-')) {
+      // Doviz kasa kaydi: gosterilen aciklama "sahip: not" (ve turetilmis Kur) bicimindedir.
+      // Forma HAM not'u koy; aksi halde submit not'a sahip on-ekini tekrar yazip "RG: RG: ..."
+      // ikilemesi yapar. Sahip alani (r.owner) updateVaultRecord'da degismeden korunur.
+      const vaultId = parseInt(expense.id.replace('vault-curr-', ''), 10);
+      const vr = vaultRecords.find(r => r.id === vaultId);
+      setDescription(vr?.note || '');
+      setGoldOwner('');
+      setGoldNote('');
     } else {
       setDescription(expense.description);
       setGoldOwner('');
       setGoldNote('');
     }
-    
+
     scrollToElement('main-form-container');
   };
 

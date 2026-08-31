@@ -319,10 +319,23 @@ const getCurrencyVaultExpenses = (records: GoldRecord[]): DailyExpense[] => {
     .map(r => {
       const isExpense = r.transaction_type === 'Borç Verdim' || r.transaction_type === 'Bozdurma' || r.transaction_type === 'Çıkış';
       const amt = Number(r.amount);
+      // Aciklama tutarliligi: not'ta "Kur:" yoksa ve "Alış Fiyatı: N" varsa Kur'u
+      // (Alış Fiyatı / adet) hesaplayip basa ekle -> tum doviz kasa kayitlari ayni bicimde
+      // ("(Kur: X TL) | Alış Fiyatı: ...") gorunur. Not zaten Kur iceriyorsa dokunulmaz.
+      let note = r.note || '';
+      const absAmt = Math.abs(amt) || 0;
+      if (note && !/kur\s*:/i.test(note) && absAmt > 0) {
+        const m = note.match(/Alış Fiyatı:\s*([\d.]+)/i);
+        const cost = m ? parseFloat(m[1]) : NaN;
+        if (!isNaN(cost) && cost > 0) {
+          const kurStr = (cost / absAmt).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          note = `(Kur: ${kurStr}TL) | ${note}`;
+        }
+      }
       return {
         id: `vault-curr-${r.id}`,
         date: r.record_date,
-        description: r.note ? `${r.owner}: ${r.note}` : r.owner || 'Kasa Kaydı',
+        description: note ? `${r.owner}: ${note}` : r.owner || 'Kasa Kaydı',
         amount: isExpense ? -Math.abs(amt) : Math.abs(amt),
         type: r.gold_type
       };
