@@ -1009,6 +1009,11 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const data = await res.json();
         const cleanRecords = (data.records || []).filter((r: any) => r.gold_type !== 'PLANNED_VAULT');
         setVaultRecords(cleanRecords);
+        // globalVaultRecords'u SENKRON guncelle: hemen ardindan calisan recalculateHistoryAndCurrent
+        // (or. addVaultRecord icinde) taze kayitlari gorsun. Aksi halde doviz kasa kaydi (vault-curr)
+        // bayat globalVaultRecords ile turetilemez ve Islemler/Bilanco'da gorunmez. useEffect (satir ~991)
+        // yine calisir ama render sonrasi; bu satir setState commit'ini beklemeden tutarliligi saglar.
+        globalVaultRecords = cleanRecords.filter(countsForMe);
         if (data.vaultOrder && Array.isArray(data.vaultOrder)) {
           setVaultOrder(data.vaultOrder);
         }
