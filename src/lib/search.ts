@@ -246,6 +246,10 @@ export function buildSearchIndex(state: BudgetState, vaultRecords: GoldRecord[])
   const fixedLeg = (fx: FixedExpense, month: string) => {
     // Sentetik ikiz (stmtbill- vb.) elenir; ama TERFI ETMIS proj-bill-/proj-rent- indekslenir.
     if (isSyntheticTwinId(fx.id)) return;
+    // GELECEK aya maddelestirilmis, TUTARSIZ (amount 0) projeksiyon placeholder'i aramada gurultu
+    // yapar (or. her ay tekrar eden 'Su Faturası: +0 ₺'). Bunlari ele; ama cari/gecmis aydaki terfi
+    // etmis gercek proj- (or. odenmis fatura) VE tutari girilmis gelecek planlari KALIR.
+    if (month > curMonth && fx.id.startsWith('proj-') && (Number(fx.amount) || 0) === 0) return;
     if (fx.isAllowance) return;
     // PLANNED_VAULT: varlik alim PLANI (gercek kayit degil); ayri bolumde gorunur, listede satiri yok.
     if (fx.type === 'PLANNED_VAULT') return;
