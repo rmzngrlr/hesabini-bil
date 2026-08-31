@@ -22,28 +22,6 @@ export function useSearch(): SearchContextType {
   return ctx;
 }
 
-const RECENT_KEY = 'hb_search_recent';
-
-function loadRecent(): string[] {
-  try {
-    const raw = localStorage.getItem(RECENT_KEY);
-    const arr = raw ? JSON.parse(raw) : [];
-    return Array.isArray(arr) ? arr.filter(x => typeof x === 'string').slice(0, 5) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveRecent(q: string) {
-  const t = q.trim();
-  if (t.length < 2) return;
-  try {
-    const cur = loadRecent().filter(x => x.toLocaleLowerCase('tr-TR') !== t.toLocaleLowerCase('tr-TR'));
-    const next = [t, ...cur].slice(0, 5);
-    localStorage.setItem(RECENT_KEY, JSON.stringify(next));
-  } catch { /* yoksay */ }
-}
-
 function formatAmount(rec: SearchRecord): { text: string; positive: boolean } {
   const positive = rec.amount >= 0;
   const sign = positive ? '+' : '−';
@@ -82,7 +60,6 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [debounced, setDebounced] = useState('');
-  const [recent, setRecent] = useState<string[]>(() => loadRecent());
 
   // Acilinca girise odaklan.
   useEffect(() => {
@@ -121,7 +98,6 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
   }, [results]);
 
   const goToRecord = useCallback((rec: SearchRecord) => {
-    saveRecent(debounced);
     onClose();
     // 1. Goruntulenen ay (context; navigasyon boyunca kalici).
     setViewDate(rec.month);
@@ -142,9 +118,9 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
         },
       },
     });
-  }, [debounced, navigate, onClose, setViewDate]);
+  }, [navigate, onClose, setViewDate]);
 
-  const showRecent = debounced.trim().length < 2;
+  const hasQuery = debounced.trim().length >= 2;
 
   return createPortal(
     <div
@@ -159,7 +135,7 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
         onMouseDown={e => e.stopPropagation()}
       >
         {/* Arama cubugu */}
-        <div className="flex items-center gap-3 px-4 py-3.5 border-b border-border">
+        <div className="flex items-center gap-3 px-4 py-3.5">
           <Search size={20} className="text-muted-foreground shrink-0" />
           <input
             ref={inputRef}
@@ -177,37 +153,11 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
-        {/* Sonuclar / bos durum */}
-        <div className="overflow-y-auto overscroll-contain">
-          {showRecent ? (
-            <div className="p-3">
-              {recent.length > 0 ? (
-                <>
-                  <p className="text-xs text-muted-foreground px-2 mb-1">Son aramalar</p>
-                  {recent.map(q => (
-                    <button
-                      key={q}
-                      onClick={() => { setQuery(q); inputRef.current?.focus(); }}
-                      className="w-full flex items-center gap-2 px-2 py-2 rounded-lg text-left text-sm hover:bg-secondary transition-colors"
-                    >
-                      <Search size={15} className="text-muted-foreground shrink-0" />
-                      <span className="truncate">{q}</span>
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => { try { localStorage.removeItem(RECENT_KEY); } catch { /* yoksay */ } setRecent([]); }}
-                    className="w-full text-center text-xs text-muted-foreground mt-1 py-1.5 hover:text-foreground transition-colors"
-                  >
-                    Geçmişi temizle
-                  </button>
-                </>
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-8 px-4">
-                  En az 2 harf yazın. Başlık ya da tutar arayabilirsiniz.
-                </p>
-              )}
-            </div>
-          ) : results.length === 0 ? (
+        {/* Sonuclar yalniz yazilinca (>=2 harf) acilir; bos durumda sadece cubuk gorunur. */}
+        {hasQuery && (
+          <>
+          <div className="overflow-y-auto overscroll-contain border-t border-border">
+          {results.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-10 px-4">
               “{debounced}” için sonuç bulunamadı.
             </p>
@@ -252,13 +202,15 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
               ))}
             </div>
           )}
-        </div>
+          </div>
 
-        {/* Alt bilgi */}
-        <div className="flex items-center gap-1.5 px-4 py-2 border-t border-border text-[11px] text-muted-foreground">
-          <CornerDownLeft size={13} />
-          <span>Sonuca dokun → ilgili ay, sayfa ve sekmeye götürür</span>
-        </div>
+          {/* Alt bilgi */}
+          <div className="flex items-center gap-1.5 px-4 py-2 border-t border-border text-[11px] text-muted-foreground">
+            <CornerDownLeft size={13} />
+            <span>Sonuca dokun → ilgili ay, sayfa ve sekmeye götürür</span>
+          </div>
+          </>
+        )}
       </div>
     </div>,
     document.body

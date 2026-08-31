@@ -79,15 +79,13 @@ export function getAssetFullTitle(name: string): string {
 }
 
 /**
- * Turkce-duyarli normalize: 'İ/ı/ş/ğ/ü/ö/ç/â' esitlenir. 'sut' -> 'Süt', 'is' -> 'İş' bulunur.
- * NFD ile birlesik aksanlar soyulur; noktali/noktasiz i acikca esitlenir.
+ * Turkce-duyarli KUCUK HARF (aksan KORUNUR). 'İ'->'i', 'I'->'ı' dogru islenir; buyuk/kucuk
+ * ayrimi kalkar ama 'ü/ö/ç/ş/ğ/ı' harfleri esitlenmez. Boylece 'Su' ile 'Süt' AYRILIR
+ * (kullanici istegi): 'su' araminca 'süt' cikmaz, ama 'SÜT' == 'süt'.
  */
 export function trNormalize(s: string): string {
   return String(s ?? '')
     .toLocaleLowerCase('tr-TR')
-    .replace(/ı/g, 'i')
-    .normalize('NFD')
-    .replace(/\p{Mn}/gu, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
