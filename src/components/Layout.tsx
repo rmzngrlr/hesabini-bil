@@ -74,8 +74,13 @@ export function Layout({ children }: LayoutProps) {
         "hidden md:flex flex-col border-r glass-blur fixed h-full left-0 top-0 z-40 transition-[width] duration-300",
         collapsed ? "w-20" : "w-64"
       )}>
-        {/* Logo */}
-        <div className={cn("flex items-center h-16 shrink-0", collapsed ? "justify-center" : "gap-3 px-6")}>
+        {/* Logo — Bilanco'ya (/) gider; zaten Bilanco'daysa en uste kaydirir. */}
+        <Link
+          to="/"
+          onClick={() => scrollRef.current?.scrollTo(0, 0)}
+          aria-label="Bilanço'ya git"
+          className={cn("flex items-center h-16 shrink-0 transition-opacity hover:opacity-80", collapsed ? "justify-center" : "gap-3 px-6")}
+        >
           {/* Favicon'daki (public/icon.svg) marka isareti: dolu rozet. Renkler bilerek
               acikca yazildi; temaya gore tam ters: acik temada koyu kutu + beyaz TL,
               koyu temada beyaz kutu + koyu TL. */}
@@ -83,7 +88,7 @@ export function Layout({ children }: LayoutProps) {
             <span aria-hidden="true" className="text-primary-foreground w-6 h-6 flex items-center justify-center text-2xl font-bold leading-none">₺</span>
           </div>
           {!collapsed && <span className="text-xl font-bold tracking-tight whitespace-nowrap">Hesabını Bil!</span>}
-        </div>
+        </Link>
 
         {/* Nav */}
         <nav className={cn("flex-1 space-y-2 py-2", collapsed ? "px-3" : "px-4 overflow-y-auto")}>
