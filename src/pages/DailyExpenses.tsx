@@ -836,6 +836,10 @@ export default function DailyExpenses() {
   }, [activeExpenses, activeTab]);
 
   const handleEdit = (expense: DailyExpense) => {
+    // Duzenle formu (Kayit Duzenle) yalniz NORMAL alt-sekmede render edilir. Doviz kasa
+    // (vault-curr) veya takas kaydi EXCHANGE sekmesinden duzenlenmek istenirse forma
+    // gecmeden once NORMAL'e al ki form gorunsun (aksi halde "duzenlenmiyor" gibi durur).
+    setActiveSubTab('NORMAL');
     setEditingId(expense.id);
     setDate(expense.date);
     setAmount(Math.abs(expense.amount).toString());
