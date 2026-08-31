@@ -177,6 +177,8 @@ interface BudgetContextType {
   /** Yerel "bugün" (YYYY-MM-DD). Gece yarısı geçince canlı olarak güncellenir. */
   todayStr: string;
   askConfirmation: (message: string, title?: string) => Promise<boolean>;
+  /** Tek-butonlu bilgi/uyari paneli (yerel alert() yerine). */
+  askInfo: (message: string, title?: string) => Promise<void>;
 }
 
 const BudgetContext = createContext<BudgetContextType | undefined>(undefined);
@@ -533,6 +535,44 @@ const getActiveCurrencies = (state: BudgetState, vaultRecs: GoldRecord[]) => {
   return Array.from(found);
 };
 
+/**
+ * Bir ayin BITIS varlik/doviz bakiyelerini hesaplayip SONRAKI ayin rollover'ina tasir.
+ * TL/YK'daki remainingCash/remainingYk mantiginin varlik karsiligidir; recalculateHistoryAndCurrent
+ * (varlik dali) ile BIREBIR ayni formul. Ay-devri (fast-forward) ve resetMonth ayni yardimciyi
+ * kullanir ki TL/YK ile varlik arasinda tekrar bir ayrisma olmasin (Dolar'in devirde kaybolma bug'i).
+ * Yeni ayin income'i taze ay icin 0 (plan varsa plandan); rollover = onceki ayin bitis bakiyesi.
+ */
+function computeNextAssetBudgets(
+  prev: BudgetState,
+  plan?: { assetBudgets?: Record<string, { income: number; rollover: number }> }
+): Record<string, { income: number; rollover: number }> {
+  const currencies = new Set<string>(getActiveCurrencies(prev, globalVaultRecords));
+  // getActiveCurrencies cari assetBudgets anahtarlarini taramaz; aktivitesi olmasa da
+  // bakiyesi (rollover) tasinan bir dovizin dusmemesi icin onlari da ekle.
+  Object.keys(prev.assetBudgets || {}).forEach(c => { if (!isGoldType(c)) currencies.add(c); });
+  const out: Record<string, { income: number; rollover: number }> = {};
+  currencies.forEach(curr => {
+    const ab = prev.assetBudgets?.[curr];
+    const startRollover = ab?.rollover || 0;
+    const monthIncome = ab?.income || 0;
+    const assetCustomIncome = (prev.customIncomes || [])
+      .filter(i => i.type === curr).reduce((s, i) => s + i.amount, 0);
+    const assetDailyIncome = (prev.dailyExpenses || [])
+      .filter(e => e.type === curr && e.amount > 0).reduce((s, e) => s + e.amount, 0);
+    const assetDailySpent = (prev.dailyExpenses || [])
+      .filter(e => e.type === curr && e.amount < 0).reduce((s, e) => s + Math.abs(e.amount), 0);
+    const assetFixedSpent = (prev.fixedExpenses || [])
+      .filter(e => e.isPaid && e.type === curr && !e.isBill).reduce((s, e) => s + e.amount, 0);
+    const remainingAsset = (startRollover + monthIncome + assetCustomIncome + assetDailyIncome) - (assetFixedSpent + assetDailySpent);
+    const planIncome = plan?.assetBudgets?.[curr]?.income;
+    out[curr] = {
+      income: planIncome !== undefined ? planIncome : 0,
+      rollover: remainingAsset > 0 ? remainingAsset : 0,
+    };
+  });
+  return out;
+}
+
 // Helper: Recalculate all subsequent months (Ripple Effect)
 function recalculateHistoryAndCurrent(state: BudgetState): BudgetState {
     const vaultExpenses = getCurrencyVaultExpenses(globalVaultRecords);
@@ -878,6 +918,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     isOpen: boolean;
     title: string;
     message: string;
+    variant: 'confirm' | 'info';
     resolve: ((value: boolean) => void) | null;
   } | null>(null);
 
@@ -887,7 +928,21 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         isOpen: true,
         title,
         message,
+        variant: 'confirm',
         resolve,
+      });
+    });
+  };
+
+  // Tek-butonlu bilgi/uyari paneli (yerel alert() yerine uygulama-ici tutarli mesaj).
+  const askInfo = (message: string, title = 'Bilgi'): Promise<void> => {
+    return new Promise<void>((resolve) => {
+      setConfirmState({
+        isOpen: true,
+        title,
+        message,
+        variant: 'info',
+        resolve: () => resolve(),
       });
     });
   };
@@ -1278,6 +1333,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           customIncomes: prev.customIncomes,
           dailyExpenses: prev.dailyExpenses,
           ccDebts: prev.ccDebts,
+          assetBudgets: prev.assetBudgets,
         };
 
         const nextMonthDebts: CCDebt[] = [];
@@ -1409,6 +1465,8 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           fixedExpenses: nextFixedExpenses,
           rollover: remainingCash > 0 ? remainingCash : 0,
           ykRollover: remainingYk > 0 ? remainingYk : 0,
+          // Varlik/doviz bitis bakiyesini de sonraki aya tasi (TL/YK ile ayni; Dolar kaybi bug'i).
+          assetBudgets: computeNextAssetBudgets(prev, futurePlan),
         };
       }
       return currentState;
@@ -2617,6 +2675,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           customIncomes: prev.customIncomes,
           dailyExpenses: prev.dailyExpenses,
           ccDebts: prev.ccDebts,
+          assetBudgets: prev.assetBudgets,
         };
 
         const nextMonthDebts: CCDebt[] = [];
@@ -2671,6 +2730,8 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           customIncomes: [], // "önceki ay eklediğiniz bu özel sabit gelir kalemleri tamamen silinip 0'dan başlasın"
           rollover: remainingCash > 0 ? remainingCash : 0,
           ykRollover: remainingYk > 0 ? remainingYk : 0,
+          // Varlik/doviz bitis bakiyesini de sonraki aya tasi (TL/YK ile ayni; Dolar kaybi bug'i).
+          assetBudgets: computeNextAssetBudgets(prev),
         };
     });
   };
@@ -2882,7 +2943,8 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             dailyAllowance,
             updateDailyAllowance,
             todayStr,
-            askConfirmation
+            askConfirmation,
+            askInfo
         }}
     >
         {children}
@@ -2891,6 +2953,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             isOpen={confirmState.isOpen}
             title={confirmState.title}
             message={confirmState.message}
+            variant={confirmState.variant}
             onConfirm={handleConfirm}
             onCancel={handleCancel}
           />

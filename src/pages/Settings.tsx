@@ -11,7 +11,7 @@ import { cn } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
 
 export default function Settings() {
-  const { state, loadState, showMealCard, toggleShowMealCard, showVault, toggleShowVault, askConfirmation, statementCutoffDay, setStatementCutoffDay } = useBudget();
+  const { state, loadState, showMealCard, toggleShowMealCard, showVault, toggleShowVault, askConfirmation, askInfo, statementCutoffDay, setStatementCutoffDay } = useBudget();
   const { username, avatar, updateAvatar } = useAuth();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -37,7 +37,7 @@ export default function Settings() {
       exportToExcel(state);
     } catch (error) {
       console.error("Yedek alınırken hata:", error);
-      alert("Excel dosyası oluşturulurken bir hata meydana geldi.");
+      askInfo("Excel dosyası oluşturulurken bir hata meydana geldi.", "Yedekleme Hatası");
     }
   };
 
@@ -53,11 +53,11 @@ export default function Settings() {
       if (await askConfirmation("Mevcut verilerinizin üzerine bu Excel yedeği yüklenecek. Emin misiniz?")) {
           const newState = await importFromExcel(file);
           loadState(newState);
-          alert("Excel yedeği başarıyla yüklendi!");
+          await askInfo("Excel yedeği başarıyla yüklendi!", "Yedek Yüklendi");
       }
     } catch (error) {
       console.error("Yedek yüklenirken hata oluştu:", error);
-      alert("Excel dosyası okunamadı veya formatı hatalı.");
+      await askInfo("Excel dosyası okunamadı veya formatı hatalı.", "Yedekleme Hatası");
     }
 
     // Reset file input

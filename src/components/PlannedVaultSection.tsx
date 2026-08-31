@@ -27,7 +27,8 @@ export function PlannedVaultSection() {
         deleteFixedExpense,
         addVaultRecord,
         addDailyExpense,
-        activeCurrencies
+        activeCurrencies,
+        askConfirmation
     } = useBudget();
 
     const [title, setTitle] = useState('');
@@ -172,7 +173,7 @@ export function PlannedVaultSection() {
     };
 
     const handleExecute = async (record: FixedExpense) => {
-        if (!window.confirm("Bu işlemi gerçekleştirmek istediğinize emin misiniz?")) return;
+        if (!(await askConfirmation("Bu planı gerçekleştirmek istediğinize emin misiniz?", "Planı Gerçekleştir"))) return;
 
         const d = new Date();
         d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
