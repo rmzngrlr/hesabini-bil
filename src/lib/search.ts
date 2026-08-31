@@ -110,6 +110,16 @@ const DERIVED_PREFIXES = ['proj-', 'bill-cc-', 'bill-cash-', 'stmtbill-', 'vault
 function isDerivedId(id?: string): boolean {
   return typeof id === 'string' && DERIVED_PREFIXES.some(p => id.startsWith(p));
 }
+
+// Bir faturanin/kasa kaydinin SENTETIK IKIZI: kaynak kayit ayrica indekslendigi icin bunlar elenir.
+// 'proj-'/'allowance-' BURADA YOK: ham dizide (realState/history/futureData) gorunen bir 'proj-bill-'/
+// 'proj-rent-' CANLI projeksiyon degil, TERFI ETMIS gercek bir kayittir (kullanici o ayi gelecekken
+// maddelestirmis, devir terfi etmis) ve DOM satiri ayni id ile vardir -> indekslenmeli, deep-link kirilmaz.
+// ('proj-cc-debt-' zaten CC_DEBT_TITLE ile, harclik zaten isAllowance ile elenir; asagida fixedLeg.)
+const SYNTHETIC_TWIN_PREFIXES = ['bill-cc-', 'bill-cash-', 'stmtbill-', 'vault-curr-'];
+function isSyntheticTwinId(id?: string): boolean {
+  return typeof id === 'string' && SYNTHETIC_TWIN_PREFIXES.some(p => id.startsWith(p));
+}
 // BudgetContext.CC_DEBT_TITLE ile ayni (dongusel import olmasin diye burada sabit).
 const CC_DEBT_TITLE = 'Kredi Kartı Borcu (Geçen Ay)';
 
@@ -234,7 +244,8 @@ export function buildSearchIndex(state: BudgetState, vaultRecords: GoldRecord[])
   };
 
   const fixedLeg = (fx: FixedExpense, month: string) => {
-    if (isDerivedId(fx.id)) return;
+    // Sentetik ikiz (stmtbill- vb.) elenir; ama TERFI ETMIS proj-bill-/proj-rent- indekslenir.
+    if (isSyntheticTwinId(fx.id)) return;
     if (fx.isAllowance) return;
     // PLANNED_VAULT: varlik alim PLANI (gercek kayit degil); ayri bolumde gorunur, listede satiri yok.
     if (fx.type === 'PLANNED_VAULT') return;
@@ -315,8 +326,11 @@ export function buildSearchIndex(state: BudgetState, vaultRecords: GoldRecord[])
     (h.customIncomes || []).forEach(inc => incomeLeg(inc, m));
   });
 
-  // Gelecek aylar (futureData) — yalniz elle eklenen gercek kayitlar
+  // Gelecek aylar (futureData) — yalniz elle eklenen gercek kayitlar.
+  // KRITIK: Ay devri futureData[cari-ay]'i SILMEZ; icerigi realState'e terfi ettikten sonra
+  // bayat kalir. m <= curMonth kovalarini atlayarak ayni kaydin cift indekslenmesini onle.
   Object.entries(state.futureData || {}).forEach(([m, fd]) => {
+    if (m <= curMonth) return;
     (fd.ccDebts || []).forEach(d => ccLeg(d, m));
     (fd.fixedExpenses || []).forEach(fx => fixedLeg(fx, m));
     (fd.customIncomes || []).forEach(inc => incomeLeg(inc, m));
@@ -367,7 +381,15 @@ export function buildSearchIndex(state: BudgetState, vaultRecords: GoldRecord[])
     }
   });
 
-  return out;
+  // Guvenlik agi: ayni kaydin (ayni key) birden fazla kovadan okunmasina karsi tekillestir.
+  // Vault haric (tum altin kasasi kayitlari 'vaultsection' anahtarini paylasir).
+  const seen = new Set<string>();
+  return out.filter(r => {
+    if (r.kind === 'vault') return true;
+    if (seen.has(r.key)) return false;
+    seen.add(r.key);
+    return true;
+  });
 }
 
 // --- Sorgu suzgeci (tuketen bilesende debounce ile cagirilir) ---
