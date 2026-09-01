@@ -524,6 +524,27 @@ export default function DailyExpenses() {
   const [exchangeFromCustomCode, setExchangeFromCustomCode] = useState('');
   const [exchangeToCustomCode, setExchangeToCustomCode] = useState('');
 
+  // Alt-sekme basina AYRI sekme hafizasi. activeTab (daily_draft_tab) NORMAL'in efektif sekmesi
+  // olarak KALIR (dis yazicilar degismez: Bilanco TL/YK kartlari + arama deep-link). Doviz/Altin
+  // kendi son sekmesini ayri bir ref'te tutar; boylece orada doviz secmek NORMAL'e SIZMAZ.
+  const normalTabRef = useRef(activeTab);
+  const exchangeTabRef = useRef<string | null>(null);
+  // Aktif alt-sekmenin efektif sekmesini kendi hafizasina yaz (YALNIZ ref -> setState yok, dongu yok).
+  useEffect(() => {
+    if (activeSubTab === 'NORMAL') normalTabRef.current = activeTab;
+    else if (activeSubTab === 'EXCHANGE') exchangeTabRef.current = activeTab;
+  }, [activeTab, activeSubTab]);
+  // Alt-sekme degistirici: hedefin hatirlanan sekmesini geri yukler. NORMAL daima geri yuklenir;
+  // EXCHANGE yalniz onceden bir sekme hatirlandiysa (ilk seferde fallback availableTabs[0]'i secer).
+  // BILLS activeTab kullanmaz -> dokunulmaz.
+  const switchSubTab = (target: 'NORMAL' | 'EXCHANGE' | 'BILLS') => {
+    if (target !== activeSubTab) {
+      if (target === 'NORMAL') setActiveTab(normalTabRef.current || 'NAKIT');
+      else if (target === 'EXCHANGE' && exchangeTabRef.current) setActiveTab(exchangeTabRef.current);
+    }
+    setActiveSubTab(target);
+  };
+
   // --- Global arama deep-link tuketimi ---
   // Layout'un pathname scroll-reset useLayoutEffect'inden SONRA calissin diye useEffect (+rAF).
   const dlLocation = useLocation();
@@ -1424,7 +1445,7 @@ export default function DailyExpenses() {
         {/* Sekme Seçici */}
         <div className="flex gap-2 p-1 bg-secondary rounded-lg">
            <button
-              onClick={() => setActiveSubTab('NORMAL')}
+              onClick={() => switchSubTab('NORMAL')}
               className={cn(
                  "flex-1 py-1.5 text-sm font-semibold rounded-md transition-all",
                  activeSubTab === 'NORMAL' ? "bg-background text-foreground shadow" : "text-muted-foreground hover:bg-secondary/80"
@@ -1433,7 +1454,7 @@ export default function DailyExpenses() {
               Normal İşlem
            </button>
            <button
-              onClick={() => setActiveSubTab('EXCHANGE')}
+              onClick={() => switchSubTab('EXCHANGE')}
               className={cn(
                  "flex-1 py-1.5 text-sm font-semibold rounded-md transition-all flex items-center justify-center gap-2",
                  activeSubTab === 'EXCHANGE' ? "bg-background text-foreground shadow" : "text-muted-foreground hover:bg-secondary/80"
@@ -1442,7 +1463,7 @@ export default function DailyExpenses() {
               Döviz/Altın İşlemleri
            </button>
            <button
-              onClick={() => setActiveSubTab('BILLS')}
+              onClick={() => switchSubTab('BILLS')}
               className={cn(
                  "flex-1 py-1.5 text-sm font-semibold rounded-md transition-all flex items-center justify-center gap-1.5",
                  activeSubTab === 'BILLS' ? "bg-background text-foreground shadow" : "text-muted-foreground hover:bg-secondary/80"
