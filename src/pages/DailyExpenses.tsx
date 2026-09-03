@@ -877,6 +877,35 @@ export default function DailyExpenses() {
       .reduce((sum, e) => sum + e.amount, 0);
   }, [activeExpenses, activeTab]);
 
+  // Altin (isGoldType) birikimi dailyExpenses'te DEGIL Kasa kayitlarinda (vaultRecords)
+  // tutulur; bu yuzden altin ozet kartlari Kasa'dan hesaplanir. Isaret/haric mantigi
+  // Bilanço (Dashboard computeValue altin dali) ile BIREBIR ayni tutulmali ki ayni deger
+  // gorunsun: 'Düğün Hediyesi / Takı' haric, 'Borç Verdim' sayilmaz, 'Birikim' +, digerleri -.
+  // goldTotalBirikim: goruntulenen aya kadarki (o ay dahil) net toplam birikim.
+  const goldTotalBirikim = useMemo(() => {
+    if (!isGoldType(activeTab)) return 0;
+    return (vaultRecords || [])
+      .filter(r => r && r.gold_type === activeTab
+        && (r.transaction_type || 'Birikim') !== 'Düğün Hediyesi / Takı'
+        && typeof r.record_date === 'string' && r.record_date.slice(0, 7) <= viewDate)
+      .reduce((sum, r) => {
+        const amt = Number(r.amount) || 0;
+        const tType = r.transaction_type || 'Birikim';
+        if (tType === 'Borç Verdim') return sum;
+        return tType === 'Birikim' ? sum + amt : sum - amt;
+      }, 0);
+  }, [vaultRecords, activeTab, viewDate]);
+
+  // goldMonthIncome: yalniz goruntulenen aydaki altin girisi ('Birikim'), 'Bu Ayki Giriş' karti.
+  const goldMonthIncome = useMemo(() => {
+    if (!isGoldType(activeTab)) return 0;
+    return (vaultRecords || [])
+      .filter(r => r && r.gold_type === activeTab
+        && (r.transaction_type || 'Birikim') === 'Birikim'
+        && typeof r.record_date === 'string' && r.record_date.slice(0, 7) === viewDate)
+      .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+  }, [vaultRecords, activeTab, viewDate]);
+
   const handleEdit = (expense: DailyExpense) => {
     // Duzenle formu (Kayit Duzenle) yalniz NORMAL alt-sekmede render edilir. Doviz kasa
     // (vault-curr) veya takas kaydi EXCHANGE sekmesinden duzenlenmek istenirse forma
@@ -1920,12 +1949,12 @@ export default function DailyExpenses() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Card title={`${isGoldType(activeTab) ? 'Toplam Birikim' : 'Bu Ay Harcanan'} (${getAssetFullTitle(activeTab)})`} className={`${isGoldType(activeTab) ? 'bg-yellow-500/5 border-yellow-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
               <div className={`text-2xl font-bold mt-2 ${isGoldType(activeTab) ? 'text-yellow-600 dark:text-yellow-500' : 'text-red-500'}`}>
-                 {isGoldType(activeTab) ? (currentMonthIncome - currentMonthSpent).toLocaleString('tr-TR') : currentMonthSpent.toLocaleString('tr-TR')}{isGoldType(activeTab) ? ' ' : ''}{getAssetUnitLabel(activeTab)}
+                 {isGoldType(activeTab) ? goldTotalBirikim.toLocaleString('tr-TR') : currentMonthSpent.toLocaleString('tr-TR')}{isGoldType(activeTab) ? ' ' : ''}{getAssetUnitLabel(activeTab)}
               </div>
             </Card>
             <Card title={`Bu Ayki Gelir / Giriş (${getAssetFullTitle(activeTab)})`} className="bg-gradient-to-br from-transparent to-green-500/12 border-green-500/30">
               <div className="text-2xl font-bold text-green-500 mt-2">
-                 {currentMonthIncome.toLocaleString('tr-TR')}{isGoldType(activeTab) ? ' ' : ''}{getAssetUnitLabel(activeTab)}
+                 {isGoldType(activeTab) ? goldMonthIncome.toLocaleString('tr-TR') : currentMonthIncome.toLocaleString('tr-TR')}{isGoldType(activeTab) ? ' ' : ''}{getAssetUnitLabel(activeTab)}
               </div>
             </Card>
         </div>

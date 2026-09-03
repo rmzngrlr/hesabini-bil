@@ -641,7 +641,7 @@ export default function Dashboard() {
               {incomingPending.map(r => (
                 <div key={r.id} className="flex items-center justify-between gap-3 flex-wrap">
                   <div className="text-sm">
-                    <span className="font-semibold">{r.amount} {getAssetSymbol(r.gold_type)}</span>
+                    <span className="font-semibold">{Number(r.amount).toLocaleString('tr-TR')} {getAssetSymbol(r.gold_type)}</span>
                     <span className="text-muted-foreground"> {getAssetFullTitle(r.gold_type)} — {r.creator_username} ekledi</span>
                   </div>
                   <div className="flex gap-2 shrink-0">
@@ -669,7 +669,7 @@ export default function Dashboard() {
                 return (
                   <div key={r.id} className="flex items-center justify-between gap-3 text-sm flex-wrap">
                     <div>
-                      <span className="font-semibold">{r.amount} {getAssetSymbol(r.gold_type)}</span>
+                      <span className="font-semibold">{Number(r.amount).toLocaleString('tr-TR')} {getAssetSymbol(r.gold_type)}</span>
                       <span className="text-muted-foreground"> {getAssetFullTitle(r.gold_type)} → {r.owner_username}</span>
                     </div>
                     <span className={`text-xs font-medium shrink-0 ${st.cls}`}>{st.label}</span>
@@ -765,7 +765,7 @@ export default function Dashboard() {
                   return (
                     <Card key={asset} title={getAssetFullTitle(asset)} className="bg-gradient-to-br from-transparent to-yellow-500/12 border-yellow-500/30">
                       <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-500 mt-2">
-                        {value} {getAssetSymbol(asset)}
+                        {value.toLocaleString('tr-TR')} {getAssetSymbol(asset)}
                       </div>
                     </Card>
                   );
