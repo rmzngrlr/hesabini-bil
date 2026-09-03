@@ -303,7 +303,7 @@ export default function FixedExpenses() {
 
       <div className="mt-6 mb-8 space-y-4">
         <h2 className="text-xl font-semibold tracking-tight">Ek Sabit Gelirler</h2>
-        <form id="edit-income-form-card" onSubmit={handleAddCustomIncome} className="flex flex-col sm:flex-row gap-2 w-full scroll-mt-16">
+        <form id="edit-income-form-card" onSubmit={handleAddCustomIncome} className="flex flex-col sm:flex-row gap-2 w-full">
           <input
             type="text"
             placeholder="Gelir Adı (örn: Kira Geliri)"

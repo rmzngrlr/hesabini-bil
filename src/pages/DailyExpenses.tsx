@@ -1720,8 +1720,8 @@ export default function DailyExpenses() {
       )}
 
       {activeSubTab === 'NORMAL' && (
-      <Card title={editingId ? "Kayıt Düzenle" : "Yeni İşlem Ekle"}>
-          <form id="edit-form-card" onSubmit={handleSubmit} className="space-y-3 mt-2 scroll-mt-16">
+      <Card id="edit-form-card" title={editingId ? "Kayıt Düzenle" : "Yeni İşlem Ekle"}>
+          <form onSubmit={handleSubmit} className="space-y-3 mt-2">
           <div className="space-y-3">
               <div className="space-y-1">
               <label className="text-xs text-muted-foreground">Tarih</label>
@@ -1846,8 +1846,8 @@ export default function DailyExpenses() {
       )}
 
       {activeSubTab === 'BILLS' && (
-        <Card title={editingBillId ? "Faturayı Düzenle" : "Yeni Fatura Ekle"}>
-          <form id="edit-bill-form-card" onSubmit={handleBillSubmit} className="space-y-4 mt-2 scroll-mt-16">
+        <Card id="edit-bill-form-card" title={editingBillId ? "Faturayı Düzenle" : "Yeni Fatura Ekle"}>
+          <form onSubmit={handleBillSubmit} className="space-y-4 mt-2">
             <div className="flex flex-col md:flex-row gap-3">
               <div className="flex-[2] space-y-1">
                 <label className="text-xs text-muted-foreground">Fatura Adı</label>

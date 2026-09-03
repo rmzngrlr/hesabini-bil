@@ -217,8 +217,8 @@ export function PlannedVaultSection() {
     return (
         <div className="space-y-4">
             {editingId && (
-                <Card title="Planlanan Döviz/Altın İşlemini Düzenle">
-                    <form id="planned-vault-form" onSubmit={handleSubmit} className="space-y-4 mt-2">
+                <Card id="planned-vault-form" title="Planlanan Döviz/Altın İşlemini Düzenle">
+                    <form onSubmit={handleSubmit} className="space-y-4 mt-2">
                         <div className="grid gap-4 md:grid-cols-2">
                             <div className="space-y-1">
                                 <label className="text-xs text-muted-foreground">İşlem Cinsi</label>
