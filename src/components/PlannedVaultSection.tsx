@@ -4,6 +4,7 @@ import { useBudget } from '../context/BudgetContext';
 import { CheckCircle, Trash2, Calendar, Edit2, X } from 'lucide-react';
 import type { FixedExpense } from '../types';
 import { isGoldType } from '../lib/search';
+import { scrollToElement } from '../lib/utils';
 
 
 const getAssetFullTitle = (name: string) => {
@@ -88,7 +89,7 @@ export function PlannedVaultSection() {
         } else {
             setPlannedUnitPrice('');
         }
-        window.scrollTo({ top: document.getElementById('planned-vault-form')?.offsetTop || 0, behavior: 'smooth' });
+        scrollToElement('planned-vault-form');
     };
 
     const cancelEdit = () => {

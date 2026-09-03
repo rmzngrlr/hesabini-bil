@@ -66,11 +66,13 @@ export function statementMonth(
 }
 
 export const scrollToElement = (id: string) => {
+  // DIKKAT: window.scrollTo KULLANMA. Uygulamanin gercek kaydirma kabi pencere degil,
+  // Layout'taki ic 'overflow-y-auto' div'idir (kok 'overflow-hidden'). scrollIntoView en
+  // yakin kaydirilabilir atayi otomatik bulup onu kaydirir -> her kapta calisir.
   setTimeout(() => {
     const el = document.getElementById(id);
     if (el) {
-      const y = el.getBoundingClientRect().top + window.scrollY - 20; // 20px padding
-      window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, 100);
 };
