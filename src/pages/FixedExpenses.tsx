@@ -130,7 +130,10 @@ export default function FixedExpenses() {
 
   // Sayfadan ayrilinca ACIK DUZENLEME iptal (kalici editingId draft'i temizlenir).
   const editCleanupRef = useRef<() => void>(() => {});
-  editCleanupRef.current = () => { if (editingId) cancelEdit(); };
+  editCleanupRef.current = () => {
+    if (editingId) cancelEdit();          // Sabit Gider duzenlemesi
+    if (editingIncomeId) cancelIncomeEdit(); // Ek Sabit Gelir duzenlemesi (mod + alanlar tam iptal)
+  };
   useEffect(() => () => editCleanupRef.current(), []);
 
   const handleAddCustomIncome = (e: React.FormEvent) => {
