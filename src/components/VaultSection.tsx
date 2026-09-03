@@ -165,6 +165,98 @@ export function VaultSection() {
         setSecondaryDate('');
     };
 
+    // Mobil kart: masaustu tablo satirinin gorsel esdegeri. AYNI state + handler'lari kullanir
+    // (startEditing / saveEdit / cancelEdit / handleDelete / set* setters) -> mantik degismez.
+    const renderMobileCard = (record: GoldRecord) => {
+        const isEditing = editingId === record.id;
+        const d = new Date(record.record_date);
+        const displayDate = !isNaN(d.getTime()) ? d.toLocaleDateString('tr-TR') : record.record_date;
+        const tType = record.transaction_type || 'Birikim';
+        const isGift = tType === 'Düğün Hediyesi / Takı';
+        const isBirikim = tType === 'Birikim';
+        const badgeClass = isGift ? 'bg-muted text-muted-foreground' : (isBirikim ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-500');
+        const amountColor = isGift ? 'text-muted-foreground' : (isBirikim ? 'text-green-600' : 'text-red-500');
+        const amountSign = (isGift || tType === 'Borç Verdim') ? '-' : '';
+        const originalAmount = Number(record.amount);
+        const currentEditAmount = parseFloat(editAmount) || 0;
+        const diff = originalAmount - currentEditAmount;
+
+        return (
+            <div key={record.id} className="rounded-xl border border-border p-3">
+                {isEditing ? (
+                    <div className="space-y-2">
+                        <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                                <label className="text-[11px] text-muted-foreground">Tarih</label>
+                                <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)} className="w-full px-2 py-1.5 rounded bg-background text-sm border border-border" />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[11px] text-muted-foreground">Miktar</label>
+                                <input type="number" step="0.01" value={editAmount} onChange={e => setEditAmount(e.target.value)} className="w-full px-2 py-1.5 rounded bg-background text-sm border border-border text-right font-mono font-bold" />
+                            </div>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[11px] text-muted-foreground">Kime Ait</label>
+                            <input type="text" value={editOwner} onChange={e => setEditOwner(e.target.value)} className="w-full px-2 py-1.5 rounded bg-background text-sm border border-border" />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[11px] text-muted-foreground">Tür</label>
+                            <select value={editTransactionType} onChange={e => setEditTransactionType(e.target.value)} className={`w-full px-2 py-1.5 rounded bg-background text-sm border border-border font-medium ${editTransactionType === 'Birikim' ? 'text-green-600' : editTransactionType === 'Düğün Hediyesi / Takı' ? 'text-muted-foreground' : 'text-red-500'}`}>
+                                <option value="Birikim">Birikim</option>
+                                <option value="Düğün Hediyesi / Takı">Düğün Hediyesi / Takı</option>
+                                <option value="Borç Verdim">Borç Verdim</option>
+                            </select>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[11px] text-muted-foreground">Not</label>
+                            <input type="text" value={editNote} onChange={e => setEditNote(e.target.value)} className="w-full px-2 py-1.5 rounded bg-background text-sm border border-border" />
+                        </div>
+                        {diff > 0 && (
+                            <div className="flex flex-col gap-3 p-3 bg-secondary/20 border border-yellow-500/10 rounded-xl">
+                                <div className="text-sm font-semibold text-foreground">Azalan {diff.toFixed(2)} {record.gold_type} miktarını nasıl kaydetmek istersiniz?</div>
+                                <div className="flex flex-wrap gap-2">
+                                    <button type="button" onClick={() => setSplitAction('none')} className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all ${splitAction === 'none' ? 'bg-secondary border-muted text-foreground' : 'bg-background border-border text-muted-foreground'}`}>Sadece Miktarı Azalt</button>
+                                    <button type="button" onClick={() => setSplitAction('debt')} className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all ${splitAction === 'debt' ? 'bg-red-500/10 border-red-500/30 text-red-500' : 'bg-background border-border text-muted-foreground'}`}>Borç Verdim Olarak Ayır</button>
+                                    <button type="button" onClick={() => setSplitAction('gift')} className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all ${splitAction === 'gift' ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-500' : 'bg-background border-border text-muted-foreground'}`}>Hediye/Takı Olarak Ayır</button>
+                                </div>
+                                {splitAction !== 'none' && (
+                                    <div className="space-y-3">
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-semibold text-muted-foreground">İşlem Notu (Kime verildiği vb.)</label>
+                                            <input type="text" placeholder="Not yazın..." value={secondaryNote} onChange={e => setSecondaryNote(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-background text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary" />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-semibold text-muted-foreground">İşlem Tarihi</label>
+                                            <input type="date" value={secondaryDate} onChange={e => setSecondaryDate(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-background text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary" />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        <div className="flex justify-end gap-2 pt-1">
+                            <button onClick={saveEdit} className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-green-500 bg-green-500/10 rounded-lg"><Check size={16} />Kaydet</button>
+                            <button onClick={cancelEdit} className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-red-500 bg-red-500/10 rounded-lg"><X size={16} />İptal</button>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${badgeClass}`}>{tType}</span>
+                            <span className={`font-mono font-bold ${amountColor}`}>{amountSign}{Number(record.amount)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm"><span className="text-muted-foreground">Tarih</span><span>{displayDate}</span></div>
+                        <div className="flex justify-between text-sm gap-3"><span className="text-muted-foreground shrink-0">Kime Ait</span><span className="font-medium break-words text-right min-w-0">{record.owner}</span></div>
+                        {record.note && <div className="flex justify-between text-sm gap-3"><span className="text-muted-foreground shrink-0">Not</span><span className="text-muted-foreground break-words text-right min-w-0">{record.note}</span></div>}
+                        <div className="flex justify-end gap-2 border-t border-border pt-2">
+                            <button onClick={() => startEditing(record)} className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-blue-500 hover:bg-blue-500/10 rounded-lg" title="Düzenle"><Edit2 size={16} />Düzenle</button>
+                            <button onClick={() => handleDelete(record.id as number)} className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-red-500 hover:bg-red-500/10 rounded-lg" title="Sil"><Trash2 size={16} />Sil</button>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
     if (!isAdmin) return null;
 
 
@@ -254,10 +346,9 @@ export function VaultSection() {
                                             onDragStart={(e) => handleDragStart(e, goldType)}
                                             onDragOver={handleDragOver}
                                             onDrop={(e) => handleDrop(e, goldType)}
-                                            className={`overflow-x-auto rounded-xl glass cursor-move transition-transform ${draggedType === goldType ? 'opacity-50 scale-[0.98]' : 'opacity-100 scale-100'}`}
+                                            className={`rounded-xl glass md:cursor-move transition-transform ${draggedType === goldType ? 'opacity-50 scale-[0.98]' : 'opacity-100 scale-100'}`}
                                         >
-                                    <div className="min-w-max">
-                                        <div className="p-4 bg-secondary/50 border-b border-border flex items-center justify-between pointer-events-none">
+                                        <div className="p-4 bg-secondary/50 border-b border-border flex flex-wrap items-center justify-between gap-2 pointer-events-none">
                                             <h3 className="font-bold text-lg pointer-events-auto">{goldType}</h3>
                                             <div className="flex items-center gap-2">
                                                 <span className="text-sm text-muted-foreground">Kasadaki Varlık:</span>
@@ -266,6 +357,9 @@ export function VaultSection() {
                                                 </span>
                                             </div>
                                         </div>
+                                        {/* Masaustu: tablo (yatay kaydirmali) — mobilde gizli */}
+                                        <div className="hidden md:block overflow-x-auto">
+                                        <div className="min-w-max">
                                         <table className="w-full text-left border-collapse">
                                         <thead>
                                             <tr className="border-b border-border bg-muted/30">
@@ -451,6 +545,10 @@ export function VaultSection() {
                                         </tbody>
                                     </table>
                                     </div>
+                                    </div>
+                                        <div className="md:hidden p-3 space-y-2">
+                                            {groupRecords.map(record => renderMobileCard(record))}
+                                        </div>
                                 </div>
                                     );
                                 })}
@@ -478,15 +576,17 @@ export function VaultSection() {
                                         const totalGiris = groupRecords.reduce((sum, record) => sum + Number(record.amount), 0);
 
                                         return (
-                                            <div key={goldType} className="overflow-x-auto rounded-xl glass cursor-default">
-                                                <div className="min-w-max">
-                                                    <div className="p-4 bg-secondary/50 border-b border-border flex items-center justify-between">
+                                            <div key={goldType} className="rounded-xl glass cursor-default">
+                                                    <div className="p-4 bg-secondary/50 border-b border-border flex flex-wrap items-center justify-between gap-2">
                                                         <h3 className="font-bold text-lg text-muted-foreground">{goldType}</h3>
                                                         <div className="flex items-center gap-2">
                                                             <span className="text-sm text-muted-foreground font-medium">Toplam Hediyeler:</span>
                                                             <span className="text-lg font-mono font-bold text-muted-foreground">{totalGiris} {goldType}</span>
                                                         </div>
                                                     </div>
+                                                    {/* Masaustu: tablo — mobilde gizli */}
+                                                    <div className="hidden md:block overflow-x-auto">
+                                                    <div className="min-w-max">
                                                     <table className="w-full text-left border-collapse">
                                                     <thead>
                                                         <tr className="border-b border-border bg-muted/30">
@@ -667,7 +767,11 @@ export function VaultSection() {
                                                         })}
                                                     </tbody>
                                                     </table>
-                                                </div>
+                                                    </div>
+                                                    </div>
+                                                    <div className="md:hidden p-3 space-y-2">
+                                                        {groupRecords.map(record => renderMobileCard(record))}
+                                                    </div>
                                             </div>
                                         );
                                     })}
