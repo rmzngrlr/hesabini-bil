@@ -142,6 +142,9 @@ export interface BudgetState {
    * bir sonraki ayın ekstresine sayılır. null/undefined => kapalı (takvim ayı).
    */
   statementCutoffDay?: number | null;
+  /** Hesap-bazli UI tercihleri (tarayici degil, hesaba senkronlanir). */
+  showMealCard?: boolean;
+  showVault?: boolean;
   income: number;
   rollover: number;
   ykIncome: number;

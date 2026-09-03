@@ -85,6 +85,8 @@ const initialState: BudgetState = {
   installments: [],
   history: [],
   futureData: {},
+  showMealCard: true,
+  showVault: true,
 };
 
 /**
@@ -920,6 +922,15 @@ function migrateState(parsed: any): BudgetState {
       }
     }
 
+    // UI tercihlerini (Yemek Karti / Kasa goster) tarayici -> HESAP'a bir kere tasima:
+    // hesap state'inde tanimli degilse mevcut tarayici tercihini al; sonra hesaba senkronlanir.
+    if (parsed && parsed.showMealCard === undefined) {
+      try { parsed.showMealCard = localStorage.getItem('settings_showMealCard') !== 'false'; } catch { parsed.showMealCard = true; }
+    }
+    if (parsed && parsed.showVault === undefined) {
+      try { parsed.showVault = localStorage.getItem('settings_showVault') !== 'false'; } catch { parsed.showVault = true; }
+    }
+
     return { ...initialState, ...parsed };
 }
 
@@ -981,15 +992,6 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     } catch {
       return 'light';
-    }
-  });
-
-  const [showMealCard, setShowMealCard] = useState<boolean>(() => {
-    try {
-      const stored = localStorage.getItem('settings_showMealCard');
-      return stored !== 'false'; // Default true
-    } catch {
-      return true;
     }
   });
 
@@ -1526,10 +1528,6 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   }, [theme]);
 
-  useEffect(() => {
-    localStorage.setItem('settings_showMealCard', String(showMealCard));
-  }, [showMealCard]);
-
   // Projection Logic
   const derivedState = useMemo(() => {
     if (viewDate === realState.currentMonth) {
@@ -1841,26 +1839,17 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
   };
 
+  // Hesap-bazli: realState'ten turetilir, toggle setRealState ile yazar (syncState -> /budget).
+  const showMealCard = realState.showMealCard ?? true;
   const toggleShowMealCard = () => {
-    setShowMealCard(prev => !prev);
+    setRealState(prev => ({ ...prev, showMealCard: !(prev.showMealCard ?? true) }));
   };
 
-  const [showVault, setShowVault] = useState<boolean>(() => {
-    try {
-      const stored = localStorage.getItem('settings_showVault');
-      return stored !== 'false'; // Default true
-    } catch {
-      return true;
-    }
-  });
-
+  // Hesap-bazli: realState'ten turetilir, toggle setRealState ile yazar (syncState -> /budget).
+  const showVault = realState.showVault ?? true;
   const toggleShowVault = () => {
-    setShowVault(prev => !prev);
+    setRealState(prev => ({ ...prev, showVault: !(prev.showVault ?? true) }));
   };
-
-  useEffect(() => {
-    localStorage.setItem('settings_showVault', String(showVault));
-  }, [showVault]);
 
   const addCustomIncome = (income: Omit<CustomIncome, 'id'>) => {
     const newIncome: CustomIncome = {
