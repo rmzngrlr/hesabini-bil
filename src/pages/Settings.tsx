@@ -373,8 +373,8 @@ export default function Settings() {
                       <Download size={20} className="rotate-180" />
                   </div>
                   <div>
-                      <div className="font-medium">Kasa Menüsü</div>
-                      <div className="text-xs text-muted-foreground">Altın ve diğer varlıkları takip etme menüsünü göster</div>
+                      <div className="font-medium">Kasa Bölümü</div>
+                      <div className="text-xs text-muted-foreground">Varlıklarım sayfasında altın/döviz kasası bölümünü göster</div>
                   </div>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
