@@ -119,6 +119,7 @@ interface BudgetContextType {
   deleteFixedExpense: (id: string) => void;
   addCustomIncome: (income: Omit<CustomIncome, 'id'>) => void;
   deleteCustomIncome: (id: string) => void;
+  updateCustomIncome: (id: string, income: Partial<CustomIncome>) => void;
   addDailyExpense: (expense: Omit<DailyExpense, 'id'>) => void;
   deleteDailyExpense: (id: string) => void;
   addCCDebt: (debt: Omit<CCDebt, 'id'>) => void;
@@ -1853,9 +1854,8 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const addCustomIncome = (income: Omit<CustomIncome, 'id'>) => {
     const newIncome: CustomIncome = {
+        ...income, // title, amount, type (+ varsa vault alanlari) korunur
         id: generateId(),
-        title: income.title,
-        amount: income.amount,
     };
 
     setRealState(prev => {
@@ -1914,6 +1914,29 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                     ...newHistory[histIndex],
                     customIncomes: (newHistory[histIndex].customIncomes || []).filter(i => i.id !== id)
                 };
+                return recalculateHistoryAndCurrent({ ...prev, history: newHistory });
+            }
+        }
+        return prev;
+    });
+  };
+
+  const updateCustomIncome = (id: string, income: Partial<CustomIncome>) => {
+    setRealState(prev => {
+        const patch = (list?: CustomIncome[]) => (list || []).map(i => i.id === id ? { ...i, ...income } : i);
+        if (viewDate === prev.currentMonth) {
+            return { ...prev, customIncomes: patch(prev.customIncomes) };
+        } else if (viewDate > prev.currentMonth) {
+            const future = prev.futureData[viewDate] || {};
+            return {
+                ...prev,
+                futureData: { ...prev.futureData, [viewDate]: { ...future, customIncomes: patch(future.customIncomes) } }
+            };
+        } else if (viewDate < prev.currentMonth) {
+            const histIndex = prev.history.findIndex(h => h.month === viewDate);
+            if (histIndex !== -1) {
+                const newHistory = [...prev.history];
+                newHistory[histIndex] = { ...newHistory[histIndex], customIncomes: patch(newHistory[histIndex].customIncomes) };
                 return recalculateHistoryAndCurrent({ ...prev, history: newHistory });
             }
         }
@@ -2901,6 +2924,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             deleteFixedExpense,
             addCustomIncome,
             deleteCustomIncome,
+            updateCustomIncome,
             addDailyExpense,
             deleteDailyExpense,
             addCCDebt,

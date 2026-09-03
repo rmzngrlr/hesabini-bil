@@ -9,7 +9,7 @@ import { cn, scrollToElement, scrollToSearchKey } from '../lib/utils';
 import { searchKeyFor } from '../lib/search';
 import { SearchTrigger } from '../components/SearchTrigger';
 import { useLocation, useNavigate } from 'react-router-dom';
-import type { FixedExpense } from '../types';
+import type { FixedExpense, CustomIncome } from '../types';
 import { VaultSection } from '../components/VaultSection';
 import { PlannedVaultSection } from '../components/PlannedVaultSection';
 
@@ -30,6 +30,7 @@ export default function FixedExpenses() {
     deleteFixedExpense,
     addCustomIncome,
     deleteCustomIncome,
+    updateCustomIncome,
     updateIncome,
     updateRollover,
     updateYkIncome,
@@ -73,6 +74,8 @@ export default function FixedExpenses() {
   const [incomeTitle, setIncomeTitle] = useDraftState('fixed_draft_inc_title', '');
   const [incomeAmount, setIncomeAmount] = useDraftState('fixed_draft_inc_amount', '');
   const [incomeType, setIncomeType] = useState('NAKIT');
+  // Ek Sabit Gelir duzenleme (useState -> baska sayfaya gecince otomatik iptal).
+  const [editingIncomeId, setEditingIncomeId] = useState<string | null>(null);
 
   // Gunluk harclik girdisi yerel tutulur: hesap yazarken anlik gorunur ama
   // global state'e ancak tik tusuna basilinca yazilir.
@@ -134,15 +137,34 @@ export default function FixedExpenses() {
     e.preventDefault();
     if (!incomeTitle || !incomeAmount) return;
 
-    addCustomIncome({
-      title: incomeTitle,
-      amount: parseFloat(incomeAmount),
-      type: incomeType
-    });
+    const data = { title: incomeTitle, amount: parseFloat(incomeAmount), type: incomeType };
+    if (editingIncomeId) {
+      updateCustomIncome(editingIncomeId, data);
+    } else {
+      addCustomIncome(data);
+    }
+    setEditingIncomeId(null);
     setIncomeTitle('');
     setIncomeAmount('');
     setIncomeType('NAKIT');
 
+    sessionStorage.removeItem('fixed_draft_inc_title');
+    sessionStorage.removeItem('fixed_draft_inc_amount');
+  };
+
+  const handleEditIncome = (income: CustomIncome) => {
+    setEditingIncomeId(income.id);
+    setIncomeTitle(income.title);
+    setIncomeAmount(income.amount.toString());
+    setIncomeType(income.type || 'NAKIT');
+    scrollToElement('edit-income-form-card');
+  };
+
+  const cancelIncomeEdit = () => {
+    setEditingIncomeId(null);
+    setIncomeTitle('');
+    setIncomeAmount('');
+    setIncomeType('NAKIT');
     sessionStorage.removeItem('fixed_draft_inc_title');
     sessionStorage.removeItem('fixed_draft_inc_amount');
   };
@@ -281,7 +303,7 @@ export default function FixedExpenses() {
 
       <div className="mt-6 mb-8 space-y-4">
         <h2 className="text-xl font-semibold tracking-tight">Ek Sabit Gelirler</h2>
-        <form onSubmit={handleAddCustomIncome} className="flex flex-col sm:flex-row gap-2 w-full">
+        <form id="edit-income-form-card" onSubmit={handleAddCustomIncome} className="flex flex-col sm:flex-row gap-2 w-full scroll-mt-16">
           <input
             type="text"
             placeholder="Gelir Adı (örn: Kira Geliri)"
@@ -307,11 +329,22 @@ export default function FixedExpenses() {
                 <option key={curr} value={curr}>{curr}</option>
               ))}
             </select>
+            {editingIncomeId && (
+              <button
+                type="button"
+                onClick={cancelIncomeEdit}
+                title="İptal"
+                className="p-2 bg-secondary text-foreground rounded-lg hover:bg-secondary/80 transition-colors shrink-0"
+              >
+                <X size={24} />
+              </button>
+            )}
             <button
               type="submit"
+              title={editingIncomeId ? 'Kaydet' : 'Ekle'}
               className="p-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors shrink-0"
             >
-              <Plus size={24} />
+              {editingIncomeId ? <Check size={24} /> : <Plus size={24} />}
             </button>
           </div>
         </form>
@@ -324,6 +357,12 @@ export default function FixedExpenses() {
                 <span className="font-bold text-green-500">
                   +{income.amount.toLocaleString('tr-TR')}{income.type && isGoldType(income.type) ? ' ' : ''}{income.type === 'NAKIT' || !income.type ? '₺' : income.type}
                 </span>
+                <button
+                  onClick={() => handleEditIncome(income)}
+                  className="p-1 text-primary hover:text-primary/80 transition-colors rounded-lg hover:bg-primary/10 shrink-0"
+                >
+                  <Pencil size={18} />
+                </button>
                 <button
                   onClick={async () => { if (await askConfirmation('Bu geliri silmek istediğinize emin misiniz?')) { deleteCustomIncome(income.id); } }}
                   className="p-1 text-muted-foreground hover:text-red-500 transition-colors rounded-lg hover:bg-red-500/10 shrink-0"

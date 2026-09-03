@@ -769,6 +769,22 @@ export default function DailyExpenses() {
     return [];
   }, [showMealCard, activeCurrencies, activeExpenses, activeSubTab, isFuture]);
 
+  // Yalniz sayfa ACILISINDA (mount/donus) calisir: sessionStorage'dan gelen activeTab bir
+  // doviz/altinsa ve o an NORMAL'de hic dogrudan islemi yoksa TL'ye dus (eski davranis). Oturum
+  // ici bilerek secim etkilenmez (isKnownAsset korumasi orada gecerli). Arama deep-link ile
+  // bilerek gelindiyse (state.deepLink) dokunma.
+  const didMountResetRef = useRef(false);
+  useEffect(() => {
+    if (didMountResetRef.current) return;
+    didMountResetRef.current = true;
+    if ((dlLocation.state as { deepLink?: unknown } | null)?.deepLink) return;
+    const knownAsset = (allFormTypes.currencies.includes(activeTab) && activeTab !== 'NAKIT' && activeTab !== 'YK') || allFormTypes.golds.includes(activeTab);
+    if (knownAsset && !availableTabs.includes(activeTab)) {
+      setActiveTab('NAKIT');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Fallback if active tab disappears (e.g. settings changed)
   useEffect(() => {
     // Doviz/Altin + Altin modundayken aktif sekme bir ALTIN turudur; onu availableTabs'a
@@ -1705,7 +1721,7 @@ export default function DailyExpenses() {
 
       {activeSubTab === 'NORMAL' && (
       <Card title={editingId ? "Kayıt Düzenle" : "Yeni İşlem Ekle"}>
-          <form id="edit-form-card" onSubmit={handleSubmit} className="space-y-3 mt-2">
+          <form id="edit-form-card" onSubmit={handleSubmit} className="space-y-3 mt-2 scroll-mt-16">
           <div className="space-y-3">
               <div className="space-y-1">
               <label className="text-xs text-muted-foreground">Tarih</label>
@@ -1831,7 +1847,7 @@ export default function DailyExpenses() {
 
       {activeSubTab === 'BILLS' && (
         <Card title={editingBillId ? "Faturayı Düzenle" : "Yeni Fatura Ekle"}>
-          <form id="edit-bill-form-card" onSubmit={handleBillSubmit} className="space-y-4 mt-2">
+          <form id="edit-bill-form-card" onSubmit={handleBillSubmit} className="space-y-4 mt-2 scroll-mt-16">
             <div className="flex flex-col md:flex-row gap-3">
               <div className="flex-[2] space-y-1">
                 <label className="text-xs text-muted-foreground">Fatura Adı</label>
