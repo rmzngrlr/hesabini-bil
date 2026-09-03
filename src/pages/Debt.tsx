@@ -1,7 +1,7 @@
 import { useDraftState } from '../hooks/useDraftState';
 import { useBudget, generateId } from '../context/BudgetContext';
 import { Card } from '../components/ui/Card';
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Plus, Trash2, CalendarClock, CreditCard, Pencil, X } from 'lucide-react';
 import { cn, scrollToElement, scrollToSearchKey, getTodayStr, isDebtPending, statementMonth } from '../lib/utils';
@@ -74,7 +74,7 @@ export default function Debt() {
     }
 
     // Scroll to top
-    scrollToElement('main-form-container');
+    scrollToElement('edit-form-card');
   };
 
   const cancelEdit = () => {
@@ -92,6 +92,11 @@ export default function Debt() {
     sessionStorage.removeItem('debt_draft_inst_count');
     sessionStorage.removeItem('debt_draft_editing_id');
   };
+
+  // Sayfadan ayrilinca ACIK DUZENLEME iptal (kalici editingId draft'i temizlenir).
+  const editCleanupRef = useRef<() => void>(() => {});
+  editCleanupRef.current = () => { if (editingId) cancelEdit(); };
+  useEffect(() => () => editCleanupRef.current(), []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

@@ -539,6 +539,11 @@ export default function DailyExpenses() {
   // BILLS activeTab kullanmaz -> dokunulmaz.
   const switchSubTab = (target: 'NORMAL' | 'EXCHANGE' | 'BILLS') => {
     if (target !== activeSubTab) {
+      // Baska alt-sekmeye gecince ACIK DUZENLEME iptal (kullanici sekme degistirdi).
+      // NOT: handleEdit'in programatik setActiveSubTab'i bu fonksiyondan gecmez -> yeni
+      // baslatilan duzenlemeyi iptal etmez.
+      if (editingId) cancelEdit();
+      if (editingBillId) handleCancelEditBill();
       if (target === 'NORMAL') setActiveTab(normalTabRef.current || 'NAKIT');
       else if (target === 'EXCHANGE' && exchangeTabRef.current) setActiveTab(exchangeTabRef.current);
     }
@@ -889,7 +894,7 @@ export default function DailyExpenses() {
       setGoldNote('');
     }
 
-    scrollToElement('main-form-container');
+    scrollToElement('edit-form-card');
   };
 
   const cancelEdit = () => {
@@ -904,6 +909,13 @@ export default function DailyExpenses() {
     sessionStorage.removeItem('daily_draft_amount');
     sessionStorage.removeItem('daily_draft_editing_id');
   };
+
+  // Sayfadan ayrilinca (baska sayfaya gecis) ACIK DUZENLEME iptal: kalici editingId draft'i
+  // temizlenir -> sayfaya donunce ekleme modunda acilir. editingBillId useState oldugu icin
+  // zaten sifirlanir. Ekleme taslagi (editingId yoksa) korunur.
+  const editCleanupRef = useRef<() => void>(() => {});
+  editCleanupRef.current = () => { if (editingId) cancelEdit(); };
+  useEffect(() => () => editCleanupRef.current(), []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1400,7 +1412,7 @@ export default function DailyExpenses() {
     setBillAmount(bill.amount.toString());
     setBillPaymentMethod(bill.paymentMethod || 'NAKIT');
     setBillDate(bill.date || getTodayStr());
-    scrollToElement('main-form-container');
+    scrollToElement('edit-bill-form-card');
   };
 
   const handleCancelEditBill = () => {
@@ -1693,7 +1705,7 @@ export default function DailyExpenses() {
 
       {activeSubTab === 'NORMAL' && (
       <Card title={editingId ? "Kayıt Düzenle" : "Yeni İşlem Ekle"}>
-          <form onSubmit={handleSubmit} className="space-y-3 mt-2">
+          <form id="edit-form-card" onSubmit={handleSubmit} className="space-y-3 mt-2">
           <div className="space-y-3">
               <div className="space-y-1">
               <label className="text-xs text-muted-foreground">Tarih</label>
@@ -1819,7 +1831,7 @@ export default function DailyExpenses() {
 
       {activeSubTab === 'BILLS' && (
         <Card title={editingBillId ? "Faturayı Düzenle" : "Yeni Fatura Ekle"}>
-          <form onSubmit={handleBillSubmit} className="space-y-4 mt-2">
+          <form id="edit-bill-form-card" onSubmit={handleBillSubmit} className="space-y-4 mt-2">
             <div className="flex flex-col md:flex-row gap-3">
               <div className="flex-[2] space-y-1">
                 <label className="text-xs text-muted-foreground">Fatura Adı</label>

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useDraftState } from '../hooks/useDraftState';
-import { useBudget, isFixedExpenseOverdue, daysInMonth } from '../context/BudgetContext';
+import { useBudget, isFixedExpenseOverdue, daysInMonth, CC_DEBT_TITLE } from '../context/BudgetContext';
 import { useAuth } from '../context/AuthContext';
 import { Card } from '../components/ui/Card';
 import { Plus, Trash2, CheckCircle, Circle, Pencil, X, Check } from 'lucide-react';
@@ -111,7 +111,7 @@ export default function FixedExpenses() {
     setTitle(expense.title);
     setAmount(expense.amount.toString());
     setExpenseType(expense.type || 'NAKIT');
-    scrollToElement('main-form-container');
+    scrollToElement('edit-form-card');
   };
 
   const cancelEdit = () => {
@@ -124,6 +124,11 @@ export default function FixedExpenses() {
     sessionStorage.removeItem('fixed_draft_amount');
     sessionStorage.removeItem('fixed_draft_editing_id');
   };
+
+  // Sayfadan ayrilinca ACIK DUZENLEME iptal (kalici editingId draft'i temizlenir).
+  const editCleanupRef = useRef<() => void>(() => {});
+  editCleanupRef.current = () => { if (editingId) cancelEdit(); };
+  useEffect(() => () => editCleanupRef.current(), []);
 
   const handleAddCustomIncome = (e: React.FormEvent) => {
     e.preventDefault();
@@ -496,7 +501,9 @@ export default function FixedExpenses() {
               isCurrentMonth
                 && isFixedExpenseOverdue(expense)
                 && "border-red-500/60 bg-gradient-to-br from-transparent to-red-500/15",
-              expense.isPaid && "opacity-60"
+              expense.isPaid && "opacity-60",
+              // "Kredi Kartı Borcu (Geçen Ay)" tutari 0 ise odenecek bir sey yok -> kart silik.
+              expense.title === CC_DEBT_TITLE && expense.amount === 0 && "opacity-40"
             )}
           >
             {/* Harclik kalemi TURETILMISTIR: odendi durumu tasimaz (o aya gecince
@@ -534,7 +541,9 @@ export default function FixedExpenses() {
             )}
 
             <div className="flex items-center">
-              {!expense.isAllowance && (
+              {/* "Geçen Ay" KK borcu otomatik uretilir: Duzenle VE Sil gizlenir (1 kurus dahi
+                  borc varsa odenmelidir, silinemez; 0 olunca kart yukarida silik gorunur). */}
+              {!expense.isAllowance && expense.title !== CC_DEBT_TITLE && (
                 <button
                   onClick={(e) => { e.stopPropagation(); handleEdit(expense); }}
                   className="p-2 text-primary hover:text-primary/80 transition-colors"
@@ -542,6 +551,7 @@ export default function FixedExpenses() {
                   <Pencil size={20} />
                 </button>
               )}
+              {expense.title !== CC_DEBT_TITLE && (
               <button
                 onClick={async (e) => {
                   e.stopPropagation();
@@ -559,6 +569,7 @@ export default function FixedExpenses() {
               >
                 <Trash2 size={20} />
               </button>
+              )}
             </div>
           </div>
         ))}
