@@ -3,6 +3,7 @@ import { Card } from './ui/Card';
 import { useBudget } from '../context/BudgetContext';
 import { CheckCircle, Trash2, Calendar, Edit2, X } from 'lucide-react';
 import type { FixedExpense } from '../types';
+import { isGoldType } from '../lib/search';
 
 
 const getAssetFullTitle = (name: string) => {
@@ -159,7 +160,8 @@ export function PlannedVaultSection() {
             type: 'PLANNED_VAULT',
             vault_gold_type: finalType,
             vault_amount: parseFloat(goldAmount),
-            vault_owner: goldOwner,
+            // Sahiplik yalnizca ALTIN'a ozgu (coklu-kullanici emaneti). Doviz'de owner sorulmaz -> 'Ortak' (takas gibi).
+            vault_owner: isGoldType(finalType) ? goldOwner : 'Ortak',
             vault_note: goldNote
         };
 
@@ -191,7 +193,8 @@ export function PlannedVaultSection() {
         // Add Vault Record
         await addVaultRecord({
             record_date: executeDate,
-            owner: record.vault_owner || 'Bilinmiyor',
+            // Doviz'de sahiplik yok -> 'Ortak'; yalniz altinda plandaki sahip kullanilir.
+            owner: isGoldType(vGoldType) ? (record.vault_owner || 'Bilinmiyor') : 'Ortak',
             gold_type: vGoldType,
             amount: vAmount,
             note: finalVaultNote,
@@ -304,6 +307,8 @@ export function PlannedVaultSection() {
                                 />
                             </div>
 
+                            {/* Sahiplik yalnizca ALTIN'a ozgu (coklu-kullanici emaneti). Doviz'de gizlenir. */}
+                            {isGoldType(goldType) && (
                             <div className="space-y-1">
                                 <label className="text-xs text-muted-foreground">Sahibi</label>
                                 <input
@@ -315,6 +320,7 @@ export function PlannedVaultSection() {
                                     className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                                 />
                             </div>
+                            )}
 
                             <div className="space-y-1 md:col-span-2">
                                 <label className="text-xs text-muted-foreground">Not</label>
@@ -363,7 +369,7 @@ export function PlannedVaultSection() {
                                     <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-muted-foreground">
                                         <div><span className="font-medium text-foreground">Hedef:</span> {record.vault_amount} {record.vault_gold_type}</div>
                                         <div><span className="font-medium text-foreground">Maliyet:</span> {record.amount} TL</div>
-                                        <div><span className="font-medium text-foreground">Sahibi:</span> {record.vault_owner}</div>
+                                        {isGoldType(record.vault_gold_type || '') && <div><span className="font-medium text-foreground">Sahibi:</span> {record.vault_owner}</div>}
                                         {record.vault_note && <div className="col-span-2 truncate"><span className="font-medium text-foreground">Not:</span> {record.vault_note}</div>}
                                     </div>
                                 </div>
