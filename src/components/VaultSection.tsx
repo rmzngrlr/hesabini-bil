@@ -242,7 +242,7 @@ export function VaultSection() {
                     <div className="space-y-2">
                         <div className="flex items-center justify-between gap-2">
                             <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${badgeClass}`}>{tType}</span>
-                            <span className={`font-mono font-bold ${amountColor}`}>{amountSign}{Number(record.amount)}</span>
+                            <span className={`font-mono font-bold ${amountColor}`}>{amountSign}{Number(record.amount).toLocaleString('tr-TR')}</span>
                         </div>
                         <div className="flex justify-between text-sm"><span className="text-muted-foreground">Tarih</span><span>{displayDate}</span></div>
                         <div className="flex justify-between text-sm gap-3"><span className="text-muted-foreground shrink-0">Kime Ait</span><span className="font-medium break-words text-right min-w-0">{record.owner}</span></div>
@@ -353,7 +353,7 @@ export function VaultSection() {
                                             <div className="flex items-center gap-2">
                                                 <span className="text-sm text-muted-foreground">Kasadaki Varlık:</span>
                                                 <span className={`text-lg font-mono font-bold ${totalGiris >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                                                    {totalGiris} {goldType}
+                                                    {totalGiris.toLocaleString('tr-TR')} {goldType}
                                                 </span>
                                             </div>
                                         </div>
@@ -454,7 +454,7 @@ export function VaultSection() {
                                                                 <td className={`py-3 px-4 text-right font-mono font-bold ${
                                                     (record.transaction_type || 'Birikim') === 'Birikim' ? 'text-green-600' : 'text-red-500'
                                                                 }`}>
-                                                                {(record.transaction_type === 'Borç Verdim') ? '-' : ''}{Number(record.amount)}
+                                                                {(record.transaction_type === 'Borç Verdim') ? '-' : ''}{Number(record.amount).toLocaleString('tr-TR')}
                                                                 </td>
                                                                 <td className="py-3 px-4 text-sm text-muted-foreground break-words max-w-[200px]">{record.note || '-'}</td>
                                                                 <td className="py-3 px-4">
@@ -581,7 +581,7 @@ export function VaultSection() {
                                                         <h3 className="font-bold text-lg text-muted-foreground">{goldType}</h3>
                                                         <div className="flex items-center gap-2">
                                                             <span className="text-sm text-muted-foreground font-medium">Toplam Hediyeler:</span>
-                                                            <span className="text-lg font-mono font-bold text-muted-foreground">{totalGiris} {goldType}</span>
+                                                            <span className="text-lg font-mono font-bold text-muted-foreground">{totalGiris.toLocaleString('tr-TR')} {goldType}</span>
                                                         </div>
                                                     </div>
                                                     {/* Masaustu: tablo — mobilde gizli */}
@@ -677,7 +677,7 @@ export function VaultSection() {
                                                                                 </span>
                                                                             </td>
                                                                             <td className={`py-3 px-4 text-right font-mono font-bold text-muted-foreground`}>
-                                                                                -{Number(record.amount)}
+                                                                                -{Number(record.amount).toLocaleString('tr-TR')}
                                                                             </td>
                                                                             <td className="py-3 px-4 text-sm text-muted-foreground break-words max-w-[200px]">{record.note || '-'}</td>
                                                                             <td className="py-3 px-4">
