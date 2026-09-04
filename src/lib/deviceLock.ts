@@ -100,7 +100,11 @@ export async function registerDeviceLock(username?: string | null): Promise<bool
         authenticatorSelection: {
           authenticatorAttachment: 'platform',
           userVerification: 'required',
-          residentKey: 'preferred',
+          // 'discouraged' -> passkey/Google Password Manager kayit akisini atla;
+          // cihaza-ozel sade kimlik. Acilista sadece "parmak izini dogrula" cikar,
+          // "Google'a passkey kaydet" ekrani gelmez. Kimligi allowCredentials ile
+          // dogruladigimiz icin discoverable olmasi gerekmiyor.
+          residentKey: 'discouraged',
         },
         timeout: 60000,
       },
