@@ -107,7 +107,7 @@ export function Layout({ children }: LayoutProps) {
   // Kok div'de bg-background BILEREK yok: body'deki gradyan zeminin gorunmesi
   // gerekiyor, opak bir arka plan onu tamamen orterdi.
   return (
-    <div className="flex h-screen h-[100dvh] overflow-hidden text-foreground w-full max-w-full">
+    <div className="flex app-height overflow-hidden text-foreground w-full max-w-full">
       {/* Desktop Sidebar */}
       <aside className={cn(
         "hidden md:flex flex-col border-r glass-blur fixed h-full left-0 top-0 z-40 transition-[width] duration-300",

@@ -130,6 +130,16 @@
     min-height: 100dvh;
   }
 
+  /* Uygulama kok yuksekligi. dvh destekleyen tarayicilarda gercek GORUNUR
+     yuksekligi (mobil adres cubugu acilip kapandikca) birebir izler; boylece
+     alt navigasyonla arada bosluk olusmaz. Eski tarayicilar icin 100vh yedegi.
+     (Onceki 'h-screen h-[100dvh]' ikilisi kaldirildi: hangisinin kazandigi
+     belirsizdi; 100vh kazaninca yenileme sonrasi alt bosluk cikiyordu.) */
+  .app-height {
+    height: 100vh;
+    height: 100dvh;
+  }
+
   /* PROJE GENELI: hicbir sayi alaninda artirma/azaltma oklari gosterilmez;
      tutarlar elle yazilir. Alanlar sayisal kalir, yani mobilde sayi klavyesi
      acilmaya devam eder. Global kural oldugu icin sonradan eklenen
