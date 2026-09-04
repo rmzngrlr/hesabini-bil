@@ -318,17 +318,19 @@ export default function Debt() {
              </datalist>
           </div>
 
-          <div className="flex gap-2">
-             <div className="flex-1 space-y-1">
-               <label className="text-xs text-muted-foreground">Tarih</label>
-               <input
-                 type="date"
-                 value={date}
-                 onChange={(e) => setDate(e.target.value)}
-                 className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-               />
-             </div>
+          {/* Tarih kendi satirinda (Tutar bir alt satira iner). */}
+          <div className="space-y-1">
+             <label className="text-xs text-muted-foreground">Tarih</label>
+             <input
+               type="date"
+               value={date}
+               onChange={(e) => setDate(e.target.value)}
+               className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+             />
+          </div>
 
+          {/* Tutar; taksitliyken Taksit adedi ayni satirda. */}
+          <div className="flex gap-2">
              <div className="flex-1 space-y-1">
                <label className="text-xs text-muted-foreground">Tutar</label>
                <input
