@@ -1527,6 +1527,10 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     } else {
       document.documentElement.classList.remove('dark');
     }
+    // Tarayici cubugu rengi de temayla senkron kalsin (index.html ilk yuklemede,
+    // burasi in-app degistirmede).
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', theme === 'dark' ? '#020817' : '#ffffff');
   }, [theme]);
 
   // Projection Logic
