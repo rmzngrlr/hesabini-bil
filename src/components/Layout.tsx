@@ -1,11 +1,16 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, TouchEvent as ReactTouchEvent } from 'react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Wallet, CreditCard, ArrowRightLeft, Settings, Sun, Moon, LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, Wallet, CreditCard, ArrowRightLeft, Settings, Sun, Moon, LogOut, ChevronLeft, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Avatar } from './ui/Avatar';
 import { useBudget } from '../context/BudgetContext';
 import { useAuth } from '../context/AuthContext';
+import { usePrivacy } from '../context/PrivacyContext';
+
+// Deger gizlemeyi acan pull-up jesti icin esik (px). En altta bu kadar yukari
+// cekince (bosluk asilinca) birakinca tetiklenir.
+const PULL_THRESHOLD = 80;
 
 interface LayoutProps {
   children: ReactNode;
@@ -29,6 +34,37 @@ export function Layout({ children }: LayoutProps) {
   }, [location.pathname]);
   const { dueBillsCount, dueFixedExpensesCount, autoPaidBillsCount, ccDueNoticeCount, pendingIncomingGoldCount, theme, toggleTheme } = useBudget();
   const { username, logout, avatar } = useAuth();
+
+  // Deger gizleme (mobil): en altta parmagi yukari agresif cekince (pull-up)
+  // ac/kapa. Ust pull-to-refresh'in alt karsiligi. Cekildikce yukselen ipucu
+  // gosterilir; esik asilip birakilinca tetiklenir (kazara olmasin diye).
+  const { hidden: valuesHidden, toggle: togglePrivacy } = usePrivacy();
+  const [pullUp, setPullUp] = useState(0);
+  const pullAnchorY = useRef<number | null>(null);
+
+  const onScrollTouchStart = () => { pullAnchorY.current = null; };
+  const onScrollTouchMove = (e: ReactTouchEvent<HTMLDivElement>) => {
+    const el = scrollRef.current;
+    if (!el || e.touches.length !== 1) return;
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight <= 1;
+    const y = e.touches[0].clientY;
+    if (!atBottom) {
+      pullAnchorY.current = null;
+      if (pullUp !== 0) setPullUp(0);
+      return;
+    }
+    if (pullAnchorY.current === null) pullAnchorY.current = y;
+    const dy = pullAnchorY.current - y; // yukari cekis pozitif
+    setPullUp(dy > 0 ? Math.min(dy, PULL_THRESHOLD * 1.6) : 0);
+  };
+  const onScrollTouchEnd = () => {
+    if (pullUp >= PULL_THRESHOLD) {
+      togglePrivacy();
+      try { if (typeof navigator.vibrate === 'function') navigator.vibrate(15); } catch { /* yoksay */ }
+    }
+    pullAnchorY.current = null;
+    setPullUp(0);
+  };
 
   // Masaustu menu daraltma durumu (localStorage'da hatirlanir).
   const [collapsed, setCollapsed] = useState<boolean>(() => {
@@ -189,14 +225,43 @@ export function Layout({ children }: LayoutProps) {
       </button>
 
       {/* Main Content Area */}
-      <div ref={scrollRef} className={cn(
-        "flex-1 flex flex-col h-full overflow-y-auto pb-20 md:pb-0 transition-all duration-300 min-w-0",
+      <div
+        ref={scrollRef}
+        onTouchStart={onScrollTouchStart}
+        onTouchMove={onScrollTouchMove}
+        onTouchEnd={onScrollTouchEnd}
+        className={cn(
+        // Alt nav h-16 (64px) kadar bosluk + main'in 16px alt padding'i -> ~16px
+        // rahat bosluk. Onceki pb-20 (80px) + sayfa/main cift padding (32px)
+        // gereksiz fazlaydi (~48px). Sayfa kok p-4'leri kaldirildi (tekil main).
+        "flex-1 flex flex-col h-full overflow-y-auto pb-16 md:pb-0 transition-all duration-300 min-w-0",
         collapsed ? "md:pl-20" : "md:pl-64"
       )}>
         <main className="flex-1 p-4 w-full mx-auto md:p-8 md:max-w-[1450px] min-w-0">
           {children}
         </main>
       </div>
+
+      {/* Deger gizleme pull-up ipucu (mobil): en altta yukari cekince gorunur,
+          esik asilinca "Bırak" der; birakinca ac/kapa olur. */}
+      {pullUp > 0 && (
+        <div
+          className="md:hidden fixed left-0 right-0 z-40 flex justify-center pointer-events-none"
+          style={{ bottom: '4.5rem', opacity: Math.min(pullUp / PULL_THRESHOLD, 1) }}
+        >
+          <div
+            className="flex items-center gap-2 px-4 py-2 rounded-full glass-blur border border-border text-sm font-medium text-foreground shadow-lg"
+            style={{ transform: `translateY(${Math.max(0, 16 - pullUp / 5)}px)` }}
+          >
+            {valuesHidden ? <Eye size={16} /> : <EyeOff size={16} />}
+            <span>
+              {pullUp >= PULL_THRESHOLD
+                ? (valuesHidden ? 'Bırak: göster' : 'Bırak: gizle')
+                : (valuesHidden ? 'Değerleri göster' : 'Değerleri gizle')}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Mobile Bottom Navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 border-t glass-blur z-50 safe-area-pb">

@@ -218,7 +218,7 @@ export default function Debt() {
   const isFuture = viewDate > getLocalMonth();
 
   return (
-    <div id="main-form-container" className="space-y-6 p-4">
+    <div id="main-form-container" className="space-y-6">
       <header className="flex flex-col gap-4">
         <div className="flex items-center gap-2 flex-wrap min-h-[40px]">
           <h1 className="text-3xl font-extrabold tracking-tight text-primary">Kredi Kartı Borçları</h1>
