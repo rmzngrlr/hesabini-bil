@@ -33,6 +33,28 @@ export function Layout({ children }: LayoutProps) {
   useLayoutEffect(() => {
     scrollRef.current?.scrollTo(0, 0);
   }, [location.pathname]);
+
+  // Uygulama yuksekligini JS ile GERCEK gorunur alandan (visualViewport, yoksa
+  // innerHeight) olc ve --app-vh'ye yaz. CSS dvh/lvh birimleri mobil adres
+  // cubugu oynamalarinda guvenilmez oldugundan (altta bosluk) bu deger kullanilir;
+  // adres cubugu / boyut degisince (resize/scroll) guncellenir.
+  useLayoutEffect(() => {
+    const vv = window.visualViewport;
+    const setAppVh = () => {
+      const h = vv ? vv.height : window.innerHeight;
+      document.documentElement.style.setProperty('--app-vh', `${Math.round(h)}px`);
+    };
+    setAppVh();
+    window.addEventListener('resize', setAppVh);
+    vv?.addEventListener('resize', setAppVh);
+    vv?.addEventListener('scroll', setAppVh);
+    return () => {
+      window.removeEventListener('resize', setAppVh);
+      vv?.removeEventListener('resize', setAppVh);
+      vv?.removeEventListener('scroll', setAppVh);
+    };
+  }, []);
+
   const { dueBillsCount, dueFixedExpensesCount, autoPaidBillsCount, ccDueNoticeCount, pendingIncomingGoldCount, theme, toggleTheme } = useBudget();
   const { username, logout, avatar } = useAuth();
 

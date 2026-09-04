@@ -130,15 +130,13 @@
     min-height: 100dvh;
   }
 
-  /* Uygulama kok yuksekligi = ekranin EN BUYUK hali (large viewport). Boylece
-     uygulama hicbir zaman gorunur ekrandan KISA kalmaz -> alt navigasyonun
-     altinda/ustunde zemin bosluk gorunmez. (dvh denendi ama mobil adres cubugu
-     gizlenince guncellenmeyip uygulamayi kisa birakiyor, altta bosluk cikiyordu.)
-     Adres cubugu acikken en alttaki icerik gecici olarak katlanmanin altinda
-     kalabilir; kaydirinca cubuk gizlenir ve tam oturur. */
+  /* Uygulama kok yuksekligi = JS ile olculen GERCEK gorunur alan (--app-vh,
+     Layout'ta visualViewport/innerHeight ile set edilir). CSS dvh/lvh mobil
+     adres cubugu oynamalarinda guvenilmez oldugundan (altta bosluk) JS olcumu
+     kullanilir. --app-vh yazilana kadar (cok kisa) 100dvh yedegi. */
   .app-height {
-    height: 100vh;   /* yedek: eski tarayicilar (mobilde = en buyuk boy) */
-    height: 100lvh;  /* modern: acikca 'large viewport height' */
+    height: 100dvh;
+    height: var(--app-vh, 100dvh);
   }
 
   /* PROJE GENELI: hicbir sayi alaninda artirma/azaltma oklari gosterilmez;
