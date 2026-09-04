@@ -4,11 +4,13 @@ import { useAuth, getAuthToken } from '../context/AuthContext';
 import { Card } from '../components/ui/Card';
 import { Avatar } from '../components/ui/Avatar';
 import { AvatarCropModal } from '../components/AvatarCropModal';
-import { Download, Upload, CreditCard, KeyRound, AlertCircle, CheckCircle2, ArrowLeft, Camera, Trash2, CalendarClock } from 'lucide-react';
+import { Download, Upload, CreditCard, KeyRound, AlertCircle, CheckCircle2, ArrowLeft, Camera, Trash2, CalendarClock, Fingerprint } from 'lucide-react';
 import { exportToExcel, importFromExcel } from '../services/excelService';
 import { API_URL } from '../services/api';
 import { cn } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
+import { useIsMobile } from '../lib/useIsMobile';
+import { isDeviceLockEnabled, isDeviceLockSupported, registerDeviceLock, disableDeviceLock } from '../lib/deviceLock';
 
 export default function Settings() {
   const { state, loadState, showMealCard, toggleShowMealCard, showVault, toggleShowVault, askConfirmation, askInfo, statementCutoffDay, setStatementCutoffDay } = useBudget();
@@ -20,6 +22,35 @@ export default function Settings() {
   const [avatarMsg, setAvatarMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
   const [avatarLoading, setAvatarLoading] = useState(false);
   const initial = (username?.trim().charAt(0) || '?').toUpperCase();
+
+  // Mobil cihaz kilidi (biyometri) — cihaz-bazli, WebAuthn ile. Yalniz mobilde
+  // ve secure context'te (HTTPS/Tailscale) kurulabilir.
+  const isMobileDevice = useIsMobile();
+  const deviceLockSupported = isDeviceLockSupported();
+  const [deviceLockEnabled, setDeviceLockEnabled] = useState<boolean>(() => isDeviceLockEnabled());
+  const [deviceLockBusy, setDeviceLockBusy] = useState(false);
+
+  const handleToggleDeviceLock = async () => {
+    if (deviceLockBusy) return;
+    if (deviceLockEnabled) {
+      disableDeviceLock();
+      setDeviceLockEnabled(false);
+      await askInfo('Mobil cihaz kilidi kapatıldı.', 'Cihaz Kilidi');
+      return;
+    }
+    setDeviceLockBusy(true);
+    try {
+      const ok = await registerDeviceLock(username);
+      setDeviceLockEnabled(ok);
+      if (ok) {
+        await askInfo('Mobil cihaz kilidi açıldı. Bu cihazda uygulamayı her açışta parmak izi / telefon kilidi istenecek.', 'Cihaz Kilidi');
+      } else {
+        await askInfo('Cihaz kilidi kurulamadı. Cihazınızda parmak izi/yüz/PIN tanımlı olduğundan ve uygulamayı HTTPS (Tailscale ts.net) adresinden açtığınızdan emin olun.', 'Cihaz Kilidi');
+      }
+    } finally {
+      setDeviceLockBusy(false);
+    }
+  };
   const [securityQuestion, setSecurityQuestion] = useState('');
   const [securityAnswer, setSecurityAnswer] = useState('');
   const [secError, setSecError] = useState('');
@@ -385,6 +416,34 @@ export default function Settings() {
                       onChange={toggleShowVault}
                   />
                   <div className="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+              </label>
+          </div>
+
+          <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-full bg-blue-500/10 text-blue-500">
+                      <Fingerprint size={20} />
+                  </div>
+                  <div>
+                      <div className="font-medium">Mobil Cihaz Kilidi</div>
+                      <div className="text-xs text-muted-foreground">
+                        {!isMobileDevice
+                          ? 'Yalnız mobilde çalışır; kurulum için uygulamayı telefonda Tailscale (ts.net) adresinden açın.'
+                          : !deviceLockSupported
+                          ? 'Parmak izi için HTTPS gerekli — uygulamayı Tailscale (ts.net) adresinden açın.'
+                          : 'Uygulamayı açarken parmak izi / telefon kilidi iste (yalnız bu cihaz).'}
+                      </div>
+                  </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={deviceLockEnabled}
+                      onChange={handleToggleDeviceLock}
+                      disabled={!isMobileDevice || !deviceLockSupported || deviceLockBusy}
+                  />
+                  <div className="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary peer-disabled:opacity-40 peer-disabled:cursor-not-allowed"></div>
               </label>
           </div>
         </div>

@@ -11,6 +11,8 @@ import ForgotPassword from './pages/ForgotPassword';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { BudgetProvider } from './context/BudgetContext';
 import { SearchProvider } from './context/SearchContext';
+import { PrivacyProvider } from './context/PrivacyContext';
+import { DeviceLockGate } from './components/DeviceLockGate';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -24,11 +26,15 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   return (
-    <BudgetProvider>
-      <SearchProvider>
-        <Layout>{children}</Layout>
-      </SearchProvider>
-    </BudgetProvider>
+    <DeviceLockGate>
+      <BudgetProvider>
+        <SearchProvider>
+          <PrivacyProvider>
+            <Layout>{children}</Layout>
+          </PrivacyProvider>
+        </SearchProvider>
+      </BudgetProvider>
+    </DeviceLockGate>
   );
 };
 

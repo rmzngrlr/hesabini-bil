@@ -3,6 +3,8 @@ import { ChevronDown, ChevronUp, Utensils, CreditCard, Check, X, Gift } from 'lu
 import { SwipeNavCard } from '../components/SwipeNavCard';
 import { MobileProfileMenu } from '../components/MobileProfileMenu';
 import { SearchTrigger } from '../components/SearchTrigger';
+import { PrivacyTrigger } from '../components/PrivacyTrigger';
+import { Secret } from '../components/Secret';
 import { MonthNavigator } from '../components/MonthNavigator';
 import { useBudget } from '../context/BudgetContext';
 import { isDebtPending } from '../lib/utils';
@@ -126,7 +128,7 @@ function CurrencyAssetCard({ fullTitle, isoCode, symbol, value, colors }: {
         <span className="block truncate" aria-label={canReveal ? fullTitle : undefined}>{canReveal ? isoCode : fullTitle}</span>
       </h3>
       <div className={`text-2xl font-bold mt-2 ${value < 0 ? 'text-red-500' : colors.value}`}>
-        {value.toLocaleString('tr-TR')}{symbol}
+        <Secret>{value.toLocaleString('tr-TR')}{symbol}</Secret>
       </div>
       {/* Tam ad tooltip: kartın ÜSTÜNDE, aşağı bakan ok ile */}
       {open && canReveal && (
@@ -565,6 +567,7 @@ export default function Dashboard() {
           <div className="flex items-center gap-1">
             {/* Masaustu: sag ustte arama. Mobil: arama profil menusunde (Ayarlar'in yaninda). */}
             <SearchTrigger className="hidden md:flex" />
+            <PrivacyTrigger className="hidden md:flex" />
             {/* Mobilde profil menusu (avatar akordiyonu); masaustunde sol menude. */}
             <div className="md:hidden">
               <MobileProfileMenu />
@@ -587,14 +590,14 @@ export default function Dashboard() {
         <Card title={isFuture ? "Tahmini Kalan Türk Lirası" : "Kalan Türk Lirası"} className="bg-gradient-to-br from-transparent to-secondary/20 h-full">
 
            <div className={`text-3xl font-bold mt-2 ${remainingCash < 0 ? 'text-red-500' : 'text-foreground'}`}>
-             {remainingCash.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}
+             <Secret>{remainingCash.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}</Secret>
            </div>
            <div className="text-xs text-muted-foreground mt-1">
-             Toplam: {totalCashResources.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}
+             Toplam: <Secret>{totalCashResources.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}</Secret>
            </div>
            {isCurrentMonth && (
              <div className="text-xs text-muted-foreground mt-1">
-               Kalan {daysLeftInMonth} gün · günde ~<span className={`font-semibold ${dailyAvgCash < 0 ? 'text-red-500' : 'text-foreground'}`}>{truncTo2(dailyAvgCash).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/\s|\u00A0/g, '')}</span>
+               Kalan {daysLeftInMonth} gün · günde ~<span className={`font-semibold ${dailyAvgCash < 0 ? 'text-red-500' : 'text-foreground'}`}><Secret>{truncTo2(dailyAvgCash).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/\s|\u00A0/g, '')}</Secret></span>
              </div>
            )}
         </Card>
@@ -604,14 +607,14 @@ export default function Dashboard() {
             <SwipeNavCard to="/islemler" beforeNavigate={() => sessionStorage.setItem('daily_draft_tab', JSON.stringify('YK'))} icon={<Utensils size={24} />} revealClassName="text-orange-600 dark:text-orange-500">
             <Card title="Kalan Yemek Kartı" className="bg-gradient-to-br from-transparent to-orange-500/15 border-orange-500/30 h-full">
             <div className="text-3xl font-bold text-orange-600 mt-2">
-                {finalRemainingYk.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}
+                <Secret>{finalRemainingYk.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}</Secret>
             </div>
             <div className="text-xs text-muted-foreground mt-1">
-                Toplam: {totalYkResources.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}
+                Toplam: <Secret>{totalYkResources.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}</Secret>
             </div>
             {isCurrentMonth && (
               <div className="text-xs text-muted-foreground mt-1">
-                Kalan {daysLeftInMonth} gün · günde ~<span className={`font-semibold ${dailyAvgYk < 0 ? 'text-red-500' : 'text-orange-600'}`}>{truncTo2(dailyAvgYk).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/\s|\u00A0/g, '')}</span>
+                Kalan {daysLeftInMonth} gün · günde ~<span className={`font-semibold ${dailyAvgYk < 0 ? 'text-red-500' : 'text-orange-600'}`}><Secret>{truncTo2(dailyAvgYk).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/\s|\u00A0/g, '')}</Secret></span>
               </div>
             )}
             </Card>
@@ -621,7 +624,7 @@ export default function Dashboard() {
         <SwipeNavCard to="/borc" icon={<CreditCard size={24} />} revealClassName="text-red-500">
         <Card title={isFuture ? "Tahmini Kredi Kartı Ödemesi" : "Toplam Kredi Kartı Borcu"} className="bg-gradient-to-br from-transparent to-red-500/10 border-red-500/25 h-full">
            <div className="text-3xl font-bold text-red-500 mt-2">
-             {totalCCDebt.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}
+             <Secret>{totalCCDebt.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}</Secret>
            </div>
            {isFuture && <div className="text-xs text-muted-foreground mt-1">Bu ay ödenecek taksitler</div>}
         </Card>
@@ -641,7 +644,7 @@ export default function Dashboard() {
               {incomingPending.map(r => (
                 <div key={r.id} className="flex items-center justify-between gap-3 flex-wrap">
                   <div className="text-sm">
-                    <span className="font-semibold">{Number(r.amount).toLocaleString('tr-TR')} {getAssetSymbol(r.gold_type)}</span>
+                    <span className="font-semibold"><Secret>{Number(r.amount).toLocaleString('tr-TR')} {getAssetSymbol(r.gold_type)}</Secret></span>
                     <span className="text-muted-foreground"> {getAssetFullTitle(r.gold_type)} — {r.creator_username} ekledi</span>
                   </div>
                   <div className="flex gap-2 shrink-0">
@@ -669,7 +672,7 @@ export default function Dashboard() {
                 return (
                   <div key={r.id} className="flex items-center justify-between gap-3 text-sm flex-wrap">
                     <div>
-                      <span className="font-semibold">{Number(r.amount).toLocaleString('tr-TR')} {getAssetSymbol(r.gold_type)}</span>
+                      <span className="font-semibold"><Secret>{Number(r.amount).toLocaleString('tr-TR')} {getAssetSymbol(r.gold_type)}</Secret></span>
                       <span className="text-muted-foreground"> {getAssetFullTitle(r.gold_type)} → {r.owner_username}</span>
                     </div>
                     <span className={`text-xs font-medium shrink-0 ${st.cls}`}>{st.label}</span>
@@ -765,7 +768,7 @@ export default function Dashboard() {
                   return (
                     <Card key={asset} title={getAssetFullTitle(asset)} className="bg-gradient-to-br from-transparent to-yellow-500/12 border-yellow-500/30">
                       <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-500 mt-2">
-                        {value.toLocaleString('tr-TR')} {getAssetSymbol(asset)}
+                        <Secret>{value.toLocaleString('tr-TR')} {getAssetSymbol(asset)}</Secret>
                       </div>
                     </Card>
                   );
@@ -794,7 +797,7 @@ export default function Dashboard() {
         {/* Progress Bar Section */}
         <div className={pieData.length > 0 ? "border-b border-border pb-6" : ""}>
             <div className="flex justify-between items-center text-sm mb-2">
-               <span className="text-muted-foreground">{spendingLabel}: {totalCashSpent.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}</span>
+               <span className="text-muted-foreground">{spendingLabel}: <Secret>{totalCashSpent.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}</Secret></span>
                <span className="font-medium text-foreground">{(100 - usagePercentage).toFixed(1)}% Kalan</span>
             </div>
             <ProgressBar value={totalCashSpent} max={totalCashResources || 1} />
@@ -840,13 +843,13 @@ export default function Dashboard() {
                             {activeSlice ? (
                                 <>
                                     <span className="text-xs leading-snug" style={{ color: activeSlice.color }}>{activeSlice.name}</span>
-                                    <span className="mt-1 text-xl font-semibold leading-tight text-foreground">{activeSliceValueStr}</span>
+                                    <span className="mt-1 text-xl font-semibold leading-tight text-foreground"><Secret>{activeSliceValueStr}</Secret></span>
                                     <span className="text-sm font-semibold leading-tight" style={{ color: activeSlice.color }}>%{activeSlicePct}</span>
                                 </>
                             ) : (
                                 <>
                                     <span className="text-xs leading-tight text-muted-foreground">Toplam Bütçe</span>
-                                    <span className="text-xl font-semibold leading-tight text-foreground">{centerTotalStr}</span>
+                                    <span className="text-xl font-semibold leading-tight text-foreground"><Secret>{centerTotalStr}</Secret></span>
                                     <span className="text-sm font-semibold leading-tight" style={{ color: remainColor }}>{remainStr}</span>
                                 </>
                             )}

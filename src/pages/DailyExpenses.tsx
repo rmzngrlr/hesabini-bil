@@ -11,6 +11,8 @@ import { tr } from 'date-fns/locale';
 import { cn, scrollToElement, scrollToSearchKey, getTodayStr } from '../lib/utils';
 import { searchKeyFor } from '../lib/search';
 import { SearchTrigger } from '../components/SearchTrigger';
+import { PrivacyTrigger } from '../components/PrivacyTrigger';
+import { Secret } from '../components/Secret';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 const billColors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f43f5e', '#06b6d4'];
@@ -1488,6 +1490,7 @@ export default function DailyExpenses() {
           <h1 className="text-3xl font-extrabold tracking-tight text-primary">İşlem Tutanağı</h1>
           {isFuture && <span className="text-xs bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded">Planlama Modu</span>}
           <SearchTrigger className="hidden md:flex ml-auto" />
+          <PrivacyTrigger className="hidden md:flex" />
         </div>
         <MonthNavigator />
       </header>
@@ -1949,12 +1952,12 @@ export default function DailyExpenses() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Card title={`${isGoldType(activeTab) ? 'Toplam Birikim' : 'Bu Ay Harcanan'} (${getAssetFullTitle(activeTab)})`} className={`${isGoldType(activeTab) ? 'bg-yellow-500/5 border-yellow-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
               <div className={`text-2xl font-bold mt-2 ${isGoldType(activeTab) ? 'text-yellow-600 dark:text-yellow-500' : 'text-red-500'}`}>
-                 {isGoldType(activeTab) ? goldTotalBirikim.toLocaleString('tr-TR') : currentMonthSpent.toLocaleString('tr-TR')}{isGoldType(activeTab) ? ' ' : ''}{getAssetUnitLabel(activeTab)}
+                 <Secret>{isGoldType(activeTab) ? goldTotalBirikim.toLocaleString('tr-TR') : currentMonthSpent.toLocaleString('tr-TR')}{isGoldType(activeTab) ? ' ' : ''}{getAssetUnitLabel(activeTab)}</Secret>
               </div>
             </Card>
             <Card title={`Bu Ayki Gelir / Giriş (${getAssetFullTitle(activeTab)})`} className="bg-gradient-to-br from-transparent to-green-500/12 border-green-500/30">
               <div className="text-2xl font-bold text-green-500 mt-2">
-                 {isGoldType(activeTab) ? goldMonthIncome.toLocaleString('tr-TR') : currentMonthIncome.toLocaleString('tr-TR')}{isGoldType(activeTab) ? ' ' : ''}{getAssetUnitLabel(activeTab)}
+                 <Secret>{isGoldType(activeTab) ? goldMonthIncome.toLocaleString('tr-TR') : currentMonthIncome.toLocaleString('tr-TR')}{isGoldType(activeTab) ? ' ' : ''}{getAssetUnitLabel(activeTab)}</Secret>
               </div>
             </Card>
         </div>
@@ -1979,7 +1982,7 @@ export default function DailyExpenses() {
                         <CreditCard size={18} />
                       </div>
                       <div className="text-sm text-foreground min-w-0 leading-relaxed">
-                        <span className="font-semibold">{bill.amount.toLocaleString('tr-TR')} ₺</span> tutarındaki <span className="font-semibold">{bill.title}</span> faturanız <span className="font-semibold">{dateText}</span> kredi kartınızla ödendi.
+                        <span className="font-semibold"><Secret>{bill.amount.toLocaleString('tr-TR')} ₺</Secret></span> tutarındaki <span className="font-semibold">{bill.title}</span> faturanız <span className="font-semibold">{dateText}</span> kredi kartınızla ödendi.
                       </div>
                     </div>
                     <button
@@ -2000,7 +2003,7 @@ export default function DailyExpenses() {
             <div className="bg-secondary/40 border border-border/60 p-4 rounded-xl shadow-sm">
               <div className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Toplam Fatura</div>
               <div className="text-2xl font-black text-foreground mt-1">
-                {totalBillsAmount.toLocaleString('tr-TR')} ₺
+                <Secret>{totalBillsAmount.toLocaleString('tr-TR')} ₺</Secret>
               </div>
               <div className="text-xs text-muted-foreground mt-1">
                 {currentMonthBills.length} adet fatura planı
@@ -2010,7 +2013,7 @@ export default function DailyExpenses() {
             <div className="bg-green-500/5 border border-green-500/10 p-4 rounded-xl shadow-sm">
               <div className="text-xs text-green-500/80 font-semibold uppercase tracking-wider">Ödenen Faturalar</div>
               <div className="text-2xl font-black text-green-500 mt-1">
-                {paidBillsAmount.toLocaleString('tr-TR')} ₺
+                <Secret>{paidBillsAmount.toLocaleString('tr-TR')} ₺</Secret>
               </div>
               <div className="text-xs text-green-600 dark:text-green-400 mt-1">
                 {currentMonthBills.filter(e => e.isPaid).length} adet ödendi
@@ -2020,7 +2023,7 @@ export default function DailyExpenses() {
             <div className="bg-red-500/5 border border-red-500/10 p-4 rounded-xl shadow-sm">
               <div className="text-xs text-red-500/80 font-semibold uppercase tracking-wider">Kalan / Ödenmeyen</div>
               <div className="text-2xl font-black text-red-500 mt-1">
-                {unpaidBillsAmount.toLocaleString('tr-TR')} ₺
+                <Secret>{unpaidBillsAmount.toLocaleString('tr-TR')} ₺</Secret>
               </div>
               <div className="text-xs text-red-600 dark:text-red-400 mt-1">
                 {currentMonthBills.filter(e => !e.isPaid).length} adet ödenmedi
@@ -2058,7 +2061,7 @@ export default function DailyExpenses() {
                       style={{ backgroundColor: billColors[index % billColors.length] }}
                     />
                     <span className="text-foreground">{bill.title}</span>
-                    <span className="text-muted-foreground">({bill.amount.toLocaleString('tr-TR')} ₺)</span>
+                    <span className="text-muted-foreground">(<Secret>{bill.amount.toLocaleString('tr-TR')} ₺</Secret>)</span>
                   </div>
                 ))}
               </div>
@@ -2080,7 +2083,7 @@ export default function DailyExpenses() {
                       {format(new Date(date), 'd MMMM yyyy, EEEE', { locale: tr })}
                     </h3>
                     <span className="text-sm font-bold text-muted-foreground">
-                      {dailyTotal.toLocaleString('tr-TR')} ₺
+                      <Secret>{dailyTotal.toLocaleString('tr-TR')} ₺</Secret>
                     </span>
                   </div>
 
@@ -2123,7 +2126,7 @@ export default function DailyExpenses() {
                             )}
                           </div>
                           <div className="text-sm text-muted-foreground whitespace-nowrap mt-0.5">
-                            <span className="font-semibold text-foreground/95">{bill.amount.toLocaleString('tr-TR')} ₺</span>
+                            <span className="font-semibold text-foreground/95"><Secret>{bill.amount.toLocaleString('tr-TR')} ₺</Secret></span>
                           </div>
                         </div>
                       </button>
@@ -2159,7 +2162,7 @@ export default function DailyExpenses() {
                 <div className="flex justify-between items-center ml-1 pr-1">
                   <h3 className="text-sm font-medium text-muted-foreground">Tarihsiz Faturalar</h3>
                   <span className="text-sm font-bold text-muted-foreground">
-                    {groupedBills.noDateGroup.reduce((sum, item) => sum + item.amount, 0).toLocaleString('tr-TR')} ₺
+                    <Secret>{groupedBills.noDateGroup.reduce((sum, item) => sum + item.amount, 0).toLocaleString('tr-TR')} ₺</Secret>
                   </span>
                 </div>
 
@@ -2197,7 +2200,7 @@ export default function DailyExpenses() {
                           )}
                         </div>
                         <div className="text-sm text-muted-foreground whitespace-nowrap mt-0.5">
-                          <span className="font-semibold text-foreground/95">{bill.amount.toLocaleString('tr-TR')} ₺</span>
+                          <span className="font-semibold text-foreground/95"><Secret>{bill.amount.toLocaleString('tr-TR')} ₺</Secret></span>
                         </div>
                       </div>
                     </button>
@@ -2268,7 +2271,7 @@ export default function DailyExpenses() {
                     {format(new Date(date), 'd MMMM yyyy, EEEE', { locale: tr })}
                   </h3>
                   <span className={`text-sm font-bold ${dailyTotal >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                     {dailyTotal > 0 ? '+' : ''}{dailyTotal.toLocaleString('tr-TR')}{isGoldType(activeTab) ? ' ' : ''}{getAssetUnitLabel(activeTab)}
+                     <Secret>{dailyTotal > 0 ? '+' : ''}{dailyTotal.toLocaleString('tr-TR')}{isGoldType(activeTab) ? ' ' : ''}{getAssetUnitLabel(activeTab)}</Secret>
                   </span>
                 </div>
                 {groupedExpenses[date].map((expense) => {
@@ -2287,7 +2290,7 @@ export default function DailyExpenses() {
                     <div className="text-right">
                         <div className={`font-bold whitespace-nowrap ${expense.amount > 0 ? 'text-green-500' : 'text-red-500'}`}>
                           {expense.amount > 0 ? '+' : ''}
-                          {expense.amount.toLocaleString('tr-TR')}{isGoldType(expense.type) ? ' ' : ''}{getAssetUnitLabel(expense.type)}
+                          <Secret>{expense.amount.toLocaleString('tr-TR')}{isGoldType(expense.type) ? ' ' : ''}{getAssetUnitLabel(expense.type)}</Secret>
                         </div>
                         <div className="flex justify-end gap-3 mt-1">
                           <button

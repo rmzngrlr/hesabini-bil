@@ -8,6 +8,8 @@ import { MonthNavigator } from '../components/MonthNavigator';
 import { cn, scrollToElement, scrollToSearchKey } from '../lib/utils';
 import { searchKeyFor } from '../lib/search';
 import { SearchTrigger } from '../components/SearchTrigger';
+import { PrivacyTrigger } from '../components/PrivacyTrigger';
+import { Secret } from '../components/Secret';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { FixedExpense, CustomIncome } from '../types';
 import { VaultSection } from '../components/VaultSection';
@@ -228,6 +230,7 @@ export default function FixedExpenses() {
         <div className="flex items-center gap-2 flex-wrap min-h-[40px]">
           <h1 className="text-3xl font-extrabold tracking-tight text-primary">Varlıklarım</h1>
           <SearchTrigger className="hidden md:flex ml-auto" />
+          <PrivacyTrigger className="hidden md:flex" />
         </div>
         <MonthNavigator />
       </header>
@@ -358,7 +361,7 @@ export default function FixedExpenses() {
               <span className="font-medium break-words min-w-0">{income.title}</span>
               <div className="flex items-center gap-3 shrink-0">
                 <span className="font-bold text-green-500">
-                  +{income.amount.toLocaleString('tr-TR')}{income.type && isGoldType(income.type) ? ' ' : ''}{income.type === 'NAKIT' || !income.type ? '₺' : income.type}
+                  +<Secret>{income.amount.toLocaleString('tr-TR')}{income.type && isGoldType(income.type) ? ' ' : ''}{income.type === 'NAKIT' || !income.type ? '₺' : income.type}</Secret>
                 </span>
                 <button
                   onClick={() => handleEditIncome(income)}
@@ -427,7 +430,7 @@ export default function FixedExpenses() {
                     "font-bold text-lg",
                     allowancePending ? "text-muted-foreground" : "text-emerald-600 dark:text-emerald-500"
                   )}>
-                    {formatTL(previewTotal)}
+                    <Secret>{formatTL(previewTotal)}</Secret>
                   </span>
                   <div className="text-xs mt-0.5">{daysInMonth(viewDate)} gün × günlük tutar</div>
                   {allowancePending && (
@@ -471,11 +474,11 @@ export default function FixedExpenses() {
                   <div className="flex justify-between items-end">
                     <div>
                       <div className="text-xs text-muted-foreground">Toplam Gider</div>
-                      <div className="text-lg font-bold whitespace-nowrap">{total.toLocaleString('tr-TR')}{isGoldType(curr) ? ' ' : ''}{curr === 'NAKIT' ? '₺' : curr}</div>
+                      <div className="text-lg font-bold whitespace-nowrap"><Secret>{total.toLocaleString('tr-TR')}{isGoldType(curr) ? ' ' : ''}{curr === 'NAKIT' ? '₺' : curr}</Secret></div>
                     </div>
                     <div className="text-right">
                       <div className="text-xs text-muted-foreground">Ödenen</div>
-                      <div className="text-md font-bold text-green-500 whitespace-nowrap">{paid.toLocaleString('tr-TR')}{isGoldType(curr) ? ' ' : ''}{curr === 'NAKIT' ? '₺' : curr}</div>
+                      <div className="text-md font-bold text-green-500 whitespace-nowrap"><Secret>{paid.toLocaleString('tr-TR')}{isGoldType(curr) ? ' ' : ''}{curr === 'NAKIT' ? '₺' : curr}</Secret></div>
                     </div>
                   </div>
                 </div>
@@ -559,7 +562,7 @@ export default function FixedExpenses() {
                 <div className="text-left min-w-0 flex-1">
                   <span className="font-medium truncate block">{expense.title}</span>
                   <div className="text-sm text-muted-foreground whitespace-nowrap mt-0.5">
-                    {expense.amount.toLocaleString('tr-TR')} ₺
+                    <Secret>{expense.amount.toLocaleString('tr-TR')} ₺</Secret>
                   </div>
                 </div>
               </div>
@@ -576,7 +579,7 @@ export default function FixedExpenses() {
                 <div className="text-left min-w-0 flex-1">
                   <span className={cn("font-medium truncate block", expense.isPaid && "line-through")}>{expense.title}</span>
                   <div className="text-sm text-muted-foreground whitespace-nowrap mt-0.5">
-                    {expense.amount.toLocaleString('tr-TR')}{expense.type && isGoldType(expense.type) ? ' ' : ''}{expense.type === 'NAKIT' || !expense.type ? '₺' : expense.type}
+                    <Secret>{expense.amount.toLocaleString('tr-TR')}{expense.type && isGoldType(expense.type) ? ' ' : ''}{expense.type === 'NAKIT' || !expense.type ? '₺' : expense.type}</Secret>
                   </div>
                 </div>
               </button>

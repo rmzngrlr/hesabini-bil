@@ -7,6 +7,8 @@ import { Plus, Trash2, CalendarClock, CreditCard, Pencil, X } from 'lucide-react
 import { cn, scrollToElement, scrollToSearchKey, getTodayStr, isDebtPending, statementMonth } from '../lib/utils';
 import { searchKeyFor } from '../lib/search';
 import { SearchTrigger } from '../components/SearchTrigger';
+import { PrivacyTrigger } from '../components/PrivacyTrigger';
+import { Secret } from '../components/Secret';
 import { MonthNavigator } from '../components/MonthNavigator';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
@@ -222,6 +224,7 @@ export default function Debt() {
           <h1 className="text-3xl font-extrabold tracking-tight text-primary">Kredi Kartı Borçları</h1>
           {isFuture && <span className="text-xs bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded">Planlama Modu</span>}
           <SearchTrigger className="hidden md:flex ml-auto" />
+          <PrivacyTrigger className="hidden md:flex" />
         </div>
         <MonthNavigator />
       </header>
@@ -246,7 +249,7 @@ export default function Debt() {
                     <CreditCard size={18} />
                   </div>
                   <div className="text-sm text-foreground min-w-0 leading-relaxed">
-                    <span className="font-semibold">{Math.abs(debt.amount).toLocaleString('tr-TR')} ₺</span> tutarındaki <span className="font-semibold">{debt.description}</span> harcamanız <span className="font-semibold">{dateText}</span> kredi kartı ekstrenize eklendi.
+                    <span className="font-semibold"><Secret>{Math.abs(debt.amount).toLocaleString('tr-TR')} ₺</Secret></span> tutarındaki <span className="font-semibold">{debt.description}</span> harcamanız <span className="font-semibold">{dateText}</span> kredi kartı ekstrenize eklendi.
                   </div>
                 </div>
                 <button
@@ -264,7 +267,7 @@ export default function Debt() {
 
       <Card title="Bu Ay Ödenecek Toplam Kredi Kartı Borcu" className="bg-gradient-to-br from-transparent to-red-500/12 border-red-500/25">
         <div className="text-3xl font-bold text-red-500 mt-2">
-          {totalDebt.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}
+          <Secret>{totalDebt.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}</Secret>
         </div>
         {pendingCount > 0 && (
           <div className="text-xs text-muted-foreground mt-1">
@@ -409,12 +412,12 @@ export default function Debt() {
                        <div>
                          <div className="font-medium">{inst.description}</div>
                          <div className="text-xs text-muted-foreground">
-                           Toplam: {Math.abs(inst.totalAmount).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}
+                           Toplam: <Secret>{Math.abs(inst.totalAmount).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}</Secret>
                          </div>
                        </div>
                        <div className="text-right">
                          <div className="font-bold text-red-500">
-                           {Math.abs(inst.monthlyAmount).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}/ay
+                           <Secret>{Math.abs(inst.monthlyAmount).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}</Secret>/ay
                          </div>
                          <div className="flex items-center justify-end gap-2 mt-1">
                             <div className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
@@ -475,7 +478,7 @@ export default function Debt() {
                 </h3>
                 <span className={cn("text-sm font-bold", dailyTotal >= 0 ? "text-green-500" : "text-red-500")}>
                   {dailyTotal > 0 ? '+' : ''}
-                  {dailyTotal.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}
+                  <Secret>{dailyTotal.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}</Secret>
                 </span>
               </div>
 
@@ -493,7 +496,7 @@ export default function Debt() {
                   <div className="text-right">
                     <div className={cn("font-bold whitespace-nowrap", debt.amount > 0 ? "text-green-500" : "text-red-500")}>
                       {debt.amount > 0 ? '+' : ''}
-                      {debt.amount.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}
+                      <Secret>{debt.amount.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}</Secret>
                     </div>
                     <div className="flex justify-end gap-3 mt-1">
                       <button
@@ -525,7 +528,7 @@ export default function Debt() {
                 groupedDebts.noDateGroup.reduce((sum, item) => sum + item.amount, 0) >= 0 ? "text-green-500" : "text-red-500"
               )}>
                 {groupedDebts.noDateGroup.reduce((sum, item) => sum + item.amount, 0) > 0 ? '+' : ''}
-                {groupedDebts.noDateGroup.reduce((sum, item) => sum + item.amount, 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}
+                <Secret>{groupedDebts.noDateGroup.reduce((sum, item) => sum + item.amount, 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}</Secret>
               </span>
             </div>
 
@@ -543,7 +546,7 @@ export default function Debt() {
                 <div className="text-right">
                   <div className={cn("font-bold whitespace-nowrap", debt.amount > 0 ? "text-green-500" : "text-red-500")}>
                     {debt.amount > 0 ? '+' : ''}
-                    {debt.amount.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}
+                    <Secret>{debt.amount.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}</Secret>
                   </div>
                   <div className="flex justify-end gap-3 mt-1">
                     <button
