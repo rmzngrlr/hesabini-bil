@@ -11,6 +11,7 @@ import { cn } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '../lib/useIsMobile';
 import { isDeviceLockEnabled, isDeviceLockSupported, registerDeviceLock, disableDeviceLock, getRelockMinutes, setRelockMinutes } from '../lib/deviceLock';
+import { isPinEnabled, setPin as savePin, disablePin } from '../lib/pinLock';
 
 export default function Settings() {
   const { state, loadState, showMealCard, toggleShowMealCard, showVault, toggleShowVault, askConfirmation, askInfo, statementCutoffDay, setStatementCutoffDay } = useBudget();
@@ -57,6 +58,55 @@ export default function Settings() {
       setDeviceLockBusy(false);
     }
   };
+
+  // Uygulamaya ozel PIN kilidi (cihaz-bazli; biyometriden bagimsiz, HTTP'de de
+  // calisir). Kilit ekrani uygulamanin kendi temasinda.
+  const [pinEnabled, setPinEnabledState] = useState<boolean>(() => isPinEnabled());
+  const [pinFormOpen, setPinFormOpen] = useState(false);
+  const [pinValue, setPinValue] = useState('');
+  const [pinConfirm, setPinConfirm] = useState('');
+  const [pinBusy, setPinBusy] = useState(false);
+
+  const closePinForm = () => {
+    setPinFormOpen(false);
+    setPinValue('');
+    setPinConfirm('');
+  };
+
+  const handleSavePin = async () => {
+    if (pinBusy) return;
+    if (!/^\d{4,6}$/.test(pinValue)) {
+      await askInfo("PIN 4-6 haneli rakamlardan oluşmalı.", "Uygulama PIN'i");
+      return;
+    }
+    if (pinValue !== pinConfirm) {
+      await askInfo("Girdiğiniz iki PIN eşleşmiyor.", "Uygulama PIN'i");
+      return;
+    }
+    setPinBusy(true);
+    try {
+      const ok = await savePin(pinValue);
+      if (ok) {
+        setPinEnabledState(true);
+        closePinForm();
+        await askInfo("Uygulama PIN'i ayarlandı. Bu cihazda uygulamayı açarken PIN istenecek.", "Uygulama PIN'i");
+      } else {
+        await askInfo("PIN kaydedilemedi. Tekrar deneyin.", "Uygulama PIN'i");
+      }
+    } finally {
+      setPinBusy(false);
+    }
+  };
+
+  const handleRemovePin = async () => {
+    const ok = await askConfirmation("Uygulama PIN'i kaldırılsın mı?", "PIN'i Kaldır");
+    if (!ok) return;
+    disablePin();
+    setPinEnabledState(false);
+    closePinForm();
+    await askInfo("Uygulama PIN'i kaldırıldı.", "Uygulama PIN'i");
+  };
+
   const [securityQuestion, setSecurityQuestion] = useState('');
   const [securityAnswer, setSecurityAnswer] = useState('');
   const [secError, setSecError] = useState('');
@@ -425,36 +475,93 @@ export default function Settings() {
               </label>
           </div>
 
+          {/* Uygulama PIN'i — mobil kilit; biyometriden bagimsiz, HTTP'de de calisir. */}
+          <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                  <div className="p-2 rounded-full bg-blue-500/10 text-blue-500 shrink-0">
+                      <KeyRound size={20} />
+                  </div>
+                  <div className="min-w-0">
+                      <div className="font-medium">Uygulama PIN'i</div>
+                      <div className="text-xs text-muted-foreground">
+                        {!isMobileDevice
+                          ? "Yalnız mobilde çalışır; PIN'i telefonda ayarlayın."
+                          : pinEnabled
+                          ? 'PIN kurulu. Uygulamayı açarken kendi temanızda PIN sorulur.'
+                          : 'Kendi temanızda 4-6 haneli PIN ile kilitle (Google/OS ekranı yok).'}
+                      </div>
+                  </div>
+              </div>
+              <div className="shrink-0">
+                {pinEnabled ? (
+                  <button
+                    type="button"
+                    onClick={handleRemovePin}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium text-red-500 bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 transition-colors"
+                  >
+                    Kaldır
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setPinFormOpen(v => !v)}
+                    disabled={!isMobileDevice}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-secondary text-foreground hover:bg-secondary/70 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {pinFormOpen ? 'Vazgeç' : 'Belirle'}
+                  </button>
+                )}
+              </div>
+          </div>
+
+          {pinFormOpen && !pinEnabled && (
+            <div className="flex flex-col gap-2 pl-11">
+              <input
+                type="password"
+                inputMode="numeric"
+                autoComplete="new-password"
+                maxLength={6}
+                placeholder="PIN (4-6 hane)"
+                value={pinValue}
+                onChange={(e) => setPinValue(e.target.value.replace(/\D/g, ''))}
+                className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <input
+                type="password"
+                inputMode="numeric"
+                autoComplete="new-password"
+                maxLength={6}
+                placeholder="PIN (tekrar)"
+                value={pinConfirm}
+                onChange={(e) => setPinConfirm(e.target.value.replace(/\D/g, ''))}
+                className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <button
+                type="button"
+                onClick={handleSavePin}
+                disabled={pinBusy}
+                className="self-start px-4 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground disabled:opacity-60"
+              >
+                {pinBusy ? 'Kaydediliyor…' : 'Kaydet'}
+              </button>
+            </div>
+          )}
+
+          {/* Parmak izi ile aç — biyometri; Tailscale HTTPS gerektirir. */}
           <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                   <div className="p-2 rounded-full bg-blue-500/10 text-blue-500">
                       <Fingerprint size={20} />
                   </div>
                   <div>
-                      <div className="font-medium">Mobil Cihaz Kilidi</div>
+                      <div className="font-medium">Parmak izi ile aç</div>
                       <div className="text-xs text-muted-foreground">
                         {!isMobileDevice
-                          ? 'Yalnız mobilde çalışır; kurulum için uygulamayı telefonda Tailscale (ts.net) adresinden açın.'
+                          ? 'Yalnız mobilde çalışır; uygulamayı telefonda Tailscale (ts.net) adresinden açın.'
                           : !deviceLockSupported
                           ? 'Parmak izi için HTTPS gerekli — uygulamayı Tailscale (ts.net) adresinden açın.'
-                          : 'Uygulamayı açarken parmak izi / telefon kilidi iste (yalnız bu cihaz).'}
+                          : 'Kilit ekranında parmak izi / telefon kilidiyle de aç (yalnız bu cihaz).'}
                       </div>
-                      {deviceLockEnabled && (
-                        <div className="mt-2 flex items-center gap-2 flex-wrap">
-                          <span className="text-xs text-muted-foreground">Arka planda kilitle:</span>
-                          <select
-                            value={relockMinutes}
-                            onChange={(e) => handleRelockChange(Number(e.target.value))}
-                            className="px-2 py-1 rounded-lg bg-secondary text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary"
-                          >
-                            <option value={-1}>Kapalı (yalnız açılışta)</option>
-                            <option value={0}>Hemen</option>
-                            <option value={1}>1 dakika sonra</option>
-                            <option value={5}>5 dakika sonra</option>
-                            <option value={15}>15 dakika sonra</option>
-                          </select>
-                        </div>
-                      )}
                   </div>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
@@ -468,6 +575,24 @@ export default function Settings() {
                   <div className="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary peer-disabled:opacity-40 peer-disabled:cursor-not-allowed"></div>
               </label>
           </div>
+
+          {/* Arka planda kilitle suresi — PIN veya parmak izi kuruluysa. */}
+          {(pinEnabled || deviceLockEnabled) && (
+            <div className="flex items-center gap-2 flex-wrap pl-11">
+              <span className="text-xs text-muted-foreground">Arka planda kilitle:</span>
+              <select
+                value={relockMinutes}
+                onChange={(e) => handleRelockChange(Number(e.target.value))}
+                className="px-2 py-1 rounded-lg bg-secondary text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value={-1}>Kapalı (yalnız açılışta)</option>
+                <option value={0}>Hemen</option>
+                <option value={1}>1 dakika sonra</option>
+                <option value={5}>5 dakika sonra</option>
+                <option value={15}>15 dakika sonra</option>
+              </select>
+            </div>
+          )}
         </div>
       </Card>
 
