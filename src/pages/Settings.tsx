@@ -576,16 +576,16 @@ export default function Settings() {
               </label>
           </div>
 
-          {/* Arka planda kilitle suresi — PIN veya parmak izi kuruluysa. */}
+          {/* Kilit gecikmesi (kullanilmazsa) — PIN veya parmak izi kuruluysa.
+              Ayni sure hem arka plana alista hem de kapat-ac (soguk baslatma) icin. */}
           {(pinEnabled || deviceLockEnabled) && (
             <div className="flex items-center gap-2 flex-wrap pl-11">
-              <span className="text-xs text-muted-foreground">Arka planda kilitle:</span>
+              <span className="text-xs text-muted-foreground">Kullanmazsam kilitle:</span>
               <select
                 value={relockMinutes}
                 onChange={(e) => handleRelockChange(Number(e.target.value))}
                 className="px-2 py-1 rounded-lg bg-secondary text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary"
               >
-                <option value={-1}>Kapalı (yalnız açılışta)</option>
                 <option value={0}>Hemen</option>
                 <option value={1}>1 dakika sonra</option>
                 <option value={5}>5 dakika sonra</option>

@@ -14,11 +14,14 @@
 const CRED_KEY = 'device_lock_credential_id';
 const ENABLED_KEY = 'device_lock_enabled';
 const RELOCK_KEY = 'device_lock_relock_minutes';
+const LAST_ACTIVE_KEY = 'device_lock_last_active';
 
-// Arka planda kalinca yeniden kilitleme suresi (dakika):
-//   -1 = kapali (yalniz uygulama acilisinda kilitle)
-//    0 = hemen (her arka plana alista)
-//    N = N dakika arka planda kaldiktan sonra
+// Bosta kalma (idle) suresi (dakika): uygulama bu kadar sure ON PLANDA
+// DEGILSE (arka plan VEYA kapali) kilitlenir. Ayni sure hem arka plandan donuse
+// hem de kapat-ac'a (soguk baslatma) uygulanir.
+//   0 = hemen (her ayrilista kilitle)
+//   N = N dakika kullanilmazsa kilitle
+// Not: eski -1 ('yalniz acilista') degeri artik varsayilana (5) coerce edilir.
 const DEFAULT_RELOCK_MINUTES = 5;
 
 export function getRelockMinutes(): number {
@@ -26,7 +29,8 @@ export function getRelockMinutes(): number {
     const raw = localStorage.getItem(RELOCK_KEY);
     if (raw === null) return DEFAULT_RELOCK_MINUTES;
     const n = parseInt(raw, 10);
-    return Number.isFinite(n) ? n : DEFAULT_RELOCK_MINUTES;
+    if (!Number.isFinite(n) || n < 0) return DEFAULT_RELOCK_MINUTES;
+    return n;
   } catch {
     return DEFAULT_RELOCK_MINUTES;
   }
@@ -34,6 +38,23 @@ export function getRelockMinutes(): number {
 
 export function setRelockMinutes(n: number): void {
   try { localStorage.setItem(RELOCK_KEY, String(n)); } catch { /* yoksay */ }
+}
+
+// Uygulamanin en son ON PLANDA/kullanimda oldugu zaman damgasi (ms). Kilit
+// gecikmesi bunun uzerinden hesaplanir; kapat-ac arasinda da korunur diye
+// localStorage'da tutulur.
+export function getLastActive(): number {
+  try {
+    const raw = localStorage.getItem(LAST_ACTIVE_KEY);
+    const n = raw ? parseInt(raw, 10) : 0;
+    return Number.isFinite(n) ? n : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function markActive(): void {
+  try { localStorage.setItem(LAST_ACTIVE_KEY, String(Date.now())); } catch { /* yoksay */ }
 }
 
 function bufToB64url(buf: ArrayBuffer): string {

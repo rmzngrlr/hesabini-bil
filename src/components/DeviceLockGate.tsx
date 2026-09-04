@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Fingerprint, Lock, Delete } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useIsMobile } from '../lib/useIsMobile';
-import { isDeviceLockEnabled, isDeviceLockSupported, verifyDeviceLock, getRelockMinutes } from '../lib/deviceLock';
+import { isDeviceLockEnabled, isDeviceLockSupported, verifyDeviceLock, getRelockMinutes, getLastActive, markActive } from '../lib/deviceLock';
 import { isPinEnabled, getPinLength, verifyPin } from '../lib/pinLock';
 
 /**
@@ -22,7 +22,14 @@ export function DeviceLockGate({ children }: { children: ReactNode }) {
   const lockActive = isMobile && (pinEnabled || bioAvailable);
   const pinLen = getPinLength();
 
-  const [unlocked, setUnlocked] = useState<boolean>(!lockActive);
+  // Baslangic: kilit yoksa acik. Kilit varsa, son kullanimdan bu yana gecen sure
+  // kilit gecikmesinden AZ ise (or. kapatip 5 dk icinde geri actiysa) yine acik
+  // baslat -> her acilista sifirdan sifreye sormaz.
+  const [unlocked, setUnlocked] = useState<boolean>(() => {
+    if (!lockActive) return true;
+    const graceMs = getRelockMinutes() * 60000;
+    return Date.now() - getLastActive() < graceMs;
+  });
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pin, setPin] = useState('');
@@ -32,26 +39,35 @@ export function DeviceLockGate({ children }: { children: ReactNode }) {
     if (!lockActive) setUnlocked(true);
   }, [lockActive]);
 
-  // Arka planda X dakika kaldiktan sonra yeniden kilitle. Sekme gizlenince zaman
-  // damgasi alinir; geri gelince gecen sure >= ayarli dakika ise kilitlenir.
+  // Aktiflik takibi + idle kilit. Uygulama ON PLANDA + acikken "son aktif" zamani
+  // taze tutulur (30sn interval + gizlenince + sayfa kapanirken). Geri gelindiginde
+  // gecen sure kilit gecikmesini asmissa kilitlenir. Ayni "son aktif" degeri
+  // kapat-ac (soguk baslatma) icin de kullanilir (bkz. baslangic unlocked state).
   useEffect(() => {
-    if (!lockActive) return;
-    let hiddenAt = 0;
+    if (!lockActive || !unlocked) return;
+    markActive();
+    const graceMs = () => getRelockMinutes() * 60000;
     const onVisibility = () => {
       if (document.visibilityState === 'hidden') {
-        hiddenAt = Date.now();
-        return;
-      }
-      const relockMin = getRelockMinutes();
-      if (relockMin >= 0 && hiddenAt > 0 && Date.now() - hiddenAt >= relockMin * 60000) {
+        markActive();
+      } else if (Date.now() - getLastActive() >= graceMs()) {
         setUnlocked(false);
         setPin('');
+      } else {
+        markActive();
       }
-      hiddenAt = 0;
     };
+    const iv = window.setInterval(() => {
+      if (document.visibilityState === 'visible') markActive();
+    }, 30000);
     document.addEventListener('visibilitychange', onVisibility);
-    return () => document.removeEventListener('visibilitychange', onVisibility);
-  }, [lockActive]);
+    window.addEventListener('pagehide', markActive);
+    return () => {
+      clearInterval(iv);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', markActive);
+    };
+  }, [lockActive, unlocked]);
 
   // PIN uzunlugu tamamlaninca otomatik dogrula.
   useEffect(() => {
@@ -63,6 +79,7 @@ export function DeviceLockGate({ children }: { children: ReactNode }) {
       if (cancelled) return;
       setVerifying(false);
       if (ok) {
+        markActive();
         setUnlocked(true);
       } else {
         setError('Yanlış PIN. Tekrar deneyin.');
@@ -88,8 +105,12 @@ export function DeviceLockGate({ children }: { children: ReactNode }) {
     setError(null);
     try {
       const ok = await verifyDeviceLock();
-      if (ok) setUnlocked(true);
-      else setError('Parmak izi doğrulanamadı. Tekrar deneyin.');
+      if (ok) {
+        markActive();
+        setUnlocked(true);
+      } else {
+        setError('Parmak izi doğrulanamadı. Tekrar deneyin.');
+      }
     } catch {
       setError('Parmak izi doğrulanamadı. Tekrar deneyin.');
     } finally {
