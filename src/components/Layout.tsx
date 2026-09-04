@@ -227,25 +227,23 @@ export function Layout({ children }: LayoutProps) {
         {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
       </button>
 
-      {/* Ana icerik + mobil alt nav: tek flex kolon. Nav 'fixed' DEGIL, akis
-          icinde en altta -> icerikle arasinda mobil adres cubuguna bagli bosluk
-          olusmaz (nav her zaman kaydirma alaninin hemen altina kilitli). */}
-      <div className={cn(
-        "flex-1 flex flex-col min-w-0 transition-all duration-300",
+      {/* Main Content Area */}
+      <div
+        ref={scrollRef}
+        onTouchStart={onScrollTouchStart}
+        onTouchMove={onScrollTouchMove}
+        onTouchEnd={onScrollTouchEnd}
+        className={cn(
+        // Alt nav h-16 (64px) kadar bosluk + main'in 16px alt padding'i -> ~16px
+        // rahat bosluk. Onceki pb-20 (80px) + sayfa/main cift padding (32px)
+        // gereksiz fazlaydi (~48px). Sayfa kok p-4'leri kaldirildi (tekil main).
+        "flex-1 flex flex-col h-full overflow-y-auto pb-16 md:pb-0 transition-all duration-300 min-w-0",
         collapsed ? "md:pl-20" : "md:pl-64"
       )}>
-        {/* Kaydirma alani: flex-1 + min-h-0 -> kolon icinde dogru scroll eder. */}
-        <div
-          ref={scrollRef}
-          onTouchStart={onScrollTouchStart}
-          onTouchMove={onScrollTouchMove}
-          onTouchEnd={onScrollTouchEnd}
-          className="flex-1 min-h-0 overflow-y-auto flex flex-col min-w-0"
-        >
-          <main className="flex-1 p-4 w-full mx-auto md:p-8 md:max-w-[1450px] min-w-0">
-            {children}
-          </main>
-        </div>
+        <main className="flex-1 p-4 w-full mx-auto md:p-8 md:max-w-[1450px] min-w-0">
+          {children}
+        </main>
+      </div>
 
       {/* Deger gizleme pull-up ipucu (mobil): en altta yukari cekince gorunur,
           esik asilinca "Bırak" der; birakinca ac/kapa olur. */}
@@ -268,9 +266,8 @@ export function Layout({ children }: LayoutProps) {
         </div>
       )}
 
-      {/* Mobile Bottom Navigation — akis icinde (fixed DEGIL): kaydirma alaninin
-          hemen altina kilitli, viewport degisse de arada bosluk olusmaz. */}
-      <nav className="md:hidden shrink-0 border-t glass-blur z-50 safe-area-pb">
+      {/* Mobile Bottom Navigation */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 border-t glass-blur z-50 safe-area-pb">
         <div className="flex items-center justify-around h-16 max-w-md mx-auto px-2">
           {currentNavItems.map(({ path, label, icon: Icon }) => (
             <NavLink
@@ -307,7 +304,6 @@ export function Layout({ children }: LayoutProps) {
           ))}
         </div>
       </nav>
-      </div>
     </div>
   );
 }
