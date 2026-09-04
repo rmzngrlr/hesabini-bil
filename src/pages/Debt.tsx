@@ -343,7 +343,7 @@ export default function Debt() {
              </div>
 
              {isInstallment && (
-               <div className="w-24 space-y-1">
+               <div className="flex-1 space-y-1">
                  <label className="text-xs text-muted-foreground">Taksit</label>
                  <input
                    type="number"
