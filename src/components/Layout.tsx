@@ -9,8 +9,9 @@ import { useAuth } from '../context/AuthContext';
 import { usePrivacy } from '../context/PrivacyContext';
 
 // Deger gizlemeyi acan pull-up jesti icin esik (px). En altta bu kadar yukari
-// cekince (bosluk asilinca) birakinca tetiklenir.
-const PULL_THRESHOLD = 80;
+// cekince (bosluk asilinca) birakinca tetiklenir. Yuksek tutuldu ki kazara
+// degil, bilincli/agresif cekiste tetiklensin.
+const PULL_THRESHOLD = 130;
 
 interface LayoutProps {
   children: ReactNode;
@@ -44,6 +45,8 @@ export function Layout({ children }: LayoutProps) {
 
   const onScrollTouchStart = () => { pullAnchorY.current = null; };
   const onScrollTouchMove = (e: ReactTouchEvent<HTMLDivElement>) => {
+    // Jest yalniz Bilanço (/) sayfasinda; gizleme/gosterme yine tum sayfalari etkiler (global).
+    if (location.pathname !== '/') return;
     const el = scrollRef.current;
     if (!el || e.touches.length !== 1) return;
     const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight <= 1;
@@ -244,7 +247,7 @@ export function Layout({ children }: LayoutProps) {
 
       {/* Deger gizleme pull-up ipucu (mobil): en altta yukari cekince gorunur,
           esik asilinca "Bırak" der; birakinca ac/kapa olur. */}
-      {pullUp > 0 && (
+      {pullUp > 0 && location.pathname === '/' && (
         <div
           className="md:hidden fixed left-0 right-0 z-40 flex justify-center pointer-events-none"
           style={{ bottom: '4.5rem', opacity: Math.min(pullUp / PULL_THRESHOLD, 1) }}
