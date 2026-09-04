@@ -52,8 +52,10 @@ function b64urlToBuf(s: string): ArrayBuffer {
   return bytes.buffer;
 }
 
-function randomBytes(len = 32): Uint8Array {
-  const a = new Uint8Array(len);
+function randomBytes(len = 32): Uint8Array<ArrayBuffer> {
+  // ArrayBuffer'i acikca bagla ki tip Uint8Array<ArrayBuffer> olsun (BufferSource
+  // ArrayBuffer-tabanli ister; yeni TS lib'inde Uint8Array<ArrayBufferLike> uymuyor).
+  const a = new Uint8Array(new ArrayBuffer(len));
   crypto.getRandomValues(a);
   return a;
 }
@@ -63,7 +65,9 @@ export function isDeviceLockSupported(): boolean {
   return typeof window !== 'undefined'
     && !!window.isSecureContext
     && typeof window.PublicKeyCredential !== 'undefined'
-    && !!(navigator.credentials && navigator.credentials.create && navigator.credentials.get);
+    && !!navigator.credentials
+    && typeof navigator.credentials.create === 'function'
+    && typeof navigator.credentials.get === 'function';
 }
 
 /** Bu cihazda kilit kurulu ve acik mi? */
