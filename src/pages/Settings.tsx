@@ -10,7 +10,7 @@ import { API_URL } from '../services/api';
 import { cn } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '../lib/useIsMobile';
-import { isDeviceLockEnabled, isDeviceLockSupported, registerDeviceLock, disableDeviceLock } from '../lib/deviceLock';
+import { isDeviceLockEnabled, isDeviceLockSupported, registerDeviceLock, disableDeviceLock, getRelockMinutes, setRelockMinutes } from '../lib/deviceLock';
 
 export default function Settings() {
   const { state, loadState, showMealCard, toggleShowMealCard, showVault, toggleShowVault, askConfirmation, askInfo, statementCutoffDay, setStatementCutoffDay } = useBudget();
@@ -29,6 +29,12 @@ export default function Settings() {
   const deviceLockSupported = isDeviceLockSupported();
   const [deviceLockEnabled, setDeviceLockEnabled] = useState<boolean>(() => isDeviceLockEnabled());
   const [deviceLockBusy, setDeviceLockBusy] = useState(false);
+  const [relockMinutes, setRelockMinutesState] = useState<number>(() => getRelockMinutes());
+
+  const handleRelockChange = (n: number) => {
+    setRelockMinutesState(n);
+    setRelockMinutes(n);
+  };
 
   const handleToggleDeviceLock = async () => {
     if (deviceLockBusy) return;
@@ -433,6 +439,22 @@ export default function Settings() {
                           ? 'Parmak izi için HTTPS gerekli — uygulamayı Tailscale (ts.net) adresinden açın.'
                           : 'Uygulamayı açarken parmak izi / telefon kilidi iste (yalnız bu cihaz).'}
                       </div>
+                      {deviceLockEnabled && (
+                        <div className="mt-2 flex items-center gap-2 flex-wrap">
+                          <span className="text-xs text-muted-foreground">Arka planda kilitle:</span>
+                          <select
+                            value={relockMinutes}
+                            onChange={(e) => handleRelockChange(Number(e.target.value))}
+                            className="px-2 py-1 rounded-lg bg-secondary text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary"
+                          >
+                            <option value={-1}>Kapalı (yalnız açılışta)</option>
+                            <option value={0}>Hemen</option>
+                            <option value={1}>1 dakika sonra</option>
+                            <option value={5}>5 dakika sonra</option>
+                            <option value={15}>15 dakika sonra</option>
+                          </select>
+                        </div>
+                      )}
                   </div>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">

@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Fingerprint, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useIsMobile } from '../lib/useIsMobile';
-import { isDeviceLockEnabled, isDeviceLockSupported, verifyDeviceLock } from '../lib/deviceLock';
+import { isDeviceLockEnabled, isDeviceLockSupported, verifyDeviceLock, getRelockMinutes } from '../lib/deviceLock';
 
 /**
  * Mobilde, cihaz kilidi kuruluysa uygulama icerigini biyometri kapisinin arkasina
@@ -24,6 +24,27 @@ export function DeviceLockGate({ children }: { children: ReactNode }) {
   // lockActive kapaninca (or. viewport genisledi / kilit kaldirildi) icerigi ac.
   useEffect(() => {
     if (!lockActive) setUnlocked(true);
+  }, [lockActive]);
+
+  // Arka planda X dakika kaldiktan sonra yeniden kilitle. Sekme gizlenince zaman
+  // damgasi alinir; geri gelince gecen sure >= ayarli dakika ise kilitlenir.
+  // Sure Ayarlar'da her degistirilebildigi icin handler icinde TAZE okunur.
+  useEffect(() => {
+    if (!lockActive) return;
+    let hiddenAt = 0;
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        hiddenAt = Date.now();
+        return;
+      }
+      const relockMin = getRelockMinutes();
+      if (relockMin >= 0 && hiddenAt > 0 && Date.now() - hiddenAt >= relockMin * 60000) {
+        setUnlocked(false);
+      }
+      hiddenAt = 0;
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
   }, [lockActive]);
 
   const attemptUnlock = async () => {

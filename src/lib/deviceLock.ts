@@ -13,6 +13,28 @@
 
 const CRED_KEY = 'device_lock_credential_id';
 const ENABLED_KEY = 'device_lock_enabled';
+const RELOCK_KEY = 'device_lock_relock_minutes';
+
+// Arka planda kalinca yeniden kilitleme suresi (dakika):
+//   -1 = kapali (yalniz uygulama acilisinda kilitle)
+//    0 = hemen (her arka plana alista)
+//    N = N dakika arka planda kaldiktan sonra
+const DEFAULT_RELOCK_MINUTES = 5;
+
+export function getRelockMinutes(): number {
+  try {
+    const raw = localStorage.getItem(RELOCK_KEY);
+    if (raw === null) return DEFAULT_RELOCK_MINUTES;
+    const n = parseInt(raw, 10);
+    return Number.isFinite(n) ? n : DEFAULT_RELOCK_MINUTES;
+  } catch {
+    return DEFAULT_RELOCK_MINUTES;
+  }
+}
+
+export function setRelockMinutes(n: number): void {
+  try { localStorage.setItem(RELOCK_KEY, String(n)); } catch { /* yoksay */ }
+}
 
 function bufToB64url(buf: ArrayBuffer): string {
   const bytes = new Uint8Array(buf);
