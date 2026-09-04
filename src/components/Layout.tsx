@@ -40,18 +40,21 @@ export function Layout({ children }: LayoutProps) {
   // adres cubugu / boyut degisince (resize/scroll) guncellenir.
   useLayoutEffect(() => {
     const vv = window.visualViewport;
+    let last = -1;
     const setAppVh = () => {
-      const h = vv ? vv.height : window.innerHeight;
-      document.documentElement.style.setProperty('--app-vh', `${Math.round(h)}px`);
+      const h = Math.round(vv ? vv.height : window.innerHeight);
+      if (h === last) return; // deger degismediyse yazma -> gereksiz reflow yok
+      last = h;
+      document.documentElement.style.setProperty('--app-vh', `${h}px`);
     };
     setAppVh();
+    // Yalniz boyut degisince (adres cubugu ac/kapa, donme, klavye). Sik tetiklenen
+    // 'scroll' dinleyicisi eklenmedi; resize zaten yukseklik degisimini yakalar.
     window.addEventListener('resize', setAppVh);
     vv?.addEventListener('resize', setAppVh);
-    vv?.addEventListener('scroll', setAppVh);
     return () => {
       window.removeEventListener('resize', setAppVh);
       vv?.removeEventListener('resize', setAppVh);
-      vv?.removeEventListener('scroll', setAppVh);
     };
   }, []);
 
