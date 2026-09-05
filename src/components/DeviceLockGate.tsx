@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Fingerprint, Lock, Delete } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useIsMobile } from '../lib/useIsMobile';
@@ -33,6 +33,7 @@ export function DeviceLockGate({ children }: { children: ReactNode }) {
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pin, setPin] = useState('');
+  const autoBioTriedRef = useRef(false);
 
   // lockActive kapaninca (or. viewport genisledi / kilit kaldirildi) icerigi ac.
   useEffect(() => {
@@ -118,12 +119,27 @@ export function DeviceLockGate({ children }: { children: ReactNode }) {
     }
   };
 
+  // PIN YOKSA (yalniz biyometri): kilit ekraninda dugme beklemeden dogrudan
+  // parmak izi istemini ac. Tarayici kullanici jesti istiyorsa sessizce basarisiz
+  // olur; "Parmak izi ile aç" dugmesi yedek olarak kalir.
+  useEffect(() => {
+    if (unlocked) { autoBioTriedRef.current = false; return; }
+    if (!lockActive || pinEnabled || !bioAvailable || autoBioTriedRef.current) return;
+    autoBioTriedRef.current = true;
+    (async () => {
+      try {
+        const ok = await verifyDeviceLock();
+        if (ok) { markActive(); setUnlocked(true); }
+      } catch { /* sessiz: dugme kalir */ }
+    })();
+  }, [unlocked, lockActive, pinEnabled, bioAvailable]);
+
   if (unlocked) return <>{children}</>;
 
   const digitKeys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-background text-foreground p-6">
+    <div className="app-screen flex flex-col items-center justify-center gap-6 bg-background text-foreground p-6">
       <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
         <Lock className="text-primary" size={32} />
       </div>
