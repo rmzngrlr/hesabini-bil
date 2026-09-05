@@ -71,6 +71,7 @@ export function SwipeNavCard({ to, icon, revealClassName = 'bg-secondary/70 text
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={reset}
+      onDoubleClick={go}
     >
       <div className={`absolute inset-y-0 right-0 flex items-center justify-end overflow-hidden ${revealClassName}`} style={{ width: -offset }}>
         <div className="flex w-24 items-center justify-center">{icon}</div>
