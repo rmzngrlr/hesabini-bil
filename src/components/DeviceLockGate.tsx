@@ -1,52 +1,52 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Fingerprint, Lock, Delete } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { isDeviceLockEnabled, isDeviceLockSupported, verifyDeviceLock, getRelockMinutes, getLastActive, markActive } from '../lib/deviceLock';
-import { isPinEnabled, getPinLength, verifyPin } from '../lib/pinLock';
+import { useBudget } from '../context/BudgetContext';
+import { useIsMobile } from '../lib/useIsMobile';
+import { isDeviceLockEnabled, isDeviceLockSupported, verifyDeviceLock, getLastActive, markActive } from '../lib/deviceLock';
+import { verifyPinAgainst } from '../lib/pinLock';
 
 /**
- * PIN veya biyometrik kilit kuruluysa (cihaz-bazli; mobil ya da masaustu) uygulama
- * icerigini kilit ekraninin arkasina alir. Kilit ekrani UYGULAMANIN kendi
- * temasindadir: PIN tus takimi + (kuruluysa) "Parmak izi ile aç" dugmesi. Hic
- * kilit yoksa cocuklari aynen render eder. Kilitliyken BudgetProvider mount edilmez (bu bilesen
- * onu sarar) -> veri cekilmez. Acilista (soguk baslatma) ve arka plan suresi
- * dolunca kilitlenir. "Hesap sifresiyle gir / Cikis" ile lockout olmaz.
+ * Uygulama kilidi kapisi. Ayarlar HESAP-BAZLI (BudgetState, tum cihazlarda senkron):
+ * paylasilan PIN (lockPin) + cihaz-tipine gore acma/kapama (lockOnMobile/Desktop) +
+ * kullanilmazsa kilit gecikmesi (lockRelockMinutes). Parmak izi kaydi cihaz-yereldir
+ * (WebAuthn senkronlanamaz). BudgetProvider ICINDE oldugundan hesap ayarlarina erisir
+ * (kilitliyken veri bellekte olsa da UI kilit ekraninin arkasindadir). Kilit ekrani
+ * uygulamanin kendi temasindadir: PIN tus takimi + (varsa) "Parmak izi ile aç". Her
+ * acilis/yenilemede (soguk baslatma) kilitli baslar; grace yalniz ayni oturum ici kisa
+ * arka-plan/sekme gecisleri + bosta-acik icindir. "Cikis" ile lockout olmaz.
  */
 export function DeviceLockGate({ children }: { children: ReactNode }) {
   const { logout } = useAuth();
+  const { lockPin, lockOnMobile, lockOnDesktop, lockRelockMinutes } = useBudget();
+  const isMobile = useIsMobile();
 
-  // Kilit cihaz-bazli: PIN veya biyometri kuruluysa (mobil/masaustu fark etmez).
-  const pinEnabled = isPinEnabled();
+  const enabledForDevice = isMobile ? lockOnMobile : lockOnDesktop;
+  const pinSet = !!lockPin;
+  const pinLen = lockPin?.len ?? 0;
   const bioAvailable = isDeviceLockSupported() && isDeviceLockEnabled();
-  const lockActive = pinEnabled || bioAvailable;
-  const pinLen = getPinLength();
+  const lockActive = enabledForDevice && (pinSet || bioAvailable);
 
-  // Baslangic: kilit varsa her ACILIS/YENILEMEDE (soguk baslatma) kilitli baslat
-  // -> uygulamayi her actiginda PIN/parmak izi sorulur. Grace (X dk) yalniz AYNI
-  // OTURUM icindeki kisa arka-plan/sekme gecislerine uygulanir (bkz. onVisibility)
-  // ve bosta-acik kilidine. Boylece masaustunde de acinca kilit gelir.
+  // Her acilis/yenilemede (soguk baslatma) kilitli baslar (kilit bu cihazda aktifse).
   const [unlocked, setUnlocked] = useState<boolean>(() => !lockActive);
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pin, setPin] = useState('');
   const autoBioTriedRef = useRef(false);
 
-  // lockActive kapaninca (or. viewport genisledi / kilit kaldirildi) icerigi ac.
+  // lockActive kapaninca (kilit kaldirildi / cihaz-tipi kapandi) icerigi ac.
   useEffect(() => {
     if (!lockActive) setUnlocked(true);
   }, [lockActive]);
 
-  // Aktiflik takibi + idle kilit. "Son aktif" zamani GERCEK kullanici etkilesiminde
-  // (fare/klavye/tekerlek/dokunma) tazelenir (throttle: en fazla 5sn'de bir yazim).
-  // Periyodik kontrol: sekme ACIK + gorunur olsa BILE, son etkilesimden bu yana
-  // gecen sure kilit gecikmesini asmissa kilitlenir (masaustunde panel acik kalsa
-  // da). Arka plandan donuste de kontrol edilir. Ayni "son aktif" degeri kapat-ac
-  // (soguk baslatma) icin de kullanilir. Gecikme 0 ('Hemen') iken bosta-acik kilidi
-  // YOKTUR; yalniz ayrilista/donuste kilitlenir.
+  // Aktiflik takibi + idle kilit. "Son aktif" GERCEK etkilesimde tazelenir (throttle
+  // 5sn). 15sn kontrol: sekme acik+gorunur olsa BILE son etkilesimden bu yana gecen
+  // sure gecikmeyi asmissa kilitlenir. Arka plandan donuste de kontrol edilir. Gecikme
+  // 0 ('Hemen') iken bosta-acik kilidi yok; yalniz ayrilista/donuste. Gecikme HESAPTAN.
   useEffect(() => {
     if (!lockActive || !unlocked) return;
     markActive();
-    const graceMs = () => getRelockMinutes() * 60000;
+    const graceMs = () => lockRelockMinutes * 60000;
     const lock = () => { setUnlocked(false); setPin(''); };
 
     let lastMark = Date.now();
@@ -75,15 +75,15 @@ export function DeviceLockGate({ children }: { children: ReactNode }) {
       activityEvents.forEach(ev => window.removeEventListener(ev, onActivity));
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [lockActive, unlocked]);
+  }, [lockActive, unlocked, lockRelockMinutes]);
 
-  // PIN uzunlugu tamamlaninca otomatik dogrula.
+  // PIN uzunlugu tamamlaninca hesaptaki PIN kaydiyla otomatik dogrula.
   useEffect(() => {
-    if (!pinEnabled || pinLen <= 0 || pin.length !== pinLen) return;
+    if (!pinSet || pinLen <= 0 || pin.length !== pinLen) return;
     let cancelled = false;
     setVerifying(true);
     setError(null);
-    verifyPin(pin).then(ok => {
+    verifyPinAgainst(pin, lockPin).then(ok => {
       if (cancelled) return;
       setVerifying(false);
       if (ok) {
@@ -95,12 +95,11 @@ export function DeviceLockGate({ children }: { children: ReactNode }) {
       }
     });
     return () => { cancelled = true; };
-  }, [pin, pinEnabled, pinLen]);
+  }, [pin, pinSet, pinLen, lockPin]);
 
-  // Masaustu: fiziksel klavye ile PIN gir (rakam tuslari + Backspace). Yalniz
-  // kilit ekrani gorunurken aktif; acilinca dinleyici kalkar.
+  // Masaustu: fiziksel klavye ile PIN gir (rakam tuslari + Backspace).
   useEffect(() => {
-    if (unlocked || !lockActive || !pinEnabled) return;
+    if (unlocked || !lockActive || !pinSet) return;
     const onKey = (e: KeyboardEvent) => {
       if (verifying) return;
       if (/^[0-9]$/.test(e.key)) {
@@ -115,7 +114,7 @@ export function DeviceLockGate({ children }: { children: ReactNode }) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [unlocked, lockActive, pinEnabled, verifying, pinLen]);
+  }, [unlocked, lockActive, pinSet, verifying, pinLen]);
 
   const pressDigit = (d: string) => {
     if (verifying) return;
@@ -133,12 +132,8 @@ export function DeviceLockGate({ children }: { children: ReactNode }) {
     setError(null);
     try {
       const ok = await verifyDeviceLock();
-      if (ok) {
-        markActive();
-        setUnlocked(true);
-      } else {
-        setError('Parmak izi doğrulanamadı. Tekrar deneyin.');
-      }
+      if (ok) { markActive(); setUnlocked(true); }
+      else setError('Parmak izi doğrulanamadı. Tekrar deneyin.');
     } catch {
       setError('Parmak izi doğrulanamadı. Tekrar deneyin.');
     } finally {
@@ -146,12 +141,10 @@ export function DeviceLockGate({ children }: { children: ReactNode }) {
     }
   };
 
-  // PIN YOKSA (yalniz biyometri): kilit ekraninda dugme beklemeden dogrudan
-  // parmak izi istemini ac. Tarayici kullanici jesti istiyorsa sessizce basarisiz
-  // olur; "Parmak izi ile aç" dugmesi yedek olarak kalir.
+  // PIN YOKSA (yalniz biyometri): dugme beklemeden dogrudan parmak izi istemini ac.
   useEffect(() => {
     if (unlocked) { autoBioTriedRef.current = false; return; }
-    if (!lockActive || pinEnabled || !bioAvailable || autoBioTriedRef.current) return;
+    if (!lockActive || pinSet || !bioAvailable || autoBioTriedRef.current) return;
     autoBioTriedRef.current = true;
     (async () => {
       try {
@@ -159,7 +152,7 @@ export function DeviceLockGate({ children }: { children: ReactNode }) {
         if (ok) { markActive(); setUnlocked(true); }
       } catch { /* sessiz: dugme kalir */ }
     })();
-  }, [unlocked, lockActive, pinEnabled, bioAvailable]);
+  }, [unlocked, lockActive, pinSet, bioAvailable]);
 
   if (unlocked) return <>{children}</>;
 
@@ -173,11 +166,11 @@ export function DeviceLockGate({ children }: { children: ReactNode }) {
       <div className="text-center space-y-1">
         <h1 className="text-xl font-bold">Uygulama kilitli</h1>
         <p className="text-sm text-muted-foreground">
-          {pinEnabled ? 'PIN kodunuzu girin.' : 'Devam etmek için cihaz kilidinizle doğrulayın.'}
+          {pinSet ? 'PIN kodunuzu girin.' : 'Devam etmek için cihaz kilidinizle doğrulayın.'}
         </p>
       </div>
 
-      {pinEnabled && pinLen > 0 && (
+      {pinSet && pinLen > 0 && (
         <div className="flex flex-col items-center gap-5 w-full max-w-[260px]">
           <div className="flex items-center gap-3 h-4">
             {Array.from({ length: pinLen }).map((_, i) => (

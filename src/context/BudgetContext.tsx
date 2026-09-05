@@ -87,6 +87,10 @@ const initialState: BudgetState = {
   futureData: {},
   showMealCard: true,
   showVault: true,
+  lockPin: null,
+  lockOnMobile: false,
+  lockOnDesktop: false,
+  lockRelockMinutes: 5,
 };
 
 /**
@@ -144,6 +148,15 @@ interface BudgetContextType {
   toggleShowMealCard: () => void;
   showVault: boolean;
   toggleShowVault: () => void;
+  // Hesap-bazli uygulama kilidi (tum cihazlarda senkron).
+  lockPin: { salt: string; hash: string; len: number } | null;
+  setLockPin: (rec: { salt: string; hash: string; len: number } | null) => void;
+  lockOnMobile: boolean;
+  setLockOnMobile: (v: boolean) => void;
+  lockOnDesktop: boolean;
+  setLockOnDesktop: (v: boolean) => void;
+  lockRelockMinutes: number;
+  setLockRelockMinutes: (n: number) => void;
   // Vault state & operations
   vaultRecords: GoldRecord[];
   allVaultRecords: GoldRecord[];
@@ -1856,6 +1869,24 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setRealState(prev => ({ ...prev, showVault: !(prev.showVault ?? true) }));
   };
 
+  // Hesap-bazli uygulama kilidi ayarlari (setRealState -> /budget senkron).
+  const lockPin = realState.lockPin ?? null;
+  const setLockPin = (rec: { salt: string; hash: string; len: number } | null) => {
+    setRealState(prev => ({ ...prev, lockPin: rec }));
+  };
+  const lockOnMobile = realState.lockOnMobile ?? false;
+  const setLockOnMobile = (v: boolean) => {
+    setRealState(prev => ({ ...prev, lockOnMobile: v }));
+  };
+  const lockOnDesktop = realState.lockOnDesktop ?? false;
+  const setLockOnDesktop = (v: boolean) => {
+    setRealState(prev => ({ ...prev, lockOnDesktop: v }));
+  };
+  const lockRelockMinutes = realState.lockRelockMinutes ?? 5;
+  const setLockRelockMinutes = (n: number) => {
+    setRealState(prev => ({ ...prev, lockRelockMinutes: n }));
+  };
+
   const addCustomIncome = (income: Omit<CustomIncome, 'id'>) => {
     const newIncome: CustomIncome = {
         ...income, // title, amount, type (+ varsa vault alanlari) korunur
@@ -2952,6 +2983,14 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             toggleShowMealCard,
             showVault,
             toggleShowVault,
+            lockPin,
+            setLockPin,
+            lockOnMobile,
+            setLockOnMobile,
+            lockOnDesktop,
+            setLockOnDesktop,
+            lockRelockMinutes,
+            setLockRelockMinutes,
             vaultRecords: countedVaultRecords,
             allVaultRecords: vaultRecords,
             searchIndex,

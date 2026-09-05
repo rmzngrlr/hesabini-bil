@@ -27,15 +27,15 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   return (
-    <DeviceLockGate>
-      <BudgetProvider>
+    <BudgetProvider>
+      <DeviceLockGate>
         <SearchProvider>
           <PrivacyProvider>
             <Layout>{children}</Layout>
           </PrivacyProvider>
         </SearchProvider>
-      </BudgetProvider>
-    </DeviceLockGate>
+      </DeviceLockGate>
+    </BudgetProvider>
   );
 };
 

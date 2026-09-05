@@ -145,6 +145,11 @@ export interface BudgetState {
   /** Hesap-bazli UI tercihleri (tarayici degil, hesaba senkronlanir). */
   showMealCard?: boolean;
   showVault?: boolean;
+  /** Hesap-bazli uygulama kilidi ayarlari (tum cihazlarda senkron). */
+  lockPin?: { salt: string; hash: string; len: number } | null; // paylasilan PIN (salt+hash)
+  lockOnMobile?: boolean;   // mobil cihazlarda kilit acik mi
+  lockOnDesktop?: boolean;  // masaustunde kilit acik mi
+  lockRelockMinutes?: number; // kullanilmazsa kilit gecikmesi (dk); 0=hemen
   income: number;
   rollover: number;
   ykIncome: number;

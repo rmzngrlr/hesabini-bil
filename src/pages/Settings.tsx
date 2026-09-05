@@ -4,16 +4,17 @@ import { useAuth, getAuthToken } from '../context/AuthContext';
 import { Card } from '../components/ui/Card';
 import { Avatar } from '../components/ui/Avatar';
 import { AvatarCropModal } from '../components/AvatarCropModal';
-import { Download, Upload, CreditCard, KeyRound, AlertCircle, CheckCircle2, ArrowLeft, Camera, Trash2, CalendarClock, Fingerprint } from 'lucide-react';
+import { Download, Upload, CreditCard, KeyRound, AlertCircle, CheckCircle2, ArrowLeft, Camera, Trash2, CalendarClock, Fingerprint, Lock } from 'lucide-react';
 import { exportToExcel, importFromExcel } from '../services/excelService';
 import { API_URL } from '../services/api';
 import { cn } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
-import { isDeviceLockEnabled, isDeviceLockSupported, isPlatformAuthenticatorAvailable, registerDeviceLock, disableDeviceLock, getRelockMinutes, setRelockMinutes } from '../lib/deviceLock';
-import { isPinEnabled, setPin as savePin, disablePin } from '../lib/pinLock';
+import { isDeviceLockEnabled, isDeviceLockSupported, isPlatformAuthenticatorAvailable, registerDeviceLock, disableDeviceLock } from '../lib/deviceLock';
+import { computePinRecord } from '../lib/pinLock';
 
 export default function Settings() {
-  const { state, loadState, showMealCard, toggleShowMealCard, showVault, toggleShowVault, askConfirmation, askInfo, statementCutoffDay, setStatementCutoffDay } = useBudget();
+  const { state, loadState, showMealCard, toggleShowMealCard, showVault, toggleShowVault, askConfirmation, askInfo, statementCutoffDay, setStatementCutoffDay,
+    lockPin, setLockPin, lockOnMobile, setLockOnMobile, lockOnDesktop, setLockOnDesktop, lockRelockMinutes, setLockRelockMinutes } = useBudget();
   const { username, avatar, updateAvatar } = useAuth();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -30,7 +31,9 @@ export default function Settings() {
   const [platformAuthAvailable, setPlatformAuthAvailable] = useState(false);
   const [deviceLockEnabled, setDeviceLockEnabled] = useState<boolean>(() => isDeviceLockEnabled());
   const [deviceLockBusy, setDeviceLockBusy] = useState(false);
-  const [relockMinutes, setRelockMinutesState] = useState<number>(() => getRelockMinutes());
+  // Hesap-bazli: kilit gecikmesi ve "PIN kurulu mu" dogrudan hesap state'inden.
+  const relockMinutes = lockRelockMinutes;
+  const pinEnabled = !!lockPin;
 
   useEffect(() => {
     let alive = true;
@@ -39,8 +42,7 @@ export default function Settings() {
   }, []);
 
   const handleRelockChange = (n: number) => {
-    setRelockMinutesState(n);
-    setRelockMinutes(n);
+    setLockRelockMinutes(n);
   };
 
   const handleToggleDeviceLock = async () => {
@@ -65,9 +67,8 @@ export default function Settings() {
     }
   };
 
-  // Uygulamaya ozel PIN kilidi (cihaz-bazli; biyometriden bagimsiz, HTTP'de de
-  // calisir). Kilit ekrani uygulamanin kendi temasinda.
-  const [pinEnabled, setPinEnabledState] = useState<boolean>(() => isPinEnabled());
+  // Uygulama PIN kilidi (HESAP-BAZLI; tum cihazlarda ayni PIN). Kilit ekrani
+  // uygulamanin kendi temasinda.
   const [pinFormOpen, setPinFormOpen] = useState(false);
   const [pinValue, setPinValue] = useState('');
   const [pinConfirm, setPinConfirm] = useState('');
@@ -91,11 +92,11 @@ export default function Settings() {
     }
     setPinBusy(true);
     try {
-      const ok = await savePin(pinValue);
-      if (ok) {
-        setPinEnabledState(true);
+      const rec = await computePinRecord(pinValue);
+      if (rec) {
+        setLockPin(rec);
         closePinForm();
-        await askInfo("Uygulama PIN'i ayarlandı. Bu cihazda uygulamayı açarken PIN istenecek.", "Uygulama PIN'i");
+        await askInfo("Uygulama PIN'i ayarlandı. Bu PIN tüm cihazlarınızda geçerli.", "Uygulama PIN'i");
       } else {
         await askInfo("PIN kaydedilemedi. Tekrar deneyin.", "Uygulama PIN'i");
       }
@@ -105,10 +106,9 @@ export default function Settings() {
   };
 
   const handleRemovePin = async () => {
-    const ok = await askConfirmation("Uygulama PIN'i kaldırılsın mı?", "PIN'i Kaldır");
+    const ok = await askConfirmation("Uygulama PIN'i kaldırılsın mı? (Tüm cihazlarda)", "PIN'i Kaldır");
     if (!ok) return;
-    disablePin();
-    setPinEnabledState(false);
+    setLockPin(null);
     closePinForm();
     await askInfo("Uygulama PIN'i kaldırıldı.", "Uygulama PIN'i");
   };
@@ -481,7 +481,7 @@ export default function Settings() {
               </label>
           </div>
 
-          {/* Uygulama PIN'i — mobil kilit; biyometriden bagimsiz, HTTP'de de calisir. */}
+          {/* Uygulama PIN'i — HESAP-BAZLI: tek PIN, tum cihazlarda ayni (senkron). */}
           <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
                   <div className="p-2 rounded-full bg-blue-500/10 text-blue-500 shrink-0">
@@ -491,8 +491,8 @@ export default function Settings() {
                       <div className="font-medium">Uygulama PIN'i</div>
                       <div className="text-xs text-muted-foreground">
                         {pinEnabled
-                          ? 'PIN kurulu. Uygulamayı açarken kendi temanızda PIN sorulur.'
-                          : 'Kendi temanızda 4-6 haneli PIN ile kilitle (bu cihaz; Google/OS ekranı yok).'}
+                          ? 'PIN kurulu — tüm cihazlarınızda aynı. Kendi temanızda sorulur.'
+                          : '4-6 haneli tek PIN; tüm cihazlarınızda geçerli (kendi temanızda, Google/OS ekranı yok).'}
                       </div>
                   </div>
               </div>
@@ -550,7 +550,33 @@ export default function Settings() {
             </div>
           )}
 
-          {/* Parmak izi ile aç — biyometri; Tailscale HTTPS gerektirir. */}
+          {/* Kilit hangi cihaz tipinde aktif olsun (HESAP-BAZLI; her cihazdan set
+              edilir, hepsine yansir). PIN veya parmak izi kuruluysa devreye girer. */}
+          <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                  <div className="p-2 rounded-full bg-indigo-500/10 text-indigo-500 shrink-0">
+                      <Lock size={20} />
+                  </div>
+                  <div className="min-w-0">
+                      <div className="font-medium">Kilit nerede aktif?</div>
+                      <div className="text-xs text-muted-foreground">
+                        Mobil ve masaüstü için ayrı ayrı aç/kapa. (PIN veya parmak izi kuruluysa çalışır.)
+                      </div>
+                  </div>
+              </div>
+              <div className="flex items-center gap-4 shrink-0 text-xs">
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input type="checkbox" className="accent-primary w-4 h-4" checked={lockOnMobile} onChange={(e) => setLockOnMobile(e.target.checked)} />
+                  Mobil
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input type="checkbox" className="accent-primary w-4 h-4" checked={lockOnDesktop} onChange={(e) => setLockOnDesktop(e.target.checked)} />
+                  Masaüstü
+                </label>
+              </div>
+          </div>
+
+          {/* Parmak izi ile aç — biyometri (CIHAZ-YEREL; WebAuthn senkronlanamaz). */}
           <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                   <div className="p-2 rounded-full bg-blue-500/10 text-blue-500">
@@ -579,9 +605,9 @@ export default function Settings() {
               </label>
           </div>
 
-          {/* Kilit gecikmesi (kullanilmazsa) — PIN veya parmak izi kuruluysa.
-              Ayni sure hem arka plana alista hem de kapat-ac (soguk baslatma) icin. */}
-          {(pinEnabled || deviceLockEnabled) && (
+          {/* Kilit gecikmesi (kullanilmazsa) — kilit bir cihaz tipinde aciksa.
+              Hesap-bazli; hem arka plan hem soguk baslatma (acilis) icin gecerli. */}
+          {(lockOnMobile || lockOnDesktop) && (
             <div className="flex items-center gap-2 flex-wrap pl-11">
               <span className="text-xs text-muted-foreground">Kullanmazsam kilitle:</span>
               <select
