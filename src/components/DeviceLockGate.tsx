@@ -89,6 +89,26 @@ export function DeviceLockGate({ children }: { children: ReactNode }) {
     return () => { cancelled = true; };
   }, [pin, pinEnabled, pinLen]);
 
+  // Masaustu: fiziksel klavye ile PIN gir (rakam tuslari + Backspace). Yalniz
+  // kilit ekrani gorunurken aktif; acilinca dinleyici kalkar.
+  useEffect(() => {
+    if (unlocked || !lockActive || !pinEnabled) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (verifying) return;
+      if (/^[0-9]$/.test(e.key)) {
+        e.preventDefault();
+        setError(null);
+        setPin(prev => (prev.length >= pinLen ? prev : prev + e.key));
+      } else if (e.key === 'Backspace') {
+        e.preventDefault();
+        setError(null);
+        setPin(prev => prev.slice(0, -1));
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [unlocked, lockActive, pinEnabled, verifying, pinLen]);
+
   const pressDigit = (d: string) => {
     if (verifying) return;
     setError(null);
