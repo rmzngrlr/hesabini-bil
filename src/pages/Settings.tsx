@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useBudget } from '../context/BudgetContext';
 import { useAuth, getAuthToken } from '../context/AuthContext';
 import { Card } from '../components/ui/Card';
@@ -9,8 +9,7 @@ import { exportToExcel, importFromExcel } from '../services/excelService';
 import { API_URL } from '../services/api';
 import { cn } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
-import { useIsMobile } from '../lib/useIsMobile';
-import { isDeviceLockEnabled, isDeviceLockSupported, registerDeviceLock, disableDeviceLock, getRelockMinutes, setRelockMinutes } from '../lib/deviceLock';
+import { isDeviceLockEnabled, isDeviceLockSupported, isPlatformAuthenticatorAvailable, registerDeviceLock, disableDeviceLock, getRelockMinutes, setRelockMinutes } from '../lib/deviceLock';
 import { isPinEnabled, setPin as savePin, disablePin } from '../lib/pinLock';
 
 export default function Settings() {
@@ -24,13 +23,20 @@ export default function Settings() {
   const [avatarLoading, setAvatarLoading] = useState(false);
   const initial = (username?.trim().charAt(0) || '?').toUpperCase();
 
-  // Mobil cihaz kilidi (biyometri) — cihaz-bazli, WebAuthn ile. Yalniz mobilde
-  // ve secure context'te (HTTPS/Tailscale) kurulabilir.
-  const isMobileDevice = useIsMobile();
+  // Cihaz kilidi (biyometri) — cihaz-bazli, WebAuthn ile. Secure context (HTTPS/
+  // Tailscale/localhost) + platform authenticator (parmak izi/Hello/Touch ID) sart.
+  // Mobil/masaustu fark etmez; cihazda gercekten destek varsa kurulur.
   const deviceLockSupported = isDeviceLockSupported();
+  const [platformAuthAvailable, setPlatformAuthAvailable] = useState(false);
   const [deviceLockEnabled, setDeviceLockEnabled] = useState<boolean>(() => isDeviceLockEnabled());
   const [deviceLockBusy, setDeviceLockBusy] = useState(false);
   const [relockMinutes, setRelockMinutesState] = useState<number>(() => getRelockMinutes());
+
+  useEffect(() => {
+    let alive = true;
+    isPlatformAuthenticatorAvailable().then(v => { if (alive) setPlatformAuthAvailable(v); });
+    return () => { alive = false; };
+  }, []);
 
   const handleRelockChange = (n: number) => {
     setRelockMinutesState(n);
@@ -42,7 +48,7 @@ export default function Settings() {
     if (deviceLockEnabled) {
       disableDeviceLock();
       setDeviceLockEnabled(false);
-      await askInfo('Mobil cihaz kilidi kapatıldı.', 'Cihaz Kilidi');
+      await askInfo('Cihaz kilidi (parmak izi) kapatıldı.', 'Cihaz Kilidi');
       return;
     }
     setDeviceLockBusy(true);
@@ -50,9 +56,9 @@ export default function Settings() {
       const ok = await registerDeviceLock(username);
       setDeviceLockEnabled(ok);
       if (ok) {
-        await askInfo('Mobil cihaz kilidi açıldı. Bu cihazda uygulamayı her açışta parmak izi / telefon kilidi istenecek.', 'Cihaz Kilidi');
+        await askInfo('Cihaz kilidi açıldı. Bu cihazda kilit ekranında parmak izi / cihaz kilidiyle de açabilirsiniz.', 'Cihaz Kilidi');
       } else {
-        await askInfo('Cihaz kilidi kurulamadı. Cihazınızda parmak izi/yüz/PIN tanımlı olduğundan ve uygulamayı HTTPS (Tailscale ts.net) adresinden açtığınızdan emin olun.', 'Cihaz Kilidi');
+        await askInfo('Cihaz kilidi kurulamadı. Cihazınızda parmak izi/yüz/Hello tanımlı olduğundan ve güvenli bağlantı (HTTPS / Tailscale / localhost) kullandığınızdan emin olun.', 'Cihaz Kilidi');
       }
     } finally {
       setDeviceLockBusy(false);
@@ -484,11 +490,9 @@ export default function Settings() {
                   <div className="min-w-0">
                       <div className="font-medium">Uygulama PIN'i</div>
                       <div className="text-xs text-muted-foreground">
-                        {!isMobileDevice
-                          ? "Yalnız mobilde çalışır; PIN'i telefonda ayarlayın."
-                          : pinEnabled
+                        {pinEnabled
                           ? 'PIN kurulu. Uygulamayı açarken kendi temanızda PIN sorulur.'
-                          : 'Kendi temanızda 4-6 haneli PIN ile kilitle (Google/OS ekranı yok).'}
+                          : 'Kendi temanızda 4-6 haneli PIN ile kilitle (bu cihaz; Google/OS ekranı yok).'}
                       </div>
                   </div>
               </div>
@@ -505,8 +509,7 @@ export default function Settings() {
                   <button
                     type="button"
                     onClick={() => setPinFormOpen(v => !v)}
-                    disabled={!isMobileDevice}
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-secondary text-foreground hover:bg-secondary/70 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-secondary text-foreground hover:bg-secondary/70 transition-colors"
                   >
                     {pinFormOpen ? 'Vazgeç' : 'Belirle'}
                   </button>
@@ -556,11 +559,11 @@ export default function Settings() {
                   <div>
                       <div className="font-medium">Parmak izi ile aç</div>
                       <div className="text-xs text-muted-foreground">
-                        {!isMobileDevice
-                          ? 'Yalnız mobilde çalışır; uygulamayı telefonda Tailscale (ts.net) adresinden açın.'
-                          : !deviceLockSupported
-                          ? 'Parmak izi için HTTPS gerekli — uygulamayı Tailscale (ts.net) adresinden açın.'
-                          : 'Kilit ekranında parmak izi / telefon kilidiyle de aç (yalnız bu cihaz).'}
+                        {!deviceLockSupported
+                          ? 'Biyometri için güvenli bağlantı (HTTPS / Tailscale / localhost) gerekli.'
+                          : !platformAuthAvailable
+                          ? 'Bu cihazda parmak izi / Windows Hello / Touch ID bulunamadı.'
+                          : 'Kilit ekranında parmak izi / cihaz kilidiyle de aç (yalnız bu cihaz).'}
                       </div>
                   </div>
               </div>
@@ -570,7 +573,7 @@ export default function Settings() {
                       className="sr-only peer"
                       checked={deviceLockEnabled}
                       onChange={handleToggleDeviceLock}
-                      disabled={!isMobileDevice || !deviceLockSupported || deviceLockBusy}
+                      disabled={deviceLockBusy || (!deviceLockEnabled && (!deviceLockSupported || !platformAuthAvailable))}
                   />
                   <div className="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary peer-disabled:opacity-40 peer-disabled:cursor-not-allowed"></div>
               </label>

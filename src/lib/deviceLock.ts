@@ -91,6 +91,22 @@ export function isDeviceLockSupported(): boolean {
     && typeof navigator.credentials.get === 'function';
 }
 
+/**
+ * Bu cihazda kullanici-dogrulayan PLATFORM authenticator (parmak izi / yuz /
+ * Windows Hello / Touch ID) var mi? Masaustunde biyometri secenegini yalniz
+ * gercekten destekleyen cihazlarda gostermek icin. Secure context + WebAuthn sart.
+ */
+export async function isPlatformAuthenticatorAvailable(): Promise<boolean> {
+  if (!isDeviceLockSupported()) return false;
+  try {
+    const fn = window.PublicKeyCredential?.isUserVerifyingPlatformAuthenticatorAvailable;
+    if (typeof fn !== 'function') return false;
+    return await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+  } catch {
+    return false;
+  }
+}
+
 /** Bu cihazda kilit kurulu ve acik mi? */
 export function isDeviceLockEnabled(): boolean {
   try {

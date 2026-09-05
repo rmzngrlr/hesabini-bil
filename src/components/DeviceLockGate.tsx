@@ -1,25 +1,24 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Fingerprint, Lock, Delete } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useIsMobile } from '../lib/useIsMobile';
 import { isDeviceLockEnabled, isDeviceLockSupported, verifyDeviceLock, getRelockMinutes, getLastActive, markActive } from '../lib/deviceLock';
 import { isPinEnabled, getPinLength, verifyPin } from '../lib/pinLock';
 
 /**
- * Mobilde, PIN veya biyometrik kilit kuruluysa uygulama icerigini kilit ekraninin
- * arkasina alir. Kilit ekrani UYGULAMANIN kendi temasindadir: PIN tus takimi +
- * (kuruluysa) "Parmak izi ile aç" dugmesi. Masaustunde veya hic kilit yoksa
- * cocuklari aynen render eder. Kilitliyken BudgetProvider mount edilmez (bu bilesen
+ * PIN veya biyometrik kilit kuruluysa (cihaz-bazli; mobil ya da masaustu) uygulama
+ * icerigini kilit ekraninin arkasina alir. Kilit ekrani UYGULAMANIN kendi
+ * temasindadir: PIN tus takimi + (kuruluysa) "Parmak izi ile aç" dugmesi. Hic
+ * kilit yoksa cocuklari aynen render eder. Kilitliyken BudgetProvider mount edilmez (bu bilesen
  * onu sarar) -> veri cekilmez. Acilista (soguk baslatma) ve arka plan suresi
  * dolunca kilitlenir. "Hesap sifresiyle gir / Cikis" ile lockout olmaz.
  */
 export function DeviceLockGate({ children }: { children: ReactNode }) {
-  const isMobile = useIsMobile();
   const { logout } = useAuth();
 
+  // Kilit cihaz-bazli: PIN veya biyometri kuruluysa (mobil/masaustu fark etmez).
   const pinEnabled = isPinEnabled();
   const bioAvailable = isDeviceLockSupported() && isDeviceLockEnabled();
-  const lockActive = isMobile && (pinEnabled || bioAvailable);
+  const lockActive = pinEnabled || bioAvailable;
   const pinLen = getPinLength();
 
   // Baslangic: kilit yoksa acik. Kilit varsa, son kullanimdan bu yana gecen sure
