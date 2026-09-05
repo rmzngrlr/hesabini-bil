@@ -13,6 +13,7 @@ import { BudgetProvider } from './context/BudgetContext';
 import { SearchProvider } from './context/SearchContext';
 import { PrivacyProvider } from './context/PrivacyContext';
 import { DeviceLockGate } from './components/DeviceLockGate';
+import { useViewportHeightVar } from './hooks/useViewportHeightVar';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -75,6 +76,9 @@ function AppRoutes() {
 }
 
 function App() {
+  // Gercek gorunur yuksekligi (--app-vh) tum uygulama icin global olarak ayarla
+  // (giris/kayit sayfalari ve Layout ayni degeri kullansin).
+  useViewportHeightVar();
   return (
     <BrowserRouter>
       <AuthProvider>

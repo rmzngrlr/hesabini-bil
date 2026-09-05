@@ -65,7 +65,7 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
+    <div className="app-screen flex items-center justify-center p-4">
       <div className="w-full max-w-[700px]">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold tracking-tight text-primary mb-2">Şifremi Unuttum</h1>

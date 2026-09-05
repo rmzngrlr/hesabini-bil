@@ -127,7 +127,10 @@
     background-image: var(--app-bg);
     background-attachment: fixed;
     background-repeat: no-repeat;
+    /* Gorunur alan kadar (JS olcumu); 100vh/dvh mobilde fazla uzun kalip
+       gereksiz scroll/esneme yapiyordu. */
     min-height: 100dvh;
+    min-height: var(--app-vh, 100dvh);
   }
 
   /* Uygulama kok yuksekligi = JS ile olculen GERCEK gorunur alan (--app-vh,
@@ -137,6 +140,15 @@
   .app-height {
     height: 100dvh;
     height: var(--app-vh, 100dvh);
+  }
+
+  /* Giris/kayit/sifre sayfalari: en az gorunur alan kadar yukseklik (icerik
+     kisaysa ortalar, uzunsa buyur). min-h-screen (100vh) yerine bunu kullan ki
+     mobilde adres cubugu gorunurken kap ekrandan uzun kalip gereksiz scroll/
+     esneme yapmasin. */
+  .app-screen {
+    min-height: 100dvh;
+    min-height: var(--app-vh, 100dvh);
   }
 
   /* PROJE GENELI: hicbir sayi alaninda artirma/azaltma oklari gosterilmez;

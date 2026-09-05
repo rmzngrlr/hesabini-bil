@@ -33,30 +33,7 @@ export function Layout({ children }: LayoutProps) {
   useLayoutEffect(() => {
     scrollRef.current?.scrollTo(0, 0);
   }, [location.pathname]);
-
-  // Uygulama yuksekligini JS ile GERCEK gorunur alandan (visualViewport, yoksa
-  // innerHeight) olc ve --app-vh'ye yaz. CSS dvh/lvh birimleri mobil adres
-  // cubugu oynamalarinda guvenilmez oldugundan (altta bosluk) bu deger kullanilir;
-  // adres cubugu / boyut degisince (resize/scroll) guncellenir.
-  useLayoutEffect(() => {
-    const vv = window.visualViewport;
-    let last = -1;
-    const setAppVh = () => {
-      const h = Math.round(vv ? vv.height : window.innerHeight);
-      if (h === last) return; // deger degismediyse yazma -> gereksiz reflow yok
-      last = h;
-      document.documentElement.style.setProperty('--app-vh', `${h}px`);
-    };
-    setAppVh();
-    // Yalniz boyut degisince (adres cubugu ac/kapa, donme, klavye). Sik tetiklenen
-    // 'scroll' dinleyicisi eklenmedi; resize zaten yukseklik degisimini yakalar.
-    window.addEventListener('resize', setAppVh);
-    vv?.addEventListener('resize', setAppVh);
-    return () => {
-      window.removeEventListener('resize', setAppVh);
-      vv?.removeEventListener('resize', setAppVh);
-    };
-  }, []);
+  // Not: --app-vh olcumu App seviyesine (useViewportHeightVar) tasindi -> global.
 
   const { dueBillsCount, dueFixedExpensesCount, autoPaidBillsCount, ccDueNoticeCount, pendingIncomingGoldCount, theme, toggleTheme } = useBudget();
   const { username, logout, avatar } = useAuth();
