@@ -5,6 +5,7 @@ import { useBudget } from '../context/BudgetContext';
 import { useIsMobile } from '../lib/useIsMobile';
 import { isDeviceLockEnabled, isDeviceLockSupported, verifyDeviceLock, getLastActive, markActive } from '../lib/deviceLock';
 import { verifyPinAgainst } from '../lib/pinLock';
+import { API_URL } from '../services/api';
 
 /**
  * Uygulama kilidi kapisi. Ayarlar HESAP-BAZLI (BudgetState, tum cihazlarda senkron):
@@ -17,8 +18,8 @@ import { verifyPinAgainst } from '../lib/pinLock';
  * arka-plan/sekme gecisleri + bosta-acik icindir. "Cikis" ile lockout olmaz.
  */
 export function DeviceLockGate({ children }: { children: ReactNode }) {
-  const { logout } = useAuth();
-  const { lockPin, lockOnMobile, lockOnDesktop, lockRelockMinutes } = useBudget();
+  const { logout, username } = useAuth();
+  const { lockPin, lockOnMobile, lockOnDesktop, lockRelockMinutes, setLockPin } = useBudget();
   const isMobile = useIsMobile();
 
   const enabledForDevice = isMobile ? lockOnMobile : lockOnDesktop;
@@ -33,6 +34,35 @@ export function DeviceLockGate({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [pin, setPin] = useState('');
   const autoBioTriedRef = useRef(false);
+  // "PIN'i unuttum": hesap sifresiyle dogrulayip hesaptaki PIN'i sifirla.
+  const [showForgot, setShowForgot] = useState(false);
+  const [pwd, setPwd] = useState('');
+  const [forgotError, setForgotError] = useState<string | null>(null);
+  const [forgotBusy, setForgotBusy] = useState(false);
+
+  const handleForgot = async () => {
+    if (forgotBusy || !pwd) return;
+    setForgotBusy(true);
+    setForgotError(null);
+    try {
+      const res = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password: pwd }),
+      });
+      if (res.ok) {
+        setLockPin(null); // hesaptaki PIN'i temizle (senkron) -> yeni PIN Ayarlar'dan
+        markActive();
+        setUnlocked(true); // sifre dogrulandi -> ac
+      } else {
+        setForgotError('Hesap şifresi yanlış.');
+      }
+    } catch {
+      setForgotError('Doğrulanamadı. Bağlantınızı kontrol edin.');
+    } finally {
+      setForgotBusy(false);
+    }
+  };
 
   // lockActive kapaninca (kilit kaldirildi / cihaz-tipi kapandi) icerigi ac.
   useEffect(() => {
@@ -227,6 +257,53 @@ export function DeviceLockGate({ children }: { children: ReactNode }) {
       )}
 
       {error && <p className="text-sm text-red-500 text-center">{error}</p>}
+
+      {/* PIN'i unuttum -> hesap sifresiyle dogrula ve hesaptaki PIN'i sifirla */}
+      {pinSet && !showForgot && (
+        <button
+          onClick={() => { setShowForgot(true); setForgotError(null); }}
+          className="text-sm text-muted-foreground underline underline-offset-2"
+        >
+          PIN'imi unuttum
+        </button>
+      )}
+
+      {pinSet && showForgot && (
+        <form
+          onSubmit={(e) => { e.preventDefault(); handleForgot(); }}
+          className="flex flex-col items-center gap-3 w-full max-w-[260px]"
+        >
+          <p className="text-xs text-muted-foreground text-center">
+            Hesap şifrenizle doğrulayın; PIN sıfırlanır ve Ayarlar'dan yeniden belirleyebilirsiniz.
+          </p>
+          <input
+            type="password"
+            autoFocus
+            value={pwd}
+            onChange={(e) => { setPwd(e.target.value); setForgotError(null); }}
+            placeholder="Hesap şifresi"
+            className="w-full px-4 py-3 rounded-xl bg-secondary text-foreground text-center outline-none focus:ring-2 focus:ring-primary/40"
+          />
+          {forgotError && <p className="text-sm text-red-500 text-center">{forgotError}</p>}
+          <div className="flex items-center gap-2 w-full">
+            <button
+              type="button"
+              onClick={() => { setShowForgot(false); setPwd(''); setForgotError(null); }}
+              disabled={forgotBusy}
+              className="flex-1 px-4 py-3 rounded-xl bg-secondary text-foreground font-medium disabled:opacity-50"
+            >
+              Vazgeç
+            </button>
+            <button
+              type="submit"
+              disabled={forgotBusy || !pwd}
+              className="flex-1 px-4 py-3 rounded-xl bg-primary text-primary-foreground font-semibold disabled:opacity-60"
+            >
+              {forgotBusy ? 'Doğrulanıyor…' : 'Sıfırla'}
+            </button>
+          </div>
+        </form>
+      )}
 
       <button onClick={logout} className="text-sm text-muted-foreground underline underline-offset-2">
         Hesap şifresiyle gir / Çıkış
