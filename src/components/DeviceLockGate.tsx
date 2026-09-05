@@ -21,14 +21,11 @@ export function DeviceLockGate({ children }: { children: ReactNode }) {
   const lockActive = pinEnabled || bioAvailable;
   const pinLen = getPinLength();
 
-  // Baslangic: kilit yoksa acik. Kilit varsa, son kullanimdan bu yana gecen sure
-  // kilit gecikmesinden AZ ise (or. kapatip 5 dk icinde geri actiysa) yine acik
-  // baslat -> her acilista sifirdan sifreye sormaz.
-  const [unlocked, setUnlocked] = useState<boolean>(() => {
-    if (!lockActive) return true;
-    const graceMs = getRelockMinutes() * 60000;
-    return Date.now() - getLastActive() < graceMs;
-  });
+  // Baslangic: kilit varsa her ACILIS/YENILEMEDE (soguk baslatma) kilitli baslat
+  // -> uygulamayi her actiginda PIN/parmak izi sorulur. Grace (X dk) yalniz AYNI
+  // OTURUM icindeki kisa arka-plan/sekme gecislerine uygulanir (bkz. onVisibility)
+  // ve bosta-acik kilidine. Boylece masaustunde de acinca kilit gelir.
+  const [unlocked, setUnlocked] = useState<boolean>(() => !lockActive);
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pin, setPin] = useState('');
