@@ -39,33 +39,44 @@ export function DeviceLockGate({ children }: { children: ReactNode }) {
     if (!lockActive) setUnlocked(true);
   }, [lockActive]);
 
-  // Aktiflik takibi + idle kilit. Uygulama ON PLANDA + acikken "son aktif" zamani
-  // taze tutulur (30sn interval + gizlenince + sayfa kapanirken). Geri gelindiginde
-  // gecen sure kilit gecikmesini asmissa kilitlenir. Ayni "son aktif" degeri
-  // kapat-ac (soguk baslatma) icin de kullanilir (bkz. baslangic unlocked state).
+  // Aktiflik takibi + idle kilit. "Son aktif" zamani GERCEK kullanici etkilesiminde
+  // (fare/klavye/tekerlek/dokunma) tazelenir (throttle: en fazla 5sn'de bir yazim).
+  // Periyodik kontrol: sekme ACIK + gorunur olsa BILE, son etkilesimden bu yana
+  // gecen sure kilit gecikmesini asmissa kilitlenir (masaustunde panel acik kalsa
+  // da). Arka plandan donuste de kontrol edilir. Ayni "son aktif" degeri kapat-ac
+  // (soguk baslatma) icin de kullanilir. Gecikme 0 ('Hemen') iken bosta-acik kilidi
+  // YOKTUR; yalniz ayrilista/donuste kilitlenir.
   useEffect(() => {
     if (!lockActive || !unlocked) return;
     markActive();
     const graceMs = () => getRelockMinutes() * 60000;
-    const onVisibility = () => {
-      if (document.visibilityState === 'hidden') {
-        markActive();
-      } else if (Date.now() - getLastActive() >= graceMs()) {
-        setUnlocked(false);
-        setPin('');
-      } else {
-        markActive();
-      }
+    const lock = () => { setUnlocked(false); setPin(''); };
+
+    let lastMark = Date.now();
+    const onActivity = () => {
+      const now = Date.now();
+      if (now - lastMark < 5000) return; // throttle
+      lastMark = now;
+      markActive();
     };
-    const iv = window.setInterval(() => {
-      if (document.visibilityState === 'visible') markActive();
-    }, 30000);
+    const activityEvents = ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart'];
+    activityEvents.forEach(ev => window.addEventListener(ev, onActivity, { passive: true }));
+
+    const check = window.setInterval(() => {
+      const g = graceMs();
+      if (g <= 0 || document.visibilityState !== 'visible') return;
+      if (Date.now() - getLastActive() >= g) lock();
+    }, 15000);
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible' && Date.now() - getLastActive() >= graceMs()) lock();
+    };
     document.addEventListener('visibilitychange', onVisibility);
-    window.addEventListener('pagehide', markActive);
+
     return () => {
-      clearInterval(iv);
+      clearInterval(check);
+      activityEvents.forEach(ev => window.removeEventListener(ev, onActivity));
       document.removeEventListener('visibilitychange', onVisibility);
-      window.removeEventListener('pagehide', markActive);
     };
   }, [lockActive, unlocked]);
 
