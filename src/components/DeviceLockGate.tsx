@@ -13,9 +13,11 @@ import { API_URL } from '../services/api';
  * kullanilmazsa kilit gecikmesi (lockRelockMinutes). Parmak izi kaydi cihaz-yereldir
  * (WebAuthn senkronlanamaz). BudgetProvider ICINDE oldugundan hesap ayarlarina erisir
  * (kilitliyken veri bellekte olsa da UI kilit ekraninin arkasindadir). Kilit ekrani
- * uygulamanin kendi temasindadir: PIN tus takimi + (varsa) "Parmak izi ile aç". Her
- * acilis/yenilemede (soguk baslatma) kilitli baslar; grace yalniz ayni oturum ici kisa
- * arka-plan/sekme gecisleri + bosta-acik icindir. "Cikis" ile lockout olmaz.
+ * uygulamanin kendi temasindadir: PIN tus takimi + (varsa) "Parmak izi ile aç". Kilit
+ * ZAMAN-BAZLIDIR: acilis/yenilemede son etkinlikten bu yana grace (Kullanmazsam kilitle)
+ * suresi dolduysa kilitler, dolmadiysa kilitsiz devam eder (her yenilemede PIN sormaz).
+ * Sekme acikken bosta-kalinca ve arka-plandan donuste de ayni grace ile kilitler. Grace
+ * 0 ('Hemen') iken her acilista kilitli. "Cikis" ile lockout olmaz.
  */
 export function DeviceLockGate({ children }: { children: ReactNode }) {
   const { logout, username } = useAuth();
@@ -28,8 +30,14 @@ export function DeviceLockGate({ children }: { children: ReactNode }) {
   const bioAvailable = isDeviceLockSupported() && isDeviceLockEnabled();
   const lockActive = enabledForDevice && (pinSet || bioAvailable);
 
-  // Her acilis/yenilemede (soguk baslatma) kilitli baslar (kilit bu cihazda aktifse).
-  const [unlocked, setUnlocked] = useState<boolean>(() => !lockActive);
+  // ZAMAN-BAZLI acilis: yenileme/acilista, son etkinlikten bu yana grace suresi
+  // DOLMADIYSA kilitsiz baslar (her yenilemede PIN sormaz); dolduysa kilitli. Grace
+  // 0 ('Hemen') iken her acilista kilitli. Ilk kez (lastActive yok=0) kilitli.
+  const [unlocked, setUnlocked] = useState<boolean>(() => {
+    if (!lockActive) return true;
+    const graceMs = lockRelockMinutes * 60000;
+    return graceMs > 0 && Date.now() - getLastActive() < graceMs;
+  });
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pin, setPin] = useState('');
