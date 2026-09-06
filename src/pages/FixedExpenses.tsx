@@ -10,6 +10,7 @@ import { searchKeyFor } from '../lib/search';
 import { SearchTrigger } from '../components/SearchTrigger';
 import { PrivacyTrigger } from '../components/PrivacyTrigger';
 import { Secret } from '../components/Secret';
+import { SecretInput } from '../components/SecretInput';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { FixedExpense, CustomIncome } from '../types';
 import { VaultSection } from '../components/VaultSection';
@@ -243,7 +244,7 @@ export default function FixedExpenses() {
       <div className="grid gap-4 md:grid-cols-2">
         <Card title="Aylık Gelir (TL)">
           <div className="mt-2">
-            <input
+            <SecretInput
               type="number"
               value={income}
               onChange={(e) => setIncome(e.target.value)}
@@ -255,7 +256,7 @@ export default function FixedExpenses() {
 
         <Card title="Devreden (TL)">
           <div className="mt-2">
-             <input
+             <SecretInput
                type="number"
                value={rollover}
                onChange={(e) => setRollover(e.target.value)}
@@ -275,7 +276,7 @@ export default function FixedExpenses() {
             <>
                 <Card title="Yemek Kartı Geliri">
                 <div className="mt-2">
-                    <input
+                    <SecretInput
                     type="number"
                     value={ykIncome}
                     onChange={(e) => setYkIncome(e.target.value)}
@@ -287,7 +288,7 @@ export default function FixedExpenses() {
 
                 <Card title="Yemek Kartı Devreden">
                 <div className="mt-2">
-                    <input
+                    <SecretInput
                     type="number"
                     value={ykRollover}
                     onChange={(e) => setYkRollover(e.target.value)}
