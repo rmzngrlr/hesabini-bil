@@ -908,7 +908,40 @@ export default function DailyExpenses() {
       .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
   }, [vaultRecords, activeTab, viewDate]);
 
+  // Bir altin Kasa kaydinin (vaultRecords) TL-maliyet ikizini (NAKIT "Altın Alımı/Satışı:
+  // {miktar} {tur}", ayni gun) bulur. Altin Islemleri listesindeki sentetik satirlarin
+  // Duzenle/Sil'i bu kanitlanmis TL-ayagi handler'larina yonlendirilir (tek mantik kaynagi).
+  const findGoldTwinLeg = (rec: { transaction_type?: string; amount: number; gold_type: string; record_date: string }) => {
+    const action = (rec.transaction_type || 'Birikim') === 'Bozdurma' ? 'Satışı' : 'Alımı';
+    const prefix = `Altın ${action}: ${Number(rec.amount) || 0} ${rec.gold_type}`;
+    return activeExpenses.find(e => e.type === 'NAKIT' && e.date === rec.record_date && (e.description || '').startsWith(prefix));
+  };
+
   const handleEdit = (expense: DailyExpense) => {
+    // Altin Islemleri listesindeki sentetik Kasa satiri (vault-gold-): TL-ayagi varsa onun
+    // KANITLANMIS duzenlemesine yonlendir (vault senkronu orada olur); yoksa (fiyatsiz kayit)
+    // gold formunu dogrudan Kasa kaydiyla doldur (bkz. handleSubmit vault-gold dali).
+    if (expense.id.startsWith('vault-gold-')) {
+      const vaultId = parseInt(expense.id.replace('vault-gold-', ''), 10);
+      const rec = vaultRecords.find(r => r.id === vaultId);
+      const twin = rec ? findGoldTwinLeg(rec) : undefined;
+      if (twin) { handleEdit(twin); return; }
+      if (rec) {
+        setActiveSubTab('EXCHANGE');
+        setExchangeTabMode('GOLD');
+        setType(rec.gold_type);
+        setActiveTab(rec.gold_type);
+        setAmount(String(Number(rec.amount) || 0));
+        setGoldTransactionType((rec.transaction_type || 'Birikim') === 'Bozdurma' ? 'Bozdurma' : 'Birikim');
+        setGoldOwner(rec.owner || '');
+        setGoldNote(rec.note || '');
+        setGoldPriceTL('');
+        setDescription('');
+        setEditingId(expense.id);
+        scrollToElement('edit-form-card');
+      }
+      return;
+    }
     // Duzenle formu (Kayit Duzenle) yalniz NORMAL alt-sekmede render edilir. Doviz kasa
     // (vault-curr) veya takas kaydi EXCHANGE sekmesinden duzenlenmek istenirse forma
     // gecmeden once NORMAL'e al ki form gorunsun (aksi halde "duzenlenmiyor" gibi durur).
@@ -973,8 +1006,42 @@ export default function DailyExpenses() {
     const numAmount = parseFloat(amount);
 
     if (isGoldType(type)) {
+      // Altin Islemleri listesindeki TL-ayagi OLMAYAN Kasa kaydinin duzenlenmesi (vault-gold-):
+      // dogrudan vault kaydini guncelle; duzenleme sirasinda TL fiyati girildiyse bir TL-ayagi olustur.
+      if (editingId && editingId.startsWith('vault-gold-')) {
+        const vaultId = parseInt(editingId.replace('vault-gold-', ''), 10);
+        if (!isNaN(vaultId)) {
+          await updateVaultRecord(vaultId, {
+            record_date: date,
+            owner: goldOwner,
+            gold_type: type,
+            amount: numAmount,
+            note: goldNote,
+            transaction_type: goldTransactionType
+          });
+          if (goldPriceTL) {
+            const total = parseFloat(goldPriceTL);
+            if (!isNaN(total) && total > 0) {
+              const isSale = goldTransactionType === 'Bozdurma';
+              addDailyExpense({
+                date,
+                description: `Altın ${isSale ? 'Satışı' : 'Alımı'}: ${numAmount} ${type}`,
+                amount: isSale ? total : -total,
+                type: 'NAKIT'
+              });
+            }
+          }
+        }
+        setEditingId(null);
+        setGoldOwner('');
+        setGoldNote('');
+        setGoldPriceTL('');
+        setAmount('');
+        return;
+      }
+
       const finalDesc = `Kime Ait: ${goldOwner}${goldNote ? ' | Not: ' + goldNote : ''}`;
-      
+
       if (editingId) {
         const originalExpense = activeExpenses.find(ex => ex.id === editingId);
         if (originalExpense) {
@@ -1314,6 +1381,20 @@ export default function DailyExpenses() {
       return;
     }
 
+    if (expense.id.startsWith('vault-gold-')) {
+      // Altin Islemleri listesindeki sentetik Kasa satiri: Kasa kaydini ve (varsa) TL-ayagini sil.
+      const vaultId = parseInt(expense.id.replace('vault-gold-', ''), 10);
+      if (!isNaN(vaultId)) {
+        const rec = vaultRecords.find(r => r.id === vaultId);
+        await deleteVaultRecord(vaultId);
+        if (rec) {
+          const twin = findGoldTwinLeg(rec);
+          if (twin) await deleteDailyExpense(twin.id);
+        }
+      }
+      return;
+    }
+
     if (expense.id.startsWith('vault-curr-')) {
       const vaultId = parseInt(expense.id.replace('vault-curr-', ''));
       if (!isNaN(vaultId)) {
@@ -1408,8 +1489,46 @@ export default function DailyExpenses() {
   };
 
   const filteredExpenses = useMemo(() => {
-    return activeExpenses.filter(e => passesSubTabFilter(e, activeTab, activeSubTab, isFuture));
-  }, [activeExpenses, activeTab, activeSubTab, isFuture]);
+    // Altin Islemleri (EXCHANGE + altin sekmesi): satirlar Kasa'dan (vaultRecords) uretilir —
+    // altin YALNIZ vaultRecords'ta tutulur, dailyExpenses'te degil (bkz. Kasa mimarisi). Boylece
+    // altin alimi Doviz Takasi'nda degil kendi sekmesinde, ozet kartiyla (Gram) tutarli gorunur.
+    // (Gelecek ay plan akisi ayri: PLANNED_VAULT activeExpenses'ten gelir.)
+    if (!isFuture && activeSubTab === 'EXCHANGE' && isGoldType(activeTab)) {
+      // HIBRIT liste (altin iki yoldan girer, veri sekilleri farkli):
+      //  (1) Takas kokenli (Doviz Takasi NAKIT->Altin): handleExchangeSubmit GERCEK bir altin-tipli
+      //      dailyExpense uretir -> mevcut Duzenle/Sil akisiyla calisir; oldugu gibi goster.
+      //  (2) Altin formu kokenli: altin YALNIZ vaultRecords'ta (dailyExpense yok) -> sentetik satir
+      //      uret (vault-gold-). Yalniz Birikim/Bozdurma (formun uretebildigi iki tur); 'Borç Verdim'
+      //      / 'Düğün Hediyesi / Takı' Kasa'da yonetilir, 2-durumlu form onlari bozardi.
+      //  Karsiligi (1)'de zaten olan vault kayitlarini (2)'de TEKRAR gostermemek icin ele -> cift yok.
+      const goldExpenses = activeExpenses.filter(e => passesSubTabFilter(e, activeTab, activeSubTab, isFuture));
+      const synth = (vaultRecords || [])
+        .filter(r => r && r.gold_type === activeTab
+          && typeof r.record_date === 'string' && r.record_date.slice(0, 7) === viewDate
+          && ((r.transaction_type || 'Birikim') === 'Birikim' || r.transaction_type === 'Bozdurma')
+          && !goldExpenses.some(e => e.date === r.record_date && Math.abs(e.amount) === (Number(r.amount) || 0)))
+        .map(r => {
+          const tType = r.transaction_type || 'Birikim';
+          const amt = Number(r.amount) || 0;
+          const label = tType === 'Bozdurma' ? 'Altın Satışı' : 'Altın Alımı';
+          return {
+            id: `vault-gold-${r.id}`,
+            date: r.record_date,
+            description: `${label}: ${amt} ${r.gold_type}`,
+            amount: tType === 'Birikim' ? amt : -amt,
+            type: activeTab,
+          } as DailyExpense;
+        });
+      return [...goldExpenses, ...synth];
+    }
+    const base = activeExpenses.filter(e => passesSubTabFilter(e, activeTab, activeSubTab, isFuture));
+    // Doviz Takasi (EXCHANGE + doviz/NAKIT sekmesi): altin maliyet ayaklarini ("Altın Alımı/Satışı: ...")
+    // bu listeden gizle -> yalniz gercek doviz takaslari kalir (altin kendi sekmesinde gorunur).
+    if (activeSubTab === 'EXCHANGE' && !isGoldType(activeTab)) {
+      return base.filter(e => !/^Altın (Alımı|Satışı):/.test((e.description || '').trim()));
+    }
+    return base;
+  }, [activeExpenses, activeTab, activeSubTab, isFuture, vaultRecords, viewDate]);
 
   const groupedExpenses = filteredExpenses.reduce((groups, expense) => {
     const date = expense.date;
