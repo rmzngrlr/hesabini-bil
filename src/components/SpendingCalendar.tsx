@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { ArrowDownRight, ArrowLeftRight } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight } from 'lucide-react';
 import { Secret } from './Secret';
 
 export interface CalendarEntry {
@@ -11,9 +11,10 @@ export interface CalendarEntry {
  * İşlemler ve Kredi Kartı Borcu sayfalarındaki günlük liste yerine (tarih barına çift
  * tıklayınca) gösterilen takvim görünümü. Ay = viewDate (bar ile değişir). Haftalar
  * PAZARTESİ başlar; hafta sonu (Cmt/Paz) yalnız tarih rengi farklıdır. Her günün altında
- * seçili varlığın o günkü değeri: 'Harcama' (yalnız çıkışlar) veya 'Net' (giriş−çıkış).
- * Tek gün ya da aralık seçilir; altta "tarih: toplam + cins" özeti çıkar. Girdiler
- * (entries) çağıran sayfadan gelir; hangi varlık/bağlam olduğunu sayfa belirler (symbol/label).
+ * seçili varlığın o günkü değeri, seçilen moda göre: 'Gider' (yalnız çıkışlar) veya
+ * 'Gelir' (yalnız girişler). Tutarın yanında birim sembolü (₺/$/Gram) gösterilir. Tek gün
+ * ya da aralık seçilir; altta "tarih: toplam + cins" özeti çıkar. Girdiler (entries)
+ * çağıran sayfadan gelir; hangi varlık/bağlam olduğunu sayfa belirler (symbol/label).
  * Listeye dönüş: tarih barına yeniden çift tıklama (bu görünüm ile liste arasında toggle).
  */
 export function SpendingCalendar({
@@ -27,7 +28,7 @@ export function SpendingCalendar({
   symbol: string;
   label: string;
 }) {
-  const [mode, setMode] = useState<'harcama' | 'net'>('harcama');
+  const [mode, setMode] = useState<'gider' | 'gelir'>('gider');
   const [start, setStart] = useState<number | null>(null);
   const [end, setEnd] = useState<number | null>(null);
 
@@ -36,36 +37,35 @@ export function SpendingCalendar({
   // Ay değişince (bar ‹ ›) seçim geçersiz kalmasın diye sıfırla (ör. 31 → 30 günlük ay).
   useEffect(() => { setStart(null); setEnd(null); }, [viewDate]);
 
-  // Görüntülenen AYIN günlerine göre topla: spend = çıkışlar (mutlak), net = tüm hareket.
+  // Görüntülenen AYIN günlerine göre topla: gider = çıkışlar (mutlak), gelir = girişler.
   // Ay dışı / eksik tarihli kayıtlar (ör. KK kesim günü nedeniyle önceki aya tarihli ama bu
-  // ekstrede olan harcamalar) gride yanlış güne düşmesin diye AYRI sayılır; sessizce düşmesin
-  // diye altta dipnotla belirtilir. Böylece hücre toplamları doğru, hiçbir kayıt gizlenmez.
-  const { perDay, otherCount, otherSpend, otherNet } = useMemo(() => {
-    const m: Record<number, { spend: number; net: number }> = {};
-    let oCount = 0, oSpend = 0, oNet = 0;
+  // ekstrede olan) gride yanlış güne düşmesin diye AYRI sayılır; sessizce düşmesin diye altta
+  // dipnotla belirtilir. Böylece hücre toplamları doğru, hiçbir kayıt gizlenmez.
+  const { perDay, otherExpense, otherIncome } = useMemo(() => {
+    const m: Record<number, { expense: number; income: number }> = {};
+    let oExpense = 0, oIncome = 0;
     entries.forEach(e => {
       const inMonth = !!e.date && e.date.length >= 7 && e.date.slice(0, 7) === viewDate;
       if (inMonth) {
         const day = Number(e.date.slice(8, 10));
         if (!Number.isFinite(day)) return;
-        if (!m[day]) m[day] = { spend: 0, net: 0 };
-        m[day].net += e.amount;
-        if (e.amount < 0) m[day].spend += -e.amount;
-      } else if (e.date && e.amount) {
-        oCount++;
-        oNet += e.amount;
-        if (e.amount < 0) oSpend += -e.amount;
+        if (!m[day]) m[day] = { expense: 0, income: 0 };
+        if (e.amount < 0) m[day].expense += -e.amount;
+        else if (e.amount > 0) m[day].income += e.amount;
+      } else if (e.date) {
+        if (e.amount < 0) oExpense += -e.amount;
+        else if (e.amount > 0) oIncome += e.amount;
       }
     });
-    return { perDay: m, otherCount: oCount, otherSpend: oSpend, otherNet: oNet };
+    return { perDay: m, otherExpense: oExpense, otherIncome: oIncome };
   }, [entries, viewDate]);
 
   const valOf = (day: number) => {
     const d = perDay[day];
     if (!d) return 0;
-    return mode === 'harcama' ? d.spend : d.net;
+    return mode === 'gider' ? d.expense : d.income;
   };
-  const otherTotal = mode === 'harcama' ? otherSpend : otherNet;
+  const otherTotal = mode === 'gider' ? otherExpense : otherIncome;
 
   const daysInMonth = new Date(year, month, 0).getDate();
   const firstCol = (new Date(year, month - 1, 1).getDay() + 6) % 7; // Pazartesi = 0
@@ -97,6 +97,7 @@ export function SpendingCalendar({
 
   const fmt = (n: number) => Math.abs(n).toLocaleString('tr-TR');
   const monthName = new Date(year, month - 1, 1).toLocaleDateString('tr-TR', { month: 'long' });
+  const valueColor = mode === 'gider' ? 'text-red-500' : 'text-green-500';
 
   const weekdays = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
   const cells: number[] = [];
@@ -111,7 +112,7 @@ export function SpendingCalendar({
     ? (r.lo === r.hi ? `${r.lo} ${monthName} ${year}` : `${r.lo}–${r.hi} ${monthName} ${year}`)
     : '';
 
-  const modeBtn = (m: 'harcama' | 'net', text: string, Icon: typeof ArrowDownRight) => (
+  const modeBtn = (m: 'gider' | 'gelir', text: string, Icon: typeof ArrowDownRight) => (
     <button
       type="button"
       onClick={() => setMode(m)}
@@ -126,8 +127,8 @@ export function SpendingCalendar({
   return (
     <div className="space-y-3">
       <div className="flex gap-2">
-        {modeBtn('harcama', 'Harcama', ArrowDownRight)}
-        {modeBtn('net', 'Net', ArrowLeftRight)}
+        {modeBtn('gider', 'Gider', ArrowDownRight)}
+        {modeBtn('gelir', 'Gelir', ArrowUpRight)}
       </div>
 
       <div className="grid grid-cols-7 gap-1.5">
@@ -144,7 +145,6 @@ export function SpendingCalendar({
           const sel = inSel(day);
           const v = valOf(day);
           const weekend = isWeekend(day);
-          const isPos = v > 0 && mode === 'net';
           return (
             <button
               key={day}
@@ -165,11 +165,9 @@ export function SpendingCalendar({
               }`}>
                 {day}
               </span>
-              {v !== 0 ? (
-                <span className={`text-[10px] leading-tight ${
-                  sel === 2 ? '' : isPos ? 'text-green-500' : 'text-red-500'
-                }`}>
-                  <Secret>{isPos ? '+' : ''}{fmt(v)}</Secret>
+              {v > 0 ? (
+                <span className={`text-[10px] leading-tight text-center ${sel === 2 ? '' : valueColor}`}>
+                  <Secret>{fmt(v)}</Secret> {symbol}
                 </span>
               ) : (
                 <span className="text-[11px] text-muted-foreground leading-none">·</span>
@@ -183,12 +181,11 @@ export function SpendingCalendar({
         {r ? (
           <div className="text-sm">
             <span className="text-muted-foreground">{summaryLabel}: </span>
-            <span className={`font-semibold ${mode === 'net' ? (summaryTotal > 0 ? 'text-green-500' : summaryTotal < 0 ? 'text-red-500' : '') : ''}`}>
-              {mode === 'net' && summaryTotal > 0 ? '+' : mode === 'net' && summaryTotal < 0 ? '-' : ''}
+            <span className={`font-semibold ${valueColor}`}>
               <Secret>{fmt(summaryTotal)}</Secret> {symbol}
             </span>
             <span className="text-muted-foreground text-xs">
-              {' · '}{label}{' · '}{mode === 'harcama' ? 'harcama' : 'net'}
+              {' · '}{label}{' · '}{mode === 'gider' ? 'gider' : 'gelir'}
               {r.lo !== r.hi ? ` · ${r.hi - r.lo + 1} gün` : ''}
             </span>
           </div>
@@ -197,11 +194,10 @@ export function SpendingCalendar({
         )}
       </div>
 
-      {otherCount > 0 && (
+      {otherTotal > 0 && (
         <div className="text-xs text-muted-foreground text-center">
-          Bu ayın dışında tarihli işlemler listede var (takvimde gösterilmez):{' '}
-          {mode === 'net' && otherTotal > 0 ? '+' : mode === 'net' && otherTotal < 0 ? '-' : ''}
-          <Secret>{fmt(otherTotal)}</Secret> {symbol}
+          Bu ayın dışında tarihli {mode === 'gider' ? 'gider' : 'gelir'} işlemleri listede var
+          (takvimde gösterilmez): <Secret>{fmt(otherTotal)}</Secret> {symbol}
         </div>
       )}
     </div>
