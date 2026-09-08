@@ -513,9 +513,9 @@ export default function DailyExpenses() {
   const [activeSubTab, setActiveSubTab] = useState<'NORMAL' | 'EXCHANGE' | 'BILLS'>('NORMAL');
   // Tarih barina cift tiklama gunluk liste yerine takvim gorunumunu acar/kapatir (bu sayfaya ozel).
   const [showCalendar, setShowCalendar] = useState(false);
-  // "Yeni İşlem Ekle" formu acilir-kapanir (cihaz-bazli tercih; duzenlerken zorla acik).
+  // "Yeni İşlem Ekle" formu acilir-kapanir (cihaz-bazli tercih; VARSAYILAN KAPALI; duzenlerken zorla acik).
   const [addFormOpen, setAddFormOpen] = useState<boolean>(() => {
-    try { return localStorage.getItem('daily_addform_open') !== 'false'; } catch { return true; }
+    try { return localStorage.getItem('daily_addform_open') === 'true'; } catch { return false; }
   });
   const toggleAddForm = () => setAddFormOpen(o => {
     const n = !o;

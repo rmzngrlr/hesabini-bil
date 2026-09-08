@@ -219,9 +219,9 @@ export default function Debt() {
   const isFuture = viewDate > getLocalMonth();
   // Tarih barina cift tiklama gunluk ekstre listesi yerine takvim gorunumunu acar/kapatir.
   const [showCalendar, setShowCalendar] = useState(false);
-  // "İşlem Ekle" formu acilir-kapanir (cihaz-bazli tercih; duzenlerken zorla acik).
+  // "İşlem Ekle" formu acilir-kapanir (cihaz-bazli tercih; VARSAYILAN KAPALI; duzenlerken zorla acik).
   const [addFormOpen, setAddFormOpen] = useState<boolean>(() => {
-    try { return localStorage.getItem('debt_addform_open') !== 'false'; } catch { return true; }
+    try { return localStorage.getItem('debt_addform_open') === 'true'; } catch { return false; }
   });
   const toggleAddForm = () => setAddFormOpen(o => {
     const n = !o;
