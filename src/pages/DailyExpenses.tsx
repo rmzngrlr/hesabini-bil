@@ -13,6 +13,7 @@ import { searchKeyFor } from '../lib/search';
 import { SearchTrigger } from '../components/SearchTrigger';
 import { PrivacyTrigger } from '../components/PrivacyTrigger';
 import { Secret } from '../components/Secret';
+import { SpendingCalendar } from '../components/SpendingCalendar';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 const billColors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f43f5e', '#06b6d4'];
@@ -510,6 +511,8 @@ export default function DailyExpenses() {
   }, [username]);
 
   const [activeSubTab, setActiveSubTab] = useState<'NORMAL' | 'EXCHANGE' | 'BILLS'>('NORMAL');
+  // Tarih barina cift tiklama gunluk liste yerine takvim gorunumunu acar/kapatir (bu sayfaya ozel).
+  const [showCalendar, setShowCalendar] = useState(false);
   const [billTitle, setBillTitle] = useState('');
   const [billAmount, setBillAmount] = useState('');
   const [billPaymentMethod, setBillPaymentMethod] = useState<'NAKIT' | 'KK'>('NAKIT');
@@ -1611,7 +1614,7 @@ export default function DailyExpenses() {
           <SearchTrigger className="hidden md:flex ml-auto" />
           <PrivacyTrigger className="hidden md:flex" />
         </div>
-        <MonthNavigator />
+        <MonthNavigator onDoubleClick={activeSubTab !== 'BILLS' ? () => setShowCalendar(v => !v) : undefined} />
       </header>
       
       {isFuture && (
@@ -2380,6 +2383,14 @@ export default function DailyExpenses() {
             </div>
           )}
 
+          {showCalendar ? (
+            <SpendingCalendar
+              viewDate={viewDate}
+              entries={filteredExpenses.map(e => ({ date: e.date, amount: e.amount }))}
+              symbol={getAssetUnitLabel(activeTab)}
+              label={getAssetFullTitle(activeTab)}
+            />
+          ) : (
           <div className="space-y-6">
             {sortedDates.map((date) => {
               const dailyTotal = groupedExpenses[date].reduce((sum, item) => sum + item.amount, 0);
@@ -2439,6 +2450,7 @@ export default function DailyExpenses() {
               </div>
             )}
           </div>
+          )}
         </>
       )}
     </div>

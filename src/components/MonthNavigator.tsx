@@ -9,8 +9,10 @@ const formatMonth = (dateStr: string) => {
 /**
  * Bilanço'daki ay değiştirme barının ortak sürümü. Tüm sayfalarda aynı görünüm/konum.
  * viewDate + earliestAllowedMonth + setViewDate context'ten okunur (tek kaynak).
+ * onDoubleClick verilirse (yalnız İşlemler + Kredi Kartı Borcu sayfaları) tarih kısmına
+ * çift tıklama onu tetikler (takvim görünümünü açar/kapatır); ‹ › oklarını etkilemez.
  */
-export function MonthNavigator() {
+export function MonthNavigator({ onDoubleClick }: { onDoubleClick?: () => void } = {}) {
   const { viewDate, setViewDate, earliestAllowedMonth } = useBudget();
 
   const changeMonth = (delta: number) => {
@@ -31,7 +33,11 @@ export function MonthNavigator() {
         <ChevronLeft size={20} />
       </button>
 
-      <div className="flex flex-col items-center">
+      <div
+        className={`flex flex-col items-center ${onDoubleClick ? 'cursor-pointer select-none' : ''}`}
+        onDoubleClick={onDoubleClick}
+        title={onDoubleClick ? 'Takvim görünümü için çift tıklayın' : undefined}
+      >
         <div className="flex items-center gap-2 font-medium text-lg">
           <Calendar size={18} className="text-primary" />
           <span className="capitalize w-32 text-center">{formatMonth(viewDate)}</span>

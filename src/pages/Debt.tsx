@@ -10,6 +10,7 @@ import { SearchTrigger } from '../components/SearchTrigger';
 import { PrivacyTrigger } from '../components/PrivacyTrigger';
 import { Secret } from '../components/Secret';
 import { MonthNavigator } from '../components/MonthNavigator';
+import { SpendingCalendar } from '../components/SpendingCalendar';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import type { CCDebt } from '../types';
@@ -216,6 +217,8 @@ export default function Debt() {
 
 
   const isFuture = viewDate > getLocalMonth();
+  // Tarih barina cift tiklama gunluk ekstre listesi yerine takvim gorunumunu acar/kapatir.
+  const [showCalendar, setShowCalendar] = useState(false);
 
   return (
     <div id="main-form-container" className="space-y-6">
@@ -226,7 +229,7 @@ export default function Debt() {
           <SearchTrigger className="hidden md:flex ml-auto" />
           <PrivacyTrigger className="hidden md:flex" />
         </div>
-        <MonthNavigator />
+        <MonthNavigator onDoubleClick={() => setShowCalendar(v => !v)} />
       </header>
 
       {addedNote && (
@@ -462,6 +465,15 @@ export default function Debt() {
           )}
         </div>
 
+        {showCalendar ? (
+          <SpendingCalendar
+            viewDate={viewDate}
+            entries={state.ccDebts.map(d => ({ date: d.date || '', amount: d.amount }))}
+            symbol="₺"
+            label="Kredi Kartı"
+          />
+        ) : (
+        <>
         {sortedDates.map((date) => {
           const dailyTotal = groupedDebts.groups[date].reduce((sum, item) => sum + item.amount, 0);
           // Bu ayda gunu henuz gelmemis grup: soluk + "gunu gelmedi" etiketi.
@@ -574,6 +586,8 @@ export default function Debt() {
           <div className="text-center text-muted-foreground py-8">
             Borç kaydı bulunmamaktadır.
           </div>
+        )}
+        </>
         )}
       </div>
     </div>
