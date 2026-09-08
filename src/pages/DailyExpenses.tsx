@@ -522,6 +522,24 @@ export default function DailyExpenses() {
     try { localStorage.setItem('daily_addform_open', String(n)); } catch { /* yoksay */ }
     return n;
   });
+  // Doviz/Altin "Varlik Donustur" formu acilir-kapanir (varsayilan kapali; duzenlerken zorla acik).
+  const [exchangeFormOpen, setExchangeFormOpen] = useState<boolean>(() => {
+    try { return localStorage.getItem('daily_exchangeform_open') === 'true'; } catch { return false; }
+  });
+  const toggleExchangeForm = () => setExchangeFormOpen(o => {
+    const n = !o;
+    try { localStorage.setItem('daily_exchangeform_open', String(n)); } catch { /* yoksay */ }
+    return n;
+  });
+  // Faturalar "Yeni Fatura Ekle" formu acilir-kapanir (varsayilan kapali; duzenlerken zorla acik).
+  const [billFormOpen, setBillFormOpen] = useState<boolean>(() => {
+    try { return localStorage.getItem('daily_billform_open') === 'true'; } catch { return false; }
+  });
+  const toggleBillForm = () => setBillFormOpen(o => {
+    const n = !o;
+    try { localStorage.setItem('daily_billform_open', String(n)); } catch { /* yoksay */ }
+    return n;
+  });
   const [billTitle, setBillTitle] = useState('');
   const [billAmount, setBillAmount] = useState('');
   const [billPaymentMethod, setBillPaymentMethod] = useState<'NAKIT' | 'KK'>('NAKIT');
@@ -1678,7 +1696,7 @@ export default function DailyExpenses() {
         </div>
 
       {activeSubTab === 'EXCHANGE' && (
-        <Card title="Varlık Dönüştür (Takas)">
+        <Card title="Varlık Dönüştür (Takas)" collapsible={!editingId} open={exchangeFormOpen} onToggleOpen={toggleExchangeForm}>
           <div className="flex gap-2 mb-4 bg-secondary p-1 rounded-lg">
              <button
                 type="button"
@@ -2009,7 +2027,7 @@ export default function DailyExpenses() {
       )}
 
       {activeSubTab === 'BILLS' && (
-        <Card id="edit-bill-form-card" title={editingBillId ? "Faturayı Düzenle" : "Yeni Fatura Ekle"}>
+        <Card id="edit-bill-form-card" title={editingBillId ? "Faturayı Düzenle" : "Yeni Fatura Ekle"} collapsible={!editingBillId} open={billFormOpen} onToggleOpen={toggleBillForm}>
           <form onSubmit={handleBillSubmit} className="space-y-4 mt-2">
             <div className="flex flex-col md:flex-row gap-3">
               <div className="flex-[2] space-y-1">
