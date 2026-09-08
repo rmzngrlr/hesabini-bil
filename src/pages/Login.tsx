@@ -188,7 +188,7 @@ export default function Login() {
                       autoFocus
                       required
                       className="w-full px-4 py-3 pr-12 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                      placeholder="••••••••"
+                      placeholder="••••••"
                     />
                     <button
                       type="button"

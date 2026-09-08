@@ -241,6 +241,12 @@ export default function Settings() {
     e.preventDefault();
     setPwdError('');
     setPwdSuccess('');
+
+    if (!/^\d{6}$/.test(newPassword)) {
+      setPwdError('Yeni şifre 6 haneli bir sayı olmalıdır (ör. 123456).');
+      return;
+    }
+
     setIsPwdLoading(true);
 
     try {
@@ -419,12 +425,17 @@ export default function Settings() {
               <label className="text-sm font-medium text-muted-foreground">Yeni Şifre</label>
               <input
                 type="password"
+                inputMode="numeric"
+                pattern="\d{6}"
+                maxLength={6}
+                autoComplete="new-password"
                 value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
+                onChange={(e) => setNewPassword(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 required
-                className="w-full px-4 py-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                placeholder="••••••••"
+                className="w-full px-4 py-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary tracking-[0.3em]"
+                placeholder="••••••"
               />
+              <p className="text-xs text-muted-foreground">6 haneli bir sayı.</p>
             </div>
 
             <button

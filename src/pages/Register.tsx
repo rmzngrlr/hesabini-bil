@@ -20,16 +20,19 @@ export default function Register() {
     e.preventDefault();
     setError('');
 
+    if (!/^\d{6}$/.test(password)) {
+      return setError('Şifre 6 haneli bir sayı olmalıdır (ör. 123456).');
+    }
+
     if (password !== confirmPassword) {
       return setError('Şifreler eşleşmiyor.');
     }
 
-    setIsLoading(true);
-
     if (!securityQuestion || !securityAnswer) {
-      setError('Güvenlik sorusu ve cevabı boş bırakılamaz.');
-      return;
+      return setError('Güvenlik sorusu ve cevabı boş bırakılamaz.');
     }
+
+    setIsLoading(true);
 
     try {
       const res = await fetch(`${API_URL}/auth/register`, {
@@ -97,23 +100,32 @@ export default function Register() {
               <label className="text-sm font-medium text-muted-foreground">Şifre</label>
               <input
                 type="password"
+                inputMode="numeric"
+                pattern="\d{6}"
+                maxLength={6}
+                autoComplete="new-password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => setPassword(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 required
-                className="w-full px-4 py-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                placeholder="••••••••"
+                className="w-full px-4 py-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary tracking-[0.3em]"
+                placeholder="••••••"
               />
+              <p className="text-xs text-muted-foreground">Banka uygulamaları gibi 6 haneli bir sayı.</p>
             </div>
 
             <div className="space-y-1">
               <label className="text-sm font-medium text-muted-foreground">Şifreyi Onayla</label>
               <input
                 type="password"
+                inputMode="numeric"
+                pattern="\d{6}"
+                maxLength={6}
+                autoComplete="new-password"
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                onChange={(e) => setConfirmPassword(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 required
-                className="w-full px-4 py-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                placeholder="••••••••"
+                className="w-full px-4 py-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary tracking-[0.3em]"
+                placeholder="••••••"
               />
             </div>
 
