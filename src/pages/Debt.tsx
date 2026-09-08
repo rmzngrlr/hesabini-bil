@@ -219,6 +219,15 @@ export default function Debt() {
   const isFuture = viewDate > getLocalMonth();
   // Tarih barina cift tiklama gunluk ekstre listesi yerine takvim gorunumunu acar/kapatir.
   const [showCalendar, setShowCalendar] = useState(false);
+  // "İşlem Ekle" formu acilir-kapanir (cihaz-bazli tercih; duzenlerken zorla acik).
+  const [addFormOpen, setAddFormOpen] = useState<boolean>(() => {
+    try { return localStorage.getItem('debt_addform_open') !== 'false'; } catch { return true; }
+  });
+  const toggleAddForm = () => setAddFormOpen(o => {
+    const n = !o;
+    try { localStorage.setItem('debt_addform_open', String(n)); } catch { /* yoksay */ }
+    return n;
+  });
 
   return (
     <div id="main-form-container" className="space-y-6">
@@ -279,7 +288,7 @@ export default function Debt() {
         )}
       </Card>
 
-      <div id="edit-form-card"><Card title={editingId ? "İşlemi Düzenle" : "İşlem Ekle"}>
+      <div id="edit-form-card"><Card title={editingId ? "İşlemi Düzenle" : "İşlem Ekle"} collapsible={!editingId} open={addFormOpen} onToggleOpen={toggleAddForm}>
         <form onSubmit={handleSubmit} className="space-y-3 mt-2">
           <div className="flex gap-2">
              <button

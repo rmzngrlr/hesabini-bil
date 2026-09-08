@@ -513,6 +513,15 @@ export default function DailyExpenses() {
   const [activeSubTab, setActiveSubTab] = useState<'NORMAL' | 'EXCHANGE' | 'BILLS'>('NORMAL');
   // Tarih barina cift tiklama gunluk liste yerine takvim gorunumunu acar/kapatir (bu sayfaya ozel).
   const [showCalendar, setShowCalendar] = useState(false);
+  // "Yeni İşlem Ekle" formu acilir-kapanir (cihaz-bazli tercih; duzenlerken zorla acik).
+  const [addFormOpen, setAddFormOpen] = useState<boolean>(() => {
+    try { return localStorage.getItem('daily_addform_open') !== 'false'; } catch { return true; }
+  });
+  const toggleAddForm = () => setAddFormOpen(o => {
+    const n = !o;
+    try { localStorage.setItem('daily_addform_open', String(n)); } catch { /* yoksay */ }
+    return n;
+  });
   const [billTitle, setBillTitle] = useState('');
   const [billAmount, setBillAmount] = useState('');
   const [billPaymentMethod, setBillPaymentMethod] = useState<'NAKIT' | 'KK'>('NAKIT');
@@ -1874,7 +1883,7 @@ export default function DailyExpenses() {
       )}
 
       {activeSubTab === 'NORMAL' && (
-      <Card id="edit-form-card" title={editingId ? "Kayıt Düzenle" : "Yeni İşlem Ekle"}>
+      <Card id="edit-form-card" title={editingId ? "Kayıt Düzenle" : "Yeni İşlem Ekle"} collapsible={!editingId} open={addFormOpen} onToggleOpen={toggleAddForm}>
           <form onSubmit={handleSubmit} className="space-y-3 mt-2">
           <div className="space-y-3">
               <div className="space-y-1">
