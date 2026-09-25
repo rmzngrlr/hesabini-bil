@@ -4,7 +4,7 @@ import { Card } from '../components/ui/Card';
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Plus, Trash2, CalendarClock, CreditCard, Pencil, X, ChevronLeft, ChevronRight } from 'lucide-react';
-import { cn, scrollToElement, scrollToSearchKey, getTodayStr, isDebtPending, statementMonth } from '../lib/utils';
+import { cn, scrollToElement, scrollToSearchKey, getTodayStr, isDebtPending, statementMonth, ayinGunu } from '../lib/utils';
 import { searchKeyFor } from '../lib/search';
 import { SearchTrigger } from '../components/SearchTrigger';
 import { PrivacyTrigger } from '../components/PrivacyTrigger';
@@ -291,7 +291,7 @@ export default function Debt() {
           <div className="flex items-center gap-2 font-medium text-sm">
             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: cardById(effSel)?.color || '#888' }} />
             {cardById(effSel)?.name}
-            <span className="text-xs text-muted-foreground">· {cardCutoffOf(creditCards, effSel, statementCutoffDay) ? `Her ayın ${cardCutoffOf(creditCards, effSel, statementCutoffDay)}'i` : 'kesim yok'}</span>
+            <span className="text-xs text-muted-foreground">· {cardCutoffOf(creditCards, effSel, statementCutoffDay) ? `Her ayın ${ayinGunu(cardCutoffOf(creditCards, effSel, statementCutoffDay)!)}` : 'kesim yok'}</span>
           </div>
           <button type="button" onClick={() => flipCard(1)} aria-label="Sonraki kart" className="p-2 rounded-lg hover:bg-secondary transition-colors">
             <ChevronRight size={20} />
@@ -532,7 +532,7 @@ export default function Debt() {
           <h2 className="text-lg font-semibold">Bu Ayın Ekstresi</h2>
           {cardCutoffOf(creditCards, effSel, statementCutoffDay) && (
             <p className="text-xs text-muted-foreground mt-0.5">
-              Kesim günü: her ayın {cardCutoffOf(creditCards, effSel, statementCutoffDay)}'i. Bu günden sonraki harcamalar sonraki ekstreye yazılır.
+              Kesim günü: her ayın {ayinGunu(cardCutoffOf(creditCards, effSel, statementCutoffDay)!)}. Bu günden sonraki harcamalar sonraki ekstreye yazılır.
             </p>
           )}
         </div>

@@ -65,6 +65,21 @@ export function statementMonth(
   return `${ny}-${String(nm).padStart(2, '0')}`;
 }
 
+/**
+ * Türkçe "ayın X'X" ekini üretir: sayının okunuşundaki son ünlüye (ve ünlüyle bitmesine)
+ * göre iyelik eki. Ör. 30 -> "30'u" (otuz), 26 -> "26'sı" (altı), 2 -> "2'si" (iki),
+ * 3 -> "3'ü" (üç), 20 -> "20'si" (yirmi), 1 -> "1'i". d: 1-31.
+ */
+export function ayinGunu(d: number): string {
+  const units = d % 10;
+  const key = units === 0 ? d : units; // 10/20/30 -> onlar sözcüğü; değilse birler
+  const ekler: Record<number, string> = {
+    1: "'i", 2: "'si", 3: "'ü", 4: "'ü", 5: "'i", 6: "'sı", 7: "'si", 8: "'i", 9: "'u",
+    10: "'u", 20: "'si", 30: "'u",
+  };
+  return `${d}${ekler[key] ?? "'i"}`;
+}
+
 export const scrollToElement = (id: string) => {
   // DIKKAT: window.scrollTo KULLANMA. Uygulamanin gercek kaydirma kabi pencere degil,
   // Layout'taki ic 'overflow-y-auto' div'idir (kok 'overflow-hidden'). scrollIntoView en

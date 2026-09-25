@@ -7,7 +7,7 @@ import { AvatarCropModal } from '../components/AvatarCropModal';
 import { Download, Upload, CreditCard, KeyRound, AlertCircle, CheckCircle2, ArrowLeft, Camera, Trash2, Fingerprint, Lock } from 'lucide-react';
 import { exportToExcel, importFromExcel } from '../services/excelService';
 import { API_URL } from '../services/api';
-import { cn } from '../lib/utils';
+import { cn, ayinGunu } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { isDeviceLockEnabled, isDeviceLockSupported, isPlatformAuthenticatorAvailable, registerDeviceLock, disableDeviceLock } from '../lib/deviceLock';
 import { computePinRecord } from '../lib/pinLock';
@@ -677,7 +677,7 @@ export default function Settings() {
               >
                 <option value="">Kesim yok</option>
                 {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
-                  <option key={d} value={d}>Her ayın {d}'i</option>
+                  <option key={d} value={d}>Her ayın {ayinGunu(d)}</option>
                 ))}
               </select>
               <button
@@ -709,7 +709,7 @@ export default function Settings() {
             >
               <option value="">Kesim yok</option>
               {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
-                <option key={d} value={d}>Her ayın {d}'i</option>
+                <option key={d} value={d}>Her ayın {ayinGunu(d)}</option>
               ))}
             </select>
           </div>
