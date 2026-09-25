@@ -291,7 +291,7 @@ export default function Debt() {
           <div className="flex items-center gap-2 font-medium text-sm">
             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: cardById(effSel)?.color || '#888' }} />
             {cardById(effSel)?.name}
-            <span className="text-xs text-muted-foreground">· {cardCutoffOf(creditCards, effSel, statementCutoffDay) ? `kesim ${cardCutoffOf(creditCards, effSel, statementCutoffDay)}` : 'kesim yok'}</span>
+            <span className="text-xs text-muted-foreground">· {cardCutoffOf(creditCards, effSel, statementCutoffDay) ? `Her ayın ${cardCutoffOf(creditCards, effSel, statementCutoffDay)}'i` : 'kesim yok'}</span>
           </div>
           <button type="button" onClick={() => flipCard(1)} aria-label="Sonraki kart" className="p-2 rounded-lg hover:bg-secondary transition-colors">
             <ChevronRight size={20} />
