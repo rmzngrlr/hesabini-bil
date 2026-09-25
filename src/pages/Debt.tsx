@@ -1,9 +1,9 @@
 import { useDraftState } from '../hooks/useDraftState';
-import { useBudget, generateId } from '../context/BudgetContext';
+import { useBudget, generateId, resolveCardId, cardCutoffOf } from '../context/BudgetContext';
 import { Card } from '../components/ui/Card';
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Plus, Trash2, CalendarClock, CreditCard, Pencil, X } from 'lucide-react';
+import { Plus, Trash2, CalendarClock, CreditCard, Pencil, X, ChevronLeft, ChevronRight, LayoutGrid } from 'lucide-react';
 import { cn, scrollToElement, scrollToSearchKey, getTodayStr, isDebtPending, statementMonth } from '../lib/utils';
 import { searchKeyFor } from '../lib/search';
 import { SearchTrigger } from '../components/SearchTrigger';
@@ -16,7 +16,27 @@ import { tr } from 'date-fns/locale';
 import type { CCDebt } from '../types';
 
 export default function Debt() {
-  const { state, viewDate, setViewDate, addCCDebt, updateCCDebt, deleteCCDebt, addInstallment, deleteInstallment, addDailyExpense, askConfirmation, todayStr, ccDueNotices, dismissCCDueNotice, statementCutoffDay } = useBudget();
+  const { state, viewDate, setViewDate, addCCDebt, updateCCDebt, deleteCCDebt, addInstallment, deleteInstallment, addDailyExpense, askConfirmation, todayStr, ccDueNotices, dismissCCDueNotice, statementCutoffDay, creditCards } = useBudget();
+
+  // --- Coklu kredi karti: tarih barinin altinda kart-cevirir bar (Tumu + her kart). Yalniz
+  // Borç sayfasi gruplamasi; Bilanço tek toplam. Kart yonetimi Ayarlar'da. ---
+  const cards = creditCards && creditCards.length ? creditCards : [];
+  const multiCard = cards.length >= 2;
+  const [selectedCardId, setSelectedCardId] = useState<string>(() => {
+    try { return localStorage.getItem('debt_selected_card') || 'ALL'; } catch { return 'ALL'; }
+  });
+  // Silinen/gecersiz secim -> Tumu. Tek kart varken zaten Tumu gibi davranir.
+  const effSel = (multiCard && (selectedCardId === 'ALL' || cards.some(c => c.id === selectedCardId))) ? selectedCardId : 'ALL';
+  const selectCard = (id: string) => { setSelectedCardId(id); try { localStorage.setItem('debt_selected_card', id); } catch { /* yoksay */ } };
+  const flipCard = (delta: number) => {
+    const order = ['ALL', ...cards.map(c => c.id)];
+    const i = Math.max(0, order.indexOf(effSel));
+    selectCard(order[(i + delta + order.length) % order.length]);
+  };
+  // Eklenen borc/taksitin gidecegi kart: belirli kart seciliyse o; Tumu'de formdaki secim (ilk kart).
+  const [formCardId, setFormCardId] = useState<string>('');
+  const targetCardId = effSel !== 'ALL' ? effSel : (formCardId || cards[0]?.id || resolveCardId(undefined));
+  const cardById = (id?: string) => cards.find(c => c.id === resolveCardId(id));
 
   // --- Global arama deep-link tuketimi (viewDate goToRecord'da ayarlanir; burada scroll + temizlik) ---
   const dlLocation = useLocation();
@@ -121,7 +141,7 @@ export default function Debt() {
         if (transactionType === 'PAY') {
             // Ortak bag: KK ödeme kaydi ile TL çıkışını bagla (silme/düzenlemede eşlenir).
             const paymentLinkId = generateId();
-            addCCDebt({ description, amount: Math.abs(numAmount), date, paymentLinkId });
+            addCCDebt({ description, amount: Math.abs(numAmount), date, paymentLinkId, cardId: targetCardId });
             // Otomatik olarak nakitten de düşmesini sağlıyoruz (Nakit gider olarak eklenir)
             addDailyExpense({
                 // `date` zaten yerel "YYYY-MM-DD"; ISO'ya çevrilirse tam zaman damgası
@@ -141,24 +161,26 @@ export default function Debt() {
 
               addInstallment({
                 description,
+                cardId: targetCardId,
                 totalAmount: debtAmount * count,
                 installmentCount: count,
                 monthlyAmount: debtAmount,
                 startDate: new Date(date).toISOString()
               });
             } else {
-              addCCDebt({ description, amount: debtAmount, date });
+              addCCDebt({ description, amount: debtAmount, date, cardId: targetCardId });
             }
         }
     }
 
     // Kesim gunu nedeniyle harcama bakilan aydan farkli bir ekstreye dustuyse
-    // o ekstreye gec ve bilgi notu goster (taksit ve duzenleme haric).
-    if (!editingId && !isInstallment && statementCutoffDay) {
-      const s = statementMonth(date, statementCutoffDay);
+    // o ekstreye gec ve bilgi notu goster (taksit ve duzenleme haric). KARTIN kesimi kullanilir.
+    const effCutoff = cardCutoffOf(creditCards, targetCardId, statementCutoffDay);
+    if (!editingId && !isInstallment && effCutoff) {
+      const s = statementMonth(date, effCutoff);
       if (s && s !== viewDate) {
         setViewDate(s);
-        setAddedNote(`Bu harcama ${formatStatementMonth(s)} ekstresine eklendi (kesim günü ${statementCutoffDay}).`);
+        setAddedNote(`Bu harcama ${formatStatementMonth(s)} ekstresine eklendi (kesim günü ${effCutoff}).`);
       }
     }
 
@@ -185,18 +207,30 @@ export default function Debt() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   };
   const isCurrentMonth = viewDate === getLocalMonth();
+  // Seçili karta göre süzülmüş borçlar (Tümü'de hepsi). Toplam/pending/liste bundan hesaplanır.
+  const visibleDebts = useMemo(
+    () => state.ccDebts.filter(d => effSel === 'ALL' || resolveCardId(d.cardId) === effSel),
+    [state.ccDebts, effSel]
+  );
   const totalDebt = Math.abs(
+    visibleDebts
+      .filter(d => !isDebtPending(d.date, isCurrentMonth, todayStr))
+      .reduce((sum, d) => sum + d.amount, 0)
+  );
+  // Tüm kartların toplamı (= Bilanço'daki tek sayı). Belirli kart seçiliyken ikincil satırda gösterilir.
+  const grandTotalDebt = Math.abs(
     state.ccDebts
       .filter(d => !isDebtPending(d.date, isCurrentMonth, todayStr))
       .reduce((sum, d) => sum + d.amount, 0)
   );
-  const pendingCount = state.ccDebts.filter(d => isDebtPending(d.date, isCurrentMonth, todayStr)).length;
+  const pendingCount = visibleDebts.filter(d => isDebtPending(d.date, isCurrentMonth, todayStr)).length;
+  const visibleInstallments = state.installments.filter(i => effSel === 'ALL' || resolveCardId(i.cardId) === effSel);
 
   const groupedDebts = useMemo(() => {
     const groups: Record<string, CCDebt[]> = {};
     const noDateGroup: CCDebt[] = [];
 
-    state.ccDebts.forEach(debt => {
+    visibleDebts.forEach(debt => {
       if (debt.date) {
         if (!groups[debt.date]) groups[debt.date] = [];
         // Son eklenen borc/odeme gun icinde en ustte gorunsun diye basa ekle
@@ -209,7 +243,7 @@ export default function Debt() {
     });
 
     return { groups, noDateGroup };
-  }, [state.ccDebts]);
+  }, [visibleDebts]);
 
   const sortedDates = useMemo(() => {
     return Object.keys(groupedDebts.groups).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
@@ -240,6 +274,28 @@ export default function Debt() {
         </div>
         <MonthNavigator onDoubleClick={() => setShowCalendar(v => !v)} />
       </header>
+
+      {multiCard && (
+        <div className="flex items-center justify-between bg-primary/5 border border-primary/15 rounded-xl p-1.5">
+          <button type="button" onClick={() => flipCard(-1)} aria-label="Önceki kart" className="p-2 rounded-lg hover:bg-secondary transition-colors">
+            <ChevronLeft size={20} />
+          </button>
+          <div className="flex items-center gap-2 font-medium text-sm">
+            {effSel === 'ALL' ? (
+              <><LayoutGrid size={16} className="text-primary" /> Tümü <span className="text-xs text-muted-foreground">({cards.length} kart)</span></>
+            ) : (
+              <>
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: cardById(effSel)?.color || '#888' }} />
+                {cardById(effSel)?.name}
+                <span className="text-xs text-muted-foreground">· {cardCutoffOf(creditCards, effSel, statementCutoffDay) ? `kesim ${cardCutoffOf(creditCards, effSel, statementCutoffDay)}` : 'kesim yok'}</span>
+              </>
+            )}
+          </div>
+          <button type="button" onClick={() => flipCard(1)} aria-label="Sonraki kart" className="p-2 rounded-lg hover:bg-secondary transition-colors">
+            <ChevronRight size={20} />
+          </button>
+        </div>
+      )}
 
       {addedNote && (
         <div className="flex items-start gap-2 p-3 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 text-sm border border-blue-500/20">
@@ -277,7 +333,7 @@ export default function Debt() {
         </div>
       )}
 
-      <Card title="Bu Ay Ödenecek Toplam Kredi Kartı Borcu" className="bg-gradient-to-br from-transparent to-red-500/12 border-red-500/25">
+      <Card title={effSel === 'ALL' ? 'Bu Ay Ödenecek Toplam Kredi Kartı Borcu' : `${cardById(effSel)?.name || 'Kart'} — Bu Ay Ödenecek`} className="bg-gradient-to-br from-transparent to-red-500/12 border-red-500/25">
         <div className="text-3xl font-bold text-red-500 mt-2">
           <Secret>{totalDebt.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}</Secret>
         </div>
@@ -286,10 +342,23 @@ export default function Debt() {
             günü gelmemiş {pendingCount} kalem hariç
           </div>
         )}
+        {multiCard && effSel !== 'ALL' && (
+          <div className="text-xs text-muted-foreground mt-1">
+            Tüm kartlar (Bilanço): <Secret>{grandTotalDebt.toLocaleString('tr-TR')} ₺</Secret>
+          </div>
+        )}
       </Card>
 
       <div id="edit-form-card"><Card title={editingId ? "İşlemi Düzenle" : "İşlem Ekle"} collapsible={!editingId} open={addFormOpen} onToggleOpen={toggleAddForm}>
         <form onSubmit={handleSubmit} className="space-y-3 mt-2">
+          {multiCard && effSel === 'ALL' && !editingId && (
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Kart</label>
+              <select value={targetCardId} onChange={(e) => setFormCardId(e.target.value)} className="w-full h-11 px-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+                {cards.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+          )}
           <div className="flex gap-2">
              <button
                type="button"
@@ -413,18 +482,23 @@ export default function Debt() {
       </Card></div>
 
       {/* Active Installments Section */}
-      {state.installments.length > 0 && (
+      {visibleInstallments.length > 0 && (
         <div className="space-y-3">
           <h2 className="text-lg font-semibold">Devam Eden Taksitler</h2>
           <div className="grid gap-3">
-            {state.installments.map((inst) => {
+            {visibleInstallments.map((inst) => {
                const current = inst.installmentCount - inst.remainingInstallments + 1;
 
                return (
                  <div key={inst.id} data-search-key={searchKeyFor('installment', inst.id)} className="p-4 rounded-xl bg-secondary/30 border border-border">
                     <div className="flex justify-between items-start mb-2">
                        <div>
-                         <div className="font-medium">{inst.description}</div>
+                         <div className="font-medium flex items-center gap-2">
+                           {inst.description}
+                           {multiCard && effSel === 'ALL' && (
+                             <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: (cardById(inst.cardId)?.color || '#888') + '22', color: cardById(inst.cardId)?.color || '#888' }}>{cardById(inst.cardId)?.name}</span>
+                           )}
+                         </div>
                          <div className="text-xs text-muted-foreground">
                            Toplam: <Secret>{Math.abs(inst.totalAmount).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}</Secret>
                          </div>
@@ -467,9 +541,9 @@ export default function Debt() {
       <div className="space-y-6">
         <div>
           <h2 className="text-lg font-semibold">Bu Ayın Ekstresi</h2>
-          {statementCutoffDay && (
+          {effSel !== 'ALL' && cardCutoffOf(creditCards, effSel, statementCutoffDay) && (
             <p className="text-xs text-muted-foreground mt-0.5">
-              Kesim günü: her ayın {statementCutoffDay}'i. Bu günden sonraki harcamalar sonraki ekstreye yazılır.
+              Kesim günü: her ayın {cardCutoffOf(creditCards, effSel, statementCutoffDay)}'i. Bu günden sonraki harcamalar sonraki ekstreye yazılır.
             </p>
           )}
         </div>
@@ -477,7 +551,7 @@ export default function Debt() {
         {showCalendar ? (
           <SpendingCalendar
             viewDate={viewDate}
-            entries={state.ccDebts.map(d => ({ date: d.date || '', amount: d.amount }))}
+            entries={visibleDebts.map(d => ({ date: d.date || '', amount: d.amount }))}
             symbol="₺"
             label="Kredi Kartı"
           />
@@ -512,7 +586,12 @@ export default function Debt() {
                        <CreditCard size={20} />
                      </div>
                      <div>
-                       <div className="font-medium">{debt.description}</div>
+                       <div className="font-medium flex items-center gap-2">
+                         {debt.description}
+                         {multiCard && effSel === 'ALL' && (
+                           <span className="text-[10px] px-1.5 py-0.5 rounded-full shrink-0" style={{ background: (cardById(debt.cardId)?.color || '#888') + '22', color: cardById(debt.cardId)?.color || '#888' }}>{cardById(debt.cardId)?.name}</span>
+                         )}
+                       </div>
                      </div>
                   </div>
 
@@ -562,7 +641,12 @@ export default function Debt() {
                      <CreditCard size={20} />
                    </div>
                    <div>
-                     <div className="font-medium">{debt.description}</div>
+                     <div className="font-medium flex items-center gap-2">
+                       {debt.description}
+                       {multiCard && effSel === 'ALL' && (
+                         <span className="text-[10px] px-1.5 py-0.5 rounded-full shrink-0" style={{ background: (cardById(debt.cardId)?.color || '#888') + '22', color: cardById(debt.cardId)?.color || '#888' }}>{cardById(debt.cardId)?.name}</span>
+                       )}
+                     </div>
                    </div>
                 </div>
 
@@ -591,7 +675,7 @@ export default function Debt() {
           </div>
         )}
 
-         {state.ccDebts.length === 0 && (
+         {visibleDebts.length === 0 && (
           <div className="text-center text-muted-foreground py-8">
             Borç kaydı bulunmamaktadır.
           </div>

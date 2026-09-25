@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useMemo, useRef, type ReactNode } from 'react';
 import { getTodayStr, toLocalMonthStr, statementMonth } from '../lib/utils';
-import type { BudgetState, FixedExpense, CustomIncome, DailyExpense, CCDebt, Installment, MonthlyHistory, GoldRecord } from '../types';
+import type { BudgetState, FixedExpense, CustomIncome, DailyExpense, CCDebt, Installment, MonthlyHistory, GoldRecord, CreditCard } from '../types';
 import { fetchWithAuth } from '../services/api';
 import { useAuth } from './AuthContext';
 import { ConfirmationModal } from '../components/ConfirmationModal';
@@ -22,6 +22,22 @@ export const CC_DEBT_TITLE = 'Kredi Kartı Borcu (Geçen Ay)';
  * Bunlarda tarih alani yoktur; ayin 1'inden itibaren odenmemisse uyari verilir.
  */
 export const WARNED_FIXED_EXPENSE_TITLES = [RENT_AND_DUES_TITLE, CC_DEBT_TITLE];
+
+/**
+ * Coklu kredi karti. Bilanço/Varlıklarım TOPLAMI tek sayı gösterir; kart yalnız Borç
+ * sayfasında gruplama + karta özel kesim günü içindir. Mevcut/legacy tek-kart verisi ve
+ * kartId'siz tüm kayıtlar VARSAYILAN karta düşer.
+ */
+export const DEFAULT_CARD_ID = 'card-default';
+export const makeDefaultCard = (cutoffDay: number | null = null) => ({ id: DEFAULT_CARD_ID, name: 'Kredi Kartım', color: '#378ADD', cutoffDay });
+/** Bir borç/taksit/faturanın kart id'sini çözer (undefined/boş => varsayılan kart). */
+export const resolveCardId = (cardId?: string | null): string => cardId || DEFAULT_CARD_ID;
+/** Bir kartın etkin kesim günü: karta özel cutoffDay varsa o, yoksa global statementCutoffDay. */
+export const cardCutoffOf = (cards: CreditCard[] | undefined, cardId: string | undefined | null, globalCutoff: number | null | undefined): number | null => {
+  const c = (cards || []).find(x => x.id === resolveCardId(cardId));
+  const cd = c && c.cutoffDay != null ? c.cutoffDay : (globalCutoff ?? null);
+  return (cd && cd >= 1 && cd <= 31) ? cd : null;
+};
 
 /**
  * Bir sabit gider "odenmedi" uyarisi vermeli mi?
@@ -83,6 +99,7 @@ const initialState: BudgetState = {
   dailyExpenses: [],
   ccDebts: [],
   installments: [],
+  creditCards: [makeDefaultCard()],
   history: [],
   futureData: {},
   showMealCard: true,
@@ -133,6 +150,13 @@ interface BudgetContextType {
   setStatementCutoffDay: (day: number | null) => void;
   addInstallment: (installment: Omit<Installment, 'id' | 'remainingInstallments'>) => void;
   deleteInstallment: (id: string) => void;
+  /** Kredi kartlari (coklu kart). Bilanço tek toplam; kart yalniz Borç sayfasi grubu. */
+  creditCards: CreditCard[];
+  addCreditCard: (name: string, opts?: { color?: string; cutoffDay?: number | null }) => void;
+  updateCreditCard: (id: string, patch: Partial<CreditCard>) => void;
+  deleteCreditCard: (id: string) => void;
+  /** Kartın borcu/taksiti/KK-faturası var mı (silme engeli için). */
+  isCardInUse: (id: string) => boolean;
   updateDailyExpense: (id: string, expense: Partial<DailyExpense>) => void;
   updateCCDebt: (id: string, debt: Partial<CCDebt>) => void;
   updateFixedExpense: (id: string, expense: Partial<FixedExpense>) => void;
@@ -386,7 +410,7 @@ const routePaidBill = (
   if (isDueKKBill && sm > currentMonth) {
     const rid = `stmtbill-${bill.id}`;
     const existing = fd[sm] || {};
-    fd = { ...fd, [sm]: { ...existing, ccDebts: [...(existing.ccDebts || []), { id: rid, description: bill.title, amount: -Math.abs(bill.amount), date: bill.date }] } };
+    fd = { ...fd, [sm]: { ...existing, ccDebts: [...(existing.ccDebts || []), { id: rid, description: bill.title, amount: -Math.abs(bill.amount), date: bill.date, cardId: bill.cardId }] } };
     return { bill: { ...bill, ccStatementRouted: sm }, futureData: fd };
   }
   return { bill: { ...bill, ccStatementRouted: undefined }, futureData: fd };
@@ -410,14 +434,16 @@ const syncCCDebtsForList = (fixedExpenses: FixedExpense[], ccDebts: CCDebt[]): C
         ...updatedDebts[existingIndex],
         description: e.title,
         amount: -Math.abs(e.amount),
-        date: e.date || updatedDebts[existingIndex].date || getTodayStr()
+        date: e.date || updatedDebts[existingIndex].date || getTodayStr(),
+        cardId: e.cardId // faturaya secilen kart
       };
     } else {
       updatedDebts.push({
         id: debtId,
         description: e.title,
         amount: -Math.abs(e.amount),
-        date: e.date || getTodayStr()
+        date: e.date || getTodayStr(),
+        cardId: e.cardId // faturaya secilen kart
       });
     }
   });
@@ -945,6 +971,24 @@ function migrateState(parsed: any): BudgetState {
       try { parsed.showVault = localStorage.getItem('settings_showVault') !== 'false'; } catch { parsed.showVault = true; }
     }
 
+    // Coklu kredi karti gecisi (idempotent): kartlar yoksa VARSAYILAN karti olustur (kesim
+    // gunu mevcut global statementCutoffDay'den) ve kartId'siz tum borc/taksit + gecmis/gelecek
+    // aylardaki ccDebts'leri varsayilana ata. Boylece eski tek-kart verisi kaybolmaz.
+    if (parsed && (!Array.isArray(parsed.creditCards) || parsed.creditCards.length === 0)) {
+      const oldGlobalCutoff = parsed.statementCutoffDay ?? null;
+      parsed.creditCards = [makeDefaultCard(oldGlobalCutoff)];
+      // Kesim gunu artik KARTA OZEL. Eski global default karta tasindi; global null'lanir ki
+      // "Kesim yok" secilen kartlar gercekten routing yapmasin (takvim ayi kalir).
+      parsed.statementCutoffDay = null;
+      const tagCard = (arr: any) => { if (Array.isArray(arr)) arr.forEach((d: any) => { if (d && !d.cardId) d.cardId = DEFAULT_CARD_ID; }); };
+      tagCard(parsed.ccDebts);
+      tagCard(parsed.installments);
+      if (Array.isArray(parsed.history)) parsed.history.forEach((h: any) => tagCard(h && h.ccDebts));
+      if (parsed.futureData && typeof parsed.futureData === 'object') {
+        Object.values(parsed.futureData).forEach((f: any) => tagCard(f && f.ccDebts));
+      }
+    }
+
     return { ...initialState, ...parsed };
 }
 
@@ -1379,6 +1423,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                description: `${inst.description} (${nextInstallmentNumber}/${inst.installmentCount})`,
                amount: inst.monthlyAmount,
                date: installmentDate(inst.startDate, nextInstallmentNumber),
+               cardId: inst.cardId,
                installmentId: inst.id,
                currentInstallment: nextInstallmentNumber,
                totalInstallments: inst.installmentCount
@@ -1633,11 +1678,12 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     const cutoff = realState.statementCutoffDay;
     const nextMonth = addMonths(realState.currentMonth, 1);
     const unpaidKKBillItems = realState.fixedExpenses.filter(e => e.isBill && e.paymentMethod === 'KK' && !e.isPaid);
+    const billStmtMonth = (e: FixedExpense) => statementMonth(e.date, cardCutoffOf(realState.creditCards, e.cardId, cutoff)) || realState.currentMonth;
     const currentStatementBillsSum = unpaidKKBillItems
-      .filter(e => (statementMonth(e.date, cutoff) || realState.currentMonth) === realState.currentMonth)
+      .filter(e => billStmtMonth(e) === realState.currentMonth)
       .reduce((sum, e) => sum + Math.abs(e.amount), 0);
     const nextStatementBillsSum = unpaidKKBillItems
-      .filter(e => (statementMonth(e.date, cutoff) || realState.currentMonth) === nextMonth)
+      .filter(e => billStmtMonth(e) === nextMonth)
       .reduce((sum, e) => sum + Math.abs(e.amount), 0);
     let lastMonthCCDebt = Math.abs(realState.ccDebts.reduce((sum, d) => sum + d.amount, 0)) + currentStatementBillsSum;
 
@@ -1751,6 +1797,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                     description: `${inst.description} (${currentInstNum}/${inst.installmentCount})`,
                     amount: amount,
                     date: installmentDate(inst.startDate, currentInstNum),
+                    cardId: inst.cardId, // taksitin karti korunur
                     installmentId: inst.id, // Keep link to original
                     currentInstallment: currentInstNum,
                     totalInstallments: inst.installmentCount
@@ -1770,7 +1817,8 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           .map(e => ({
             id: `proj-bill-cc-${e.id}`,
             description: `Fatura: ${e.title}`,
-            amount: -Math.abs(e.amount)
+            amount: -Math.abs(e.amount),
+            cardId: e.cardId // faturaya secilen kart (undefined => varsayilan)
           }));
 
         // Combine Manual + Projected + Monthly KK Bills for Total Calculation and Display
@@ -2270,10 +2318,11 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     };
 
     setRealState(prev => {
-        // Hedef ekstre ayi: kesim gunu ACIKSA tarihe gore hesaplanir (kesimden
+        // Hedef ekstre ayi: KARTIN kesim gunu ACIKSA tarihe gore hesaplanir (kesimden
         // sonraki harcamalar sonraki aya). Kapaliysa eski davranis: goruntulenen ay.
-        const targetMonth = prev.statementCutoffDay
-          ? (statementMonth(newDebt.date, prev.statementCutoffDay) || viewDate)
+        const cutoff = cardCutoffOf(prev.creditCards, newDebt.cardId, prev.statementCutoffDay);
+        const targetMonth = cutoff
+          ? (statementMonth(newDebt.date, cutoff) || viewDate)
           : viewDate;
 
         if (targetMonth === prev.currentMonth) {
@@ -2508,6 +2557,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       description: `${newInstallment.description} (1/${newInstallment.installmentCount})`,
       amount: newInstallment.monthlyAmount,
       date: installmentDate(newInstallment.startDate, 1),
+      cardId: newInstallment.cardId,
       installmentId: newInstallment.id,
       currentInstallment: 1,
       totalInstallments: newInstallment.installmentCount
@@ -2527,6 +2577,40 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }));
   };
 
+  // --- Kredi kartlari (coklu kart). Bilanço/Varlıklarım TOPLAMI tek sayi; kart yalniz Borç
+  // sayfasi grubu + karta ozel kesim gunu. Yonetim Ayarlar sayfasinda. ---
+  const addCreditCard = (name: string, opts?: { color?: string; cutoffDay?: number | null }) => {
+    const nm = (name || '').trim();
+    if (!nm) return;
+    setRealState(prev => {
+      const card: CreditCard = { id: generateId(), name: nm, color: opts?.color, cutoffDay: opts?.cutoffDay ?? null };
+      return { ...prev, creditCards: [...(prev.creditCards || [makeDefaultCard()]), card] };
+    });
+  };
+  const updateCreditCard = (id: string, patch: Partial<CreditCard>) => {
+    setRealState(prev => ({
+      ...prev,
+      creditCards: (prev.creditCards || []).map(c => (c.id === id ? { ...c, ...patch } : c)),
+    }));
+  };
+  // Bir kartin borcu/taksiti/KK-faturasi var mi? (silme engeli icin — cari+gecmis+gelecek).
+  const cardHasEntries = (state: BudgetState, id: string): boolean => {
+    const has = (arr?: { cardId?: string }[]) => (arr || []).some(d => resolveCardId(d.cardId) === id);
+    const hasBill = (arr?: FixedExpense[]) => (arr || []).some(e => e.isBill && e.paymentMethod === 'KK' && resolveCardId(e.cardId) === id);
+    return has(state.ccDebts) || has(state.installments) || hasBill(state.fixedExpenses)
+      || (state.history || []).some(h => has(h.ccDebts) || hasBill(h.fixedExpenses))
+      || Object.values(state.futureData || {}).some((f: any) => has(f && f.ccDebts) || hasBill(f && f.fixedExpenses));
+  };
+  // Karar: borcu olan kart silinemez (UI once uyarir; burada da savunma). Son kart da silinemez.
+  const deleteCreditCard = (id: string) => {
+    setRealState(prev => {
+      const cards = prev.creditCards || [];
+      if (cards.length <= 1) return prev;
+      if (cardHasEntries(prev, id)) return prev;
+      return { ...prev, creditCards: cards.filter(c => c.id !== id) };
+    });
+  };
+
   const updateFixedExpense = (id: string, expense: Partial<FixedExpense>) => {
     setRealState(prev => {
         if (viewDate === prev.currentMonth) {
@@ -2535,7 +2619,8 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             const newFixedExpenses = prev.fixedExpenses.map(ex => {
               if (ex.id !== id) return ex;
               // Duzenlenen fatura -> routing'i yeniden hesapla (tutar/tarih/ekstre ayi degisebilir).
-              const routed = routePaidBill({ ...ex, ...expense }, futureData, cutoff, prev.currentMonth);
+              const mergedBill = { ...ex, ...expense };
+              const routed = routePaidBill(mergedBill, futureData, cardCutoffOf(prev.creditCards, mergedBill.cardId, cutoff), prev.currentMonth);
               futureData = routed.futureData;
               return routed.bill;
             });
@@ -2752,6 +2837,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                description: `${inst.description} (${nextInstallmentNumber}/${inst.installmentCount})`,
                amount: inst.monthlyAmount,
                date: installmentDate(inst.startDate, nextInstallmentNumber),
+               cardId: inst.cardId,
                installmentId: inst.id,
                currentInstallment: nextInstallmentNumber,
                totalInstallments: inst.installmentCount
@@ -2862,8 +2948,8 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       const newFixed = (prev.fixedExpenses || []).map(e => {
         const isDue = e.isBill && e.paymentMethod === 'KK' && !e.isPaid && !!e.date && e.date <= todayStr;
         if (!isDue) return e;
-        // Fatura odendi say + kesime gore dogru ekstre ayina yonlendir (tek kaynak: routePaidBill).
-        const routed = routePaidBill({ ...e, isPaid: true, autoPaidPending: true }, futureData, cutoff, prev.currentMonth);
+        // Fatura odendi say + KARTIN kesimine gore dogru ekstre ayina yonlendir (tek kaynak: routePaidBill).
+        const routed = routePaidBill({ ...e, isPaid: true, autoPaidPending: true }, futureData, cardCutoffOf(prev.creditCards, e.cardId, cutoff), prev.currentMonth);
         futureData = routed.futureData;
         return routed.bill;
       });
@@ -2968,6 +3054,11 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             setStatementCutoffDay,
             addInstallment,
             deleteInstallment,
+            creditCards: realState.creditCards ?? [makeDefaultCard()],
+            addCreditCard,
+            updateCreditCard,
+            deleteCreditCard,
+            isCardInUse: (id: string) => cardHasEntries(realState, id),
             updateDailyExpense,
             updateCCDebt,
             updateFixedExpense,

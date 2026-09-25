@@ -4,7 +4,7 @@ import { useAuth, getAuthToken } from '../context/AuthContext';
 import { Card } from '../components/ui/Card';
 import { Avatar } from '../components/ui/Avatar';
 import { AvatarCropModal } from '../components/AvatarCropModal';
-import { Download, Upload, CreditCard, KeyRound, AlertCircle, CheckCircle2, ArrowLeft, Camera, Trash2, CalendarClock, Fingerprint, Lock } from 'lucide-react';
+import { Download, Upload, CreditCard, KeyRound, AlertCircle, CheckCircle2, ArrowLeft, Camera, Trash2, Fingerprint, Lock } from 'lucide-react';
 import { exportToExcel, importFromExcel } from '../services/excelService';
 import { API_URL } from '../services/api';
 import { cn } from '../lib/utils';
@@ -13,8 +13,26 @@ import { isDeviceLockEnabled, isDeviceLockSupported, isPlatformAuthenticatorAvai
 import { computePinRecord } from '../lib/pinLock';
 
 export default function Settings() {
-  const { state, loadState, showMealCard, toggleShowMealCard, showVault, toggleShowVault, askConfirmation, askInfo, statementCutoffDay, setStatementCutoffDay,
+  const { state, loadState, showMealCard, toggleShowMealCard, showVault, toggleShowVault, askConfirmation, askInfo,
+    creditCards, addCreditCard, updateCreditCard, deleteCreditCard, isCardInUse,
     lockPin, setLockPin, lockOnMobile, setLockOnMobile, lockOnDesktop, setLockOnDesktop, lockRelockMinutes, setLockRelockMinutes } = useBudget();
+
+  // --- Kredi Kartlarim yonetimi (coklu kart). Bilanço tek toplam; her kart ayri ekstre/kesim. ---
+  const CARD_COLORS = ['#378ADD', '#D4537E', '#639922', '#BA7517', '#7F77DD', '#1D9E75', '#D85A30'];
+  const [newCardName, setNewCardName] = useState('');
+  const [newCardColor, setNewCardColor] = useState(CARD_COLORS[0]);
+  const [newCardCutoff, setNewCardCutoff] = useState('');
+  const handleAddCard = () => {
+    const nm = newCardName.trim();
+    if (!nm) return;
+    addCreditCard(nm, { color: newCardColor, cutoffDay: newCardCutoff === '' ? null : Number(newCardCutoff) });
+    setNewCardName(''); setNewCardColor(CARD_COLORS[0]); setNewCardCutoff('');
+  };
+  const handleDeleteCard = async (id: string, name: string) => {
+    if (isCardInUse(id)) { await askInfo('Bu kartın borç/taksit/faturası var. Silmeden önce bunları başka bir karta taşıyın veya silin.'); return; }
+    if ((creditCards || []).length <= 1) { await askInfo('En az bir kredi kartı olmalı.'); return; }
+    if (await askConfirmation(`"${name}" kartını silmek istediğinize emin misiniz?`)) deleteCreditCard(id);
+  };
   const { username, avatar, updateAvatar } = useAuth();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -636,30 +654,86 @@ export default function Settings() {
         </div>
       </Card>
 
-      <Card title="Kredi Kartı">
-        <div className="flex items-center justify-between gap-3 p-2">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2 rounded-full bg-purple-500/10 text-purple-500">
-              <CalendarClock size={20} />
+      <Card title="Kredi Kartlarım">
+        <p className="text-xs text-muted-foreground mb-3">
+          Bilanço'da tek toplam görünür; her kart Borç sayfasında ayrışır ve kendi hesap kesim gününe göre çalışır (kesim: bu günden sonraki harcamalar bir sonraki ayın ekstresine yazılır).
+        </p>
+        <div className="space-y-2">
+          {(creditCards || []).map(c => (
+            <div key={c.id} className="flex items-center gap-2 p-2 rounded-xl bg-secondary/40 border border-border">
+              <span className="w-3 h-3 rounded-full shrink-0" style={{ background: c.color || '#888' }} />
+              <input
+                value={c.name}
+                onChange={(e) => updateCreditCard(c.id, { name: e.target.value })}
+                className="flex-1 min-w-0 bg-transparent text-sm font-medium focus:outline-none"
+                aria-label="Kart adı"
+              />
+              <select
+                value={c.cutoffDay ?? ''}
+                onChange={(e) => updateCreditCard(c.id, { cutoffDay: e.target.value === '' ? null : Number(e.target.value) })}
+                className="px-2 py-1.5 rounded-lg bg-secondary text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary shrink-0"
+                aria-label="Kesim günü"
+              >
+                <option value="">Kesim yok</option>
+                {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                  <option key={d} value={d}>Kesim {d}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => handleDeleteCard(c.id, c.name)}
+                title="Kartı sil"
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive transition-colors shrink-0"
+              >
+                <Trash2 size={16} />
+              </button>
             </div>
-            <div className="min-w-0">
-              <div className="font-medium">Hesap Kesim Günü</div>
-              <div className="text-xs text-muted-foreground">
-                Bu günden sonra yapılan harcamalar bir sonraki ayın ekstresine yazılır.
-              </div>
-            </div>
+          ))}
+        </div>
+
+        <div className="mt-3 pt-3 border-t border-border space-y-2">
+          <div className="text-xs text-muted-foreground">Yeni kart</div>
+          <div className="flex items-center gap-2">
+            <input
+              value={newCardName}
+              onChange={(e) => setNewCardName(e.target.value)}
+              placeholder="Kart adı (ör. Bonus)"
+              className="flex-1 min-w-0 px-3 h-10 rounded-xl bg-secondary text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+            <select
+              value={newCardCutoff}
+              onChange={(e) => setNewCardCutoff(e.target.value)}
+              className="px-2 h-10 rounded-xl bg-secondary text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary shrink-0"
+              aria-label="Yeni kart kesim günü"
+            >
+              <option value="">Kesim yok</option>
+              {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                <option key={d} value={d}>Kesim {d}</option>
+              ))}
+            </select>
           </div>
-          <select
-            value={statementCutoffDay ?? ''}
-            onChange={(e) => setStatementCutoffDay(e.target.value === '' ? null : Number(e.target.value))}
-            className="px-3 py-2 rounded-xl bg-secondary text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary shrink-0"
-            aria-label="Hesap kesim günü"
-          >
-            <option value="">Kapalı</option>
-            {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
-              <option key={d} value={d}>Her ayın {d}'i</option>
-            ))}
-          </select>
+          <div className="flex items-center gap-2">
+            <div className="flex gap-1.5 flex-1 flex-wrap">
+              {CARD_COLORS.map(col => (
+                <button
+                  key={col}
+                  type="button"
+                  onClick={() => setNewCardColor(col)}
+                  aria-label="Renk"
+                  className={`w-6 h-6 rounded-full shrink-0 ${newCardColor === col ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''}`}
+                  style={{ background: col }}
+                />
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={handleAddCard}
+              disabled={!newCardName.trim()}
+              className="px-4 h-10 rounded-xl bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50 shrink-0"
+            >
+              Kart Ekle
+            </button>
+          </div>
         </div>
       </Card>
 

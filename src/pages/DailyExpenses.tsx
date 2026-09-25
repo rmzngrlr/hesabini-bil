@@ -76,7 +76,8 @@ export default function DailyExpenses() {
     autoPaidBills,
     autoPaidBillsCount,
     dismissAutoPaidBill,
-    todayStr
+    todayStr,
+    creditCards
   } = useBudget();
   const { username } = useAuth();
 
@@ -543,6 +544,8 @@ export default function DailyExpenses() {
   const [billTitle, setBillTitle] = useState('');
   const [billAmount, setBillAmount] = useState('');
   const [billPaymentMethod, setBillPaymentMethod] = useState<'NAKIT' | 'KK'>('NAKIT');
+  // KK odemeli faturanin dogacagi kart borcunun yazilacagi kredi karti.
+  const [billCardId, setBillCardId] = useState<string>('');
   const [billDate, setBillDate] = useState(() => getTodayStr());
   const [editingBillId, setEditingBillId] = useState<string | null>(null);
   const [exchangeTabMode, setExchangeTabMode] = useState<'CURRENCY' | 'GOLD'>('CURRENCY');
@@ -1583,7 +1586,8 @@ export default function DailyExpenses() {
         amount: numAmount,
         paymentMethod: billPaymentMethod,
         isBill: true,
-        date: billDate
+        date: billDate,
+        cardId: billPaymentMethod === 'KK' ? (billCardId || creditCards[0]?.id) : undefined
       });
       setEditingBillId(null);
     } else {
@@ -1592,7 +1596,8 @@ export default function DailyExpenses() {
         amount: numAmount,
         paymentMethod: billPaymentMethod,
         isBill: true,
-        date: billDate
+        date: billDate,
+        cardId: billPaymentMethod === 'KK' ? (billCardId || creditCards[0]?.id) : undefined
       });
     }
 
@@ -1607,6 +1612,7 @@ export default function DailyExpenses() {
     setBillTitle(bill.title);
     setBillAmount(bill.amount.toString());
     setBillPaymentMethod(bill.paymentMethod || 'NAKIT');
+    setBillCardId(bill.cardId || '');
     setBillDate(bill.date || getTodayStr());
     scrollToElement('edit-bill-form-card');
   };
@@ -2064,6 +2070,18 @@ export default function DailyExpenses() {
                   <option value="KK">Kredi Kartı</option>
                 </select>
               </div>
+              {billPaymentMethod === 'KK' && creditCards.length >= 2 && (
+                <div className="flex-1 space-y-1">
+                  <label className="text-xs text-muted-foreground">Kart</label>
+                  <select
+                    value={billCardId || creditCards[0]?.id}
+                    onChange={(e) => setBillCardId(e.target.value)}
+                    className="w-full h-11 px-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+                  >
+                    {creditCards.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+              )}
               <div className="flex-1 space-y-1">
                 <label className="text-xs text-muted-foreground">Tarih</label>
                 <input

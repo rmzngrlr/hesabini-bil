@@ -51,6 +51,8 @@ export interface FixedExpense {
    * olarak) ve syncCCDebtsForList bu faturayi atlar (cari aya cift yazilmasin).
    */
   ccStatementRouted?: string;
+  /** KK ödemeli fatura ise, doğan kart borcunun yazılacağı kredi kartı (undefined => varsayılan). */
+  cardId?: string;
 }
 
 export interface CustomIncome {
@@ -76,11 +78,21 @@ export interface DailyExpense {
   paymentLinkId?: string;
 }
 
+/** Bir kredi kartı (çoklu kart). Bilanço tüm kartların TOPLAMINI tek sayı gösterir;
+ *  kartlar yalnız Borç sayfasında gruplama + karta özel kesim günü içindir. */
+export interface CreditCard {
+  id: string;
+  name: string;
+  color?: string;          // rozet/başlık rengi (hex)
+  cutoffDay?: number | null; // karta özel hesap kesim günü (1-31); null => global statementCutoffDay'e düşer
+}
+
 export interface CCDebt {
   id: string;
   description: string;
   amount: number;
   date?: string; // ISO string for the date the debt was incurred or paid
+  cardId?: string; // hangi kredi kartına ait (undefined => varsayılan kart)
   installmentId?: string; // Link to parent installment if applicable
   currentInstallment?: number; // e.g. 1 (of 6)
   totalInstallments?: number; // e.g. 6
@@ -98,6 +110,7 @@ export interface CCDebt {
 export interface Installment {
   id: string;
   description: string;
+  cardId?: string; // taksitin ait olduğu kredi kartı (undefined => varsayılan kart)
   totalAmount: number;
   installmentCount: number;
   remainingInstallments: number;
@@ -142,6 +155,8 @@ export interface BudgetState {
    * bir sonraki ayın ekstresine sayılır. null/undefined => kapalı (takvim ayı).
    */
   statementCutoffDay?: number | null;
+  /** Kullanıcının kredi kartları. Bilanço TOPLAMI tek sayı; kartlar Borç sayfasında ayrışır. */
+  creditCards?: CreditCard[];
   /** Hesap-bazli UI tercihleri (tarayici degil, hesaba senkronlanir). */
   showMealCard?: boolean;
   showVault?: boolean;
