@@ -111,6 +111,12 @@ export interface Installment {
   id: string;
   description: string;
   cardId?: string; // taksitin ait olduğu kredi kartı (undefined => varsayılan kart)
+  /**
+   * İlk taksit diliminin ekstre ayı (YYYY-MM). Taksit OLUŞTURULURKEN o anki kart kesim gününe
+   * göre SABİTLENİR ve bir daha değişmez. Tüm dilim ay/no hesabı bundan türer
+   * (k = monthDiff(startMonth, ay)+1). Kesim sonradan değişse veya tarih eksik olsa bile kaymaz.
+   */
+  startMonth?: string;
   totalAmount: number;
   installmentCount: number;
   remainingInstallments: number;

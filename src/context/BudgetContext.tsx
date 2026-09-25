@@ -130,6 +130,26 @@ export const installmentDate = (startDate: string | undefined, k: number): strin
   return `${ny}-${String(nm).padStart(2, '0')}-${String(nd).padStart(2, '0')}`;
 };
 
+/**
+ * Bir taksitin İLK diliminin ekstre ayı (tarih + karta özel kesim). currentMonth'tan BAĞIMSIZ,
+ * KARARLI: yalnız startDate + kartın kesim gününe bağlı. Taksit dilimlerinin hangi aya düşeceği
+ * ve numarası (k = monthDiff(firstMonth, ay)+1) bundan türetilir — böylece ileri/geri başlangıçlı
+ * taksitler doğru aya oturur (ör. 1 Kasım başlangıç -> #1 Kasım, cari ay Eylül'e değil).
+ */
+const installmentFirstMonth = (
+  inst: Installment,
+  cards: CreditCard[] | undefined,
+  globalCutoff: number | null | undefined,
+  fallbackMonth: string
+): string => {
+  // SABIT çapa: oluşturulurken saklanan startMonth. Kesim sonradan değişse/tarih eksik olsa da
+  // kaymaz (çift-sayım ve tarihsiz-sonsuz-materyalize buglarını önler). Yoksa (legacy, migrasyon
+  // öncesi) tarih+kesimden hesapla; migrasyon zaten hepsine startMonth yazar.
+  if (inst.startMonth) return inst.startMonth;
+  const cutoff = cardCutoffOf(cards, inst.cardId, globalCutoff);
+  return statementMonth(installmentDate(inst.startDate, 1), cutoff) || fallbackMonth;
+};
+
 interface BudgetContextType {
   state: BudgetState;
   viewDate: string;
@@ -989,6 +1009,20 @@ function migrateState(parsed: any): BudgetState {
       }
     }
 
+    // Taksit startMonth geri-doldur (idempotent): startMonth yoksa, mevcut countdown'dan (kalan
+    // dilim) ILK dilim ayini geri-insa et -> startMonth = currentMonth - (count - remaining). Boylece
+    // eski taksitlerin yerlesimi AYNEN korunur ve bundan sonra startMonth SABIT capa olur.
+    if (parsed && Array.isArray(parsed.installments) && parsed.currentMonth) {
+      parsed.installments.forEach((inst: any) => {
+        if (inst && !inst.startMonth) {
+          const count = Number(inst.installmentCount) || 0;
+          const remaining = Number(inst.remainingInstallments);
+          const elapsed = Number.isFinite(remaining) ? Math.max(0, count - remaining) : 0;
+          inst.startMonth = addMonths(parsed.currentMonth, -elapsed);
+        }
+      });
+    }
+
     return { ...initialState, ...parsed };
 }
 
@@ -1415,26 +1449,28 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         };
 
         const nextMonthDebts: CCDebt[] = [];
+        const nextMonthStr = addMonths(prev.currentMonth || getCurrentMonth(), 1);
+        // Taksit dilimini TARIHE gore uret: sonraki ayin dilim no'su k = monthDiff(firstMonth, nextMonth)+1.
+        // 1<=k<=count ise o dilimi materyalize et; remaining = count - gecen (max 0) -> bitince duser,
+        // henuz baslamamis gelecek plan korunur (k<1 -> borc yok ama remaining>0).
         const nextMonthInstallments = prev.installments.map(inst => {
-           if (inst.remainingInstallments > 1) {
-             const nextInstallmentNumber = (inst.installmentCount - inst.remainingInstallments) + 2;
+           const first = installmentFirstMonth(inst, prev.creditCards, prev.statementCutoffDay, prev.currentMonth);
+           const off = monthDiff(first, nextMonthStr);
+           const k = off + 1;
+           if (k >= 1 && k <= inst.installmentCount) {
              nextMonthDebts.push({
                id: generateId(),
-               description: `${inst.description} (${nextInstallmentNumber}/${inst.installmentCount})`,
+               description: `${inst.description} (${k}/${inst.installmentCount})`,
                amount: inst.monthlyAmount,
-               date: installmentDate(inst.startDate, nextInstallmentNumber),
+               date: installmentDate(inst.startDate, k),
                cardId: inst.cardId,
                installmentId: inst.id,
-               currentInstallment: nextInstallmentNumber,
+               currentInstallment: k,
                totalInstallments: inst.installmentCount
              });
-             return { ...inst, remainingInstallments: inst.remainingInstallments - 1 };
-           } else {
-             return { ...inst, remainingInstallments: 0 };
            }
+           return { ...inst, remainingInstallments: inst.installmentCount - Math.max(0, off) };
         }).filter(inst => inst.remainingInstallments > 0);
-
-        const nextMonthStr = addMonths(prev.currentMonth || getCurrentMonth(), 1);
 
         // New Fixed Expenses list
         // 1. Start with defaults (Rent, Dues) as 0, similar to projection logic
@@ -1778,28 +1814,26 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const projectedCCDebts: CCDebt[] = [];
 
         realState.installments.forEach(inst => {
-            // remainingInstallments is relative to currentMonth start.
-            // For iterMonth, we subtract monthsAway.
-            // But if monthsAway >= remaining, it's done.
-            const effectiveRemaining = inst.remainingInstallments - monthsAway;
-
-            if (effectiveRemaining > 0) {
+            // Dilim ayi TARIHE gore: ilk-ay firstMonth (kararli), iterMonth'un dilim no'su
+            // k = monthDiff(firstMonth, iterMonth)+1. 1<=k<=count araliginda ise o dilim bu aya duser.
+            // (currentMonth-tabanli countdown YERINE; ileri/geri baslangicta dogru aya oturur.)
+            const first = installmentFirstMonth(inst, realState.creditCards, realState.statementCutoffDay, realState.currentMonth);
+            const k = monthDiff(first, iterMonth) + 1;
+            if (k >= 1 && k <= inst.installmentCount) {
                  // Check for override
                  let amount = inst.monthlyAmount;
                  if (future.installmentOverrides && future.installmentOverrides[inst.id] !== undefined) {
                      amount = future.installmentOverrides[inst.id];
                  }
 
-                 // Add to projected CC Debts list (for display if target)
-                 const currentInstNum = (inst.installmentCount - effectiveRemaining) + 1;
                  const projDebt = {
                     id: `proj-${inst.id}-${iterMonth}`, // Unique ID for projection
-                    description: `${inst.description} (${currentInstNum}/${inst.installmentCount})`,
+                    description: `${inst.description} (${k}/${inst.installmentCount})`,
                     amount: amount,
-                    date: installmentDate(inst.startDate, currentInstNum),
+                    date: installmentDate(inst.startDate, k),
                     cardId: inst.cardId, // taksitin karti korunur
                     installmentId: inst.id, // Keep link to original
-                    currentInstallment: currentInstNum,
+                    currentInstallment: k,
                     totalInstallments: inst.installmentCount
                  };
                  projectedCCDebts.push(projDebt);
@@ -1835,12 +1869,14 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         }
 
         if (isTarget) {
-            // Filter and project installments for view (Active Installments List)
+            // Filter and project installments for view (Active Installments List) — TARIHE gore.
+            // k = o aydaki dilim no; remaining = count-k+1 => Debt.tsx "current = count-remaining+1 = k".
             const projectedInstallments = realState.installments
-                .map(inst => ({
-                    ...inst,
-                    remainingInstallments: inst.remainingInstallments - monthsAway
-                }))
+                .map(inst => {
+                    const first = installmentFirstMonth(inst, realState.creditCards, realState.statementCutoffDay, realState.currentMonth);
+                    const k = monthDiff(first, iterMonth) + 1;
+                    return { ...inst, remainingInstallments: (k >= 1 && k <= inst.installmentCount) ? (inst.installmentCount - k + 1) : 0 };
+                })
                 .filter(inst => inst.remainingInstallments > 0);
 
             // Construct final dynamicAssetBudgets for target month
@@ -2546,28 +2582,33 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   };
 
   const addInstallment = (installment: Omit<Installment, 'id' | 'remainingInstallments'>) => {
-    const newInstallment: Installment = {
-      ...installment,
-      id: generateId(),
-      remainingInstallments: installment.installmentCount,
-    };
-
-    const newDebt: CCDebt = {
-      id: generateId(),
-      description: `${newInstallment.description} (1/${newInstallment.installmentCount})`,
-      amount: newInstallment.monthlyAmount,
-      date: installmentDate(newInstallment.startDate, 1),
-      cardId: newInstallment.cardId,
-      installmentId: newInstallment.id,
-      currentInstallment: 1,
-      totalInstallments: newInstallment.installmentCount
-    };
-
-    setRealState(prev => ({
-      ...prev,
-      installments: [...prev.installments, newInstallment],
-      ccDebts: [...prev.ccDebts, newDebt]
-    }));
+    const instId = generateId();
+    setRealState(prev => {
+      const count = installment.installmentCount;
+      const base: Installment = { ...installment, id: instId, remainingInstallments: count };
+      // Taksitin ILK diliminin ekstre ayina gore yerlestir (currentMonth'a DEGIL). k0 = cari aya
+      // denk gelen dilim no. Gelecek-baslangicta (k0<1) cari aya HICBIR sey materyalize edilmez
+      // (projeksiyon ilgili gelecek aylarda gosterir); gecmis-baslangicta k0>1 (o dilimden devam).
+      // firstMonth'u SIMDI hesapla ve SAKLA (base'de startMonth yok). Bir daha kesime bakilmaz.
+      const first = installmentFirstMonth(base, prev.creditCards, prev.statementCutoffDay, prev.currentMonth);
+      const off = monthDiff(first, prev.currentMonth); // cari ay - ilk ay (gelecek-baslangicta NEGATIF)
+      const k0 = off + 1; // cari aya denk dilim no; gelecekse <1 -> cari aya materyalize YOK
+      const newInstallment: Installment = { ...base, startMonth: first, remainingInstallments: Math.max(0, count - Math.max(0, off)) };
+      if (k0 >= 1 && k0 <= count) {
+        const newDebt: CCDebt = {
+          id: generateId(),
+          description: `${newInstallment.description} (${k0}/${count})`,
+          amount: newInstallment.monthlyAmount,
+          date: installmentDate(newInstallment.startDate, k0),
+          cardId: newInstallment.cardId,
+          installmentId: newInstallment.id,
+          currentInstallment: k0,
+          totalInstallments: count
+        };
+        return { ...prev, installments: [...prev.installments, newInstallment], ccDebts: [...prev.ccDebts, newDebt] };
+      }
+      return { ...prev, installments: [...prev.installments, newInstallment] };
+    });
   };
 
   const deleteInstallment = (id: string) => {
@@ -2828,31 +2869,32 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           assetBudgets: prev.assetBudgets,
         };
 
-        const nextMonthDebts: CCDebt[] = [];
-        const nextMonthInstallments = prev.installments.map(inst => {
-           if (inst.remainingInstallments > 1) {
-             const nextInstallmentNumber = (inst.installmentCount - inst.remainingInstallments) + 2;
-             nextMonthDebts.push({
-               id: generateId(),
-               description: `${inst.description} (${nextInstallmentNumber}/${inst.installmentCount})`,
-               amount: inst.monthlyAmount,
-               date: installmentDate(inst.startDate, nextInstallmentNumber),
-               cardId: inst.cardId,
-               installmentId: inst.id,
-               currentInstallment: nextInstallmentNumber,
-               totalInstallments: inst.installmentCount
-             });
-             return { ...inst, remainingInstallments: inst.remainingInstallments - 1 };
-           } else {
-             return { ...inst, remainingInstallments: 0 };
-           }
-        }).filter(inst => inst.remainingInstallments > 0);
-
         const [year, month] = (prev.currentMonth || getCurrentMonth()).split('-').map(Number);
         const nextDate = new Date(year, month, 1);
         // nextDate yerel saatte oluşturuluyor; toISOString() UTC'ye çevirdiği için
         // UTC+3'te bir önceki ayı döndürüyordu. Yerel ay hesabı kullanılmalı.
         const nextMonthStr = toLocalMonthStr(nextDate);
+
+        const nextMonthDebts: CCDebt[] = [];
+        // Taksit dilimini TARIHE gore uret (fast-forward ile ayni mantik): k = monthDiff(first, nextMonth)+1.
+        const nextMonthInstallments = prev.installments.map(inst => {
+           const first = installmentFirstMonth(inst, prev.creditCards, prev.statementCutoffDay, prev.currentMonth);
+           const off = monthDiff(first, nextMonthStr);
+           const k = off + 1;
+           if (k >= 1 && k <= inst.installmentCount) {
+             nextMonthDebts.push({
+               id: generateId(),
+               description: `${inst.description} (${k}/${inst.installmentCount})`,
+               amount: inst.monthlyAmount,
+               date: installmentDate(inst.startDate, k),
+               cardId: inst.cardId,
+               installmentId: inst.id,
+               currentInstallment: k,
+               totalInstallments: inst.installmentCount
+             });
+           }
+           return { ...inst, remainingInstallments: inst.installmentCount - Math.max(0, off) };
+        }).filter(inst => inst.remainingInstallments > 0);
 
         // New Fixed Expenses list
         // Remove old CC_DEBT_TITLE entries to prevent accumulation

@@ -170,16 +170,19 @@ export default function Debt() {
         }
     }
 
-    // Harcama TARIHE gore farkli bir aya/ekstreye dustuyse o aya gec + bilgi notu goster
-    // (taksit ve duzenleme haric). Kesim varsa kesim-ayi, yoksa tarihin takvim ayi kullanilir.
+    // Islem/taksit TARIHE gore farkli bir aya dustuyse o aya gec + bilgi notu goster (duzenleme haric).
+    // Taksitte ilk dilimin tarihi = baslangic tarihi, dolayisiyla ayni hesap gecerli. Kesim varsa
+    // kesim-ayi, yoksa tarihin takvim ayi kullanilir.
     const effCutoff = cardCutoffOf(creditCards, targetCardId, statementCutoffDay);
-    if (!editingId && !isInstallment) {
-      const s = statementMonth(date, effCutoff);
+    if (!editingId) {
+      let s = statementMonth(date, effCutoff);
+      // Taksitte GEÇMİŞ-başlangıçta ilk görünür dilim CARİ ayda materyalize edilir; geçmiş (boş) aya gitme.
+      if (isInstallment && s && s < getLocalMonth()) s = getLocalMonth();
       if (s && s !== viewDate) {
         setViewDate(s);
         setAddedNote(effCutoff
-          ? `Bu harcama ${formatStatementMonth(s)} ekstresine eklendi (kesim günü ${effCutoff}).`
-          : `Bu harcama ${formatStatementMonth(s)} ayına eklendi.`);
+          ? `Bu ${isInstallment ? 'taksit' : 'harcama'} ${formatStatementMonth(s)} ekstresine eklendi (kesim günü ${effCutoff}).`
+          : `Bu ${isInstallment ? 'taksit' : 'harcama'} ${formatStatementMonth(s)} ayına eklendi.`);
       }
     }
 
@@ -223,7 +226,13 @@ export default function Debt() {
       .reduce((sum, d) => sum + d.amount, 0)
   );
   const pendingCount = visibleDebts.filter(d => isDebtPending(d.date, isCurrentMonth, todayStr)).length;
-  const visibleInstallments = state.installments.filter(i => resolveCardId(i.cardId) === effSel);
+  // Karta göre + görüntülenen aya kadar BAŞLAMIŞ ve BİTMEMİŞ taksitler (ileri-başlangıçlı plan
+  // başlayana dek gizli; tümü ödenmiş plan gizli).
+  const visibleInstallments = state.installments.filter(
+    i => resolveCardId(i.cardId) === effSel
+      && (!i.startMonth || i.startMonth <= viewDate)
+      && (i.remainingInstallments === undefined || i.remainingInstallments > 0)
+  );
 
   const groupedDebts = useMemo(() => {
     const groups: Record<string, CCDebt[]> = {};
