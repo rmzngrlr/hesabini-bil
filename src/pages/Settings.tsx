@@ -708,7 +708,7 @@ export default function Settings() {
             >
               <option value="">Kesim yok</option>
               {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
-                <option key={d} value={d}>Kesim {d}</option>
+                <option key={d} value={d}>Her ayın {d}'i</option>
               ))}
             </select>
           </div>
