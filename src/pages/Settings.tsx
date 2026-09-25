@@ -431,11 +431,12 @@ export default function Settings() {
               <label className="text-sm font-medium text-muted-foreground">Mevcut Şifre</label>
               <input
                 type="password"
+                inputMode="numeric"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 required
                 className="w-full px-4 py-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                placeholder="••••••••"
+                placeholder="••••••"
               />
             </div>
 

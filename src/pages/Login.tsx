@@ -183,11 +183,14 @@ export default function Login() {
                   <div className="relative">
                     <input
                       type={showPassword ? 'text' : 'password'}
+                      inputMode="numeric"
+                      pattern="\d{6}"
+                      maxLength={6}
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={(e) => setPassword(e.target.value.replace(/\D/g, '').slice(0, 6))}
                       autoFocus
                       required
-                      className="w-full px-4 py-3 pr-12 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="w-full px-4 py-3 pr-12 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary tracking-[0.3em]"
                       placeholder="••••••"
                     />
                     <button
