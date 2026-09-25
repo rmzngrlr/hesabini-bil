@@ -170,14 +170,16 @@ export default function Debt() {
         }
     }
 
-    // Kesim gunu nedeniyle harcama bakilan aydan farkli bir ekstreye dustuyse
-    // o ekstreye gec ve bilgi notu goster (taksit ve duzenleme haric). KARTIN kesimi kullanilir.
+    // Harcama TARIHE gore farkli bir aya/ekstreye dustuyse o aya gec + bilgi notu goster
+    // (taksit ve duzenleme haric). Kesim varsa kesim-ayi, yoksa tarihin takvim ayi kullanilir.
     const effCutoff = cardCutoffOf(creditCards, targetCardId, statementCutoffDay);
-    if (!editingId && !isInstallment && effCutoff) {
+    if (!editingId && !isInstallment) {
       const s = statementMonth(date, effCutoff);
       if (s && s !== viewDate) {
         setViewDate(s);
-        setAddedNote(`Bu harcama ${formatStatementMonth(s)} ekstresine eklendi (kesim günü ${effCutoff}).`);
+        setAddedNote(effCutoff
+          ? `Bu harcama ${formatStatementMonth(s)} ekstresine eklendi (kesim günü ${effCutoff}).`
+          : `Bu harcama ${formatStatementMonth(s)} ayına eklendi.`);
       }
     }
 

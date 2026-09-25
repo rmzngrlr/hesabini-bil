@@ -2318,12 +2318,12 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     };
 
     setRealState(prev => {
-        // Hedef ekstre ayi: KARTIN kesim gunu ACIKSA tarihe gore hesaplanir (kesimden
-        // sonraki harcamalar sonraki aya). Kapaliysa eski davranis: goruntulenen ay.
+        // Hedef ekstre ayi DAIMA TARIHE gore: kesim ACIKSA kesim-ayina (kesimden sonrakiler
+        // sonraki aya), kesim KAPALIYSA tarihin takvim ayina. viewDate'e YAZILMAZ — yoksa ör.
+        // Eylul'u goruntulerken eklenen 1 Kasım borcu yanlislikla Eylul'e (ve Ekim "Gecen Ay"ina)
+        // duserdi. (statementMonth kesim null iken tarihin ayini dondurur.)
         const cutoff = cardCutoffOf(prev.creditCards, newDebt.cardId, prev.statementCutoffDay);
-        const targetMonth = cutoff
-          ? (statementMonth(newDebt.date, cutoff) || viewDate)
-          : viewDate;
+        const targetMonth = statementMonth(newDebt.date, cutoff) || viewDate;
 
         if (targetMonth === prev.currentMonth) {
             return { ...prev, ccDebts: [...prev.ccDebts, newDebt] };
