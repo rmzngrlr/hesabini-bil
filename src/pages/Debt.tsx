@@ -612,9 +612,17 @@ export default function Debt() {
                            Toplam <Secret>{Math.abs(inst.totalAmount).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s/g, '')}</Secret>
                          </div>
                        </div>
-                       {planOpen
-                         ? <ChevronUp size={20} className="text-muted-foreground shrink-0" />
-                         : <ChevronDown size={20} className="text-muted-foreground shrink-0" />}
+                       <div className="flex items-center gap-2 shrink-0">
+                         {/* Bitis ayi yalniz KAPALIYKEN basliktaki rozette; acilinca kaybolur (panel kutusunda). */}
+                         {!planOpen && (
+                           <span className="text-xs text-primary bg-primary/10 px-2.5 py-1 rounded-full whitespace-nowrap">
+                             Bitiş {formatStatementMonth(endMonth)}
+                           </span>
+                         )}
+                         {planOpen
+                           ? <ChevronUp size={20} className="text-muted-foreground" />
+                           : <ChevronDown size={20} className="text-muted-foreground" />}
+                       </div>
                     </button>
 
                     {planOpen && (
