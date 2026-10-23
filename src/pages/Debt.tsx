@@ -87,6 +87,11 @@ export default function Debt() {
     if (next.has(id)) next.delete(id); else next.add(id);
     return next;
   });
+  // Acik birakilan taksit detayini: plan<->normal moduna gecince veya kart (sekme) degisince kapat.
+  // (Baska sayfaya gecis zaten bileseni unmount edip sifirlar.) Her giriste sade/kapali baslasin.
+  useEffect(() => {
+    setOpenPlanIds(prev => (prev.size ? new Set() : prev));
+  }, [planMode, effSel]);
 
   const uniqueDescriptions = useMemo(() => {
     const descriptions = new Set<string>();
