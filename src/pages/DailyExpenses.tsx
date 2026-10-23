@@ -564,6 +564,10 @@ export default function DailyExpenses() {
   // kendi son sekmesini ayri bir ref'te tutar; boylece orada doviz secmek NORMAL'e SIZMAZ.
   const normalTabRef = useRef(activeTab);
   const exchangeTabRef = useRef<string | null>(null);
+  // Doviz/Altin (EXCHANGE) sekmesinden baslatilan bir DUZENLEME formu yalniz NORMAL'de
+  // render edildigi icin oraya gecer; kaydet/iptal sonrasi kullaniciyi geldigi alt-sekmeye
+  // geri dondurmek icin hangi sekmeden gelindigini burada tutariz (null = NORMAL'den gelindi).
+  const editReturnSubTabRef = useRef<'NORMAL' | 'EXCHANGE' | 'BILLS' | null>(null);
   // Aktif alt-sekmenin efektif sekmesini kendi hafizasina yaz (YALNIZ ref -> setState yok, dongu yok).
   useEffect(() => {
     if (activeSubTab === 'NORMAL') normalTabRef.current = activeTab;
@@ -579,6 +583,9 @@ export default function DailyExpenses() {
       // baslatilan duzenlemeyi iptal etmez.
       if (editingId) cancelEdit();
       if (editingBillId) handleCancelEditBill();
+      // Kullanici sekmeyi ELLE degistirdi -> duzenleme-donus hedefini unut (aksi halde
+      // sonraki kaydet/iptal kullaniciyi istemedigi sekmeye geri atar).
+      editReturnSubTabRef.current = null;
       if (target === 'NORMAL') setActiveTab(normalTabRef.current || 'NAKIT');
       else if (target === 'EXCHANGE' && exchangeTabRef.current) setActiveTab(exchangeTabRef.current);
     }
@@ -978,6 +985,8 @@ export default function DailyExpenses() {
     // Duzenle formu (Kayit Duzenle) yalniz NORMAL alt-sekmede render edilir. Doviz kasa
     // (vault-curr) veya takas kaydi EXCHANGE sekmesinden duzenlenmek istenirse forma
     // gecmeden once NORMAL'e al ki form gorunsun (aksi halde "duzenlenmiyor" gibi durur).
+    // Geldigi sekmeyi hatirla ki kaydet/iptal sonrasi oraya geri donsun (NORMAL'e "atilmis" kalmasin).
+    editReturnSubTabRef.current = activeSubTab !== 'NORMAL' ? activeSubTab : null;
     setActiveSubTab('NORMAL');
     setEditingId(expense.id);
     setDate(expense.date);
@@ -1021,6 +1030,23 @@ export default function DailyExpenses() {
     sessionStorage.removeItem('daily_draft_desc');
     sessionStorage.removeItem('daily_draft_amount');
     sessionStorage.removeItem('daily_draft_editing_id');
+  };
+
+  // Doviz/Altin sekmesinden baslatilan bir duzenlemenin kaydet/iptal'inden sonra kullaniciyi
+  // geldigi alt-sekmeye geri dondur. Bu yoldan gelen duzenlemeler yalniz DOVIZ kayitlaridir
+  // (altin vault-gold- ustten EXCHANGE+GOLD'da kalir) -> donusu CURRENCY moduyla goster.
+  const restoreEditSubTab = () => {
+    const t = editReturnSubTabRef.current;
+    editReturnSubTabRef.current = null;
+    if (t && t !== 'NORMAL') {
+      if (t === 'EXCHANGE') setExchangeTabMode('CURRENCY');
+      setActiveSubTab(t);
+    }
+  };
+
+  const cancelEditAndReturn = () => {
+    cancelEdit();
+    restoreEditSubTab();
   };
 
   // Sayfadan ayrilinca (baska sayfaya gecis) ACIK DUZENLEME iptal: kalici editingId draft'i
@@ -1295,6 +1321,9 @@ export default function DailyExpenses() {
     sessionStorage.removeItem('daily_draft_desc');
     sessionStorage.removeItem('daily_draft_amount');
     sessionStorage.removeItem('daily_draft_editing_id');
+
+    // Doviz/Altin sekmesinden gelinen bir duzenleme kaydedildiyse o sekmeye geri don (no-op degilse).
+    restoreEditSubTab();
   };
 
 
@@ -2030,7 +2059,7 @@ export default function DailyExpenses() {
               {editingId && (
               <button
                   type="button"
-                  onClick={cancelEdit}
+                  onClick={cancelEditAndReturn}
                   className="flex-1 h-11 bg-secondary text-foreground font-medium rounded-xl hover:bg-secondary/80 transition-colors flex items-center justify-center gap-2"
               >
                   <X size={20} /> İptal
