@@ -499,7 +499,10 @@ export default function Debt() {
       {/* Active Installments Section */}
       {visibleInstallments.length > 0 && (
         <div className="space-y-3">
-          <h2 className="text-lg font-semibold">Devam Eden Taksitler</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Devam Eden Taksitler</h2>
+            <CalendarClock size={20} className="text-primary" aria-hidden="true" />
+          </div>
           <div className="grid gap-3">
             {visibleInstallments.map((inst) => {
                const current = inst.installmentCount - inst.remainingInstallments + 1;
@@ -515,58 +518,39 @@ export default function Debt() {
                const endMonth = addMonthsStr(firstMonth, instCount - 1);
 
                return (
-                 <div key={inst.id} data-search-key={searchKeyFor('installment', inst.id)} className="p-4 rounded-xl bg-secondary/30 border border-border">
-                    <div className="flex justify-between items-start mb-2">
-                       <div>
-                         <div className="font-medium">{inst.description}</div>
-                         <div className="text-xs text-muted-foreground">
-                           Toplam: <Secret>{Math.abs(inst.totalAmount).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}</Secret>
+                 <div key={inst.id} data-search-key={searchKeyFor('installment', inst.id)} className="rounded-xl bg-secondary/30 border border-border overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => togglePlan(inst.id)}
+                      aria-expanded={planOpen}
+                      aria-label={planOpen ? 'Taksit planını gizle' : 'Taksit planını göster'}
+                      className="w-full flex items-center justify-between gap-3 p-4 text-left"
+                    >
+                       <div className="min-w-0">
+                         <div className="font-medium truncate">{inst.description}</div>
+                         <div className="text-xs text-muted-foreground mt-0.5">
+                           Toplam <Secret>{Math.abs(inst.totalAmount).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s/g, '')}</Secret>
                          </div>
                        </div>
-                       <div className="text-right">
-                         <div className="font-bold text-red-500">
-                           <Secret>{Math.abs(inst.monthlyAmount).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}</Secret>/ay
-                         </div>
-                         <div className="flex items-center justify-end gap-2 mt-1">
-                            <div className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
-                              {current} / {inst.installmentCount}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => togglePlan(inst.id)}
-                              aria-label={planOpen ? 'Taksit planını gizle' : 'Taksit planını göster'}
-                              className={cn(
-                                "inline-flex items-center gap-1 h-7 px-2 rounded-lg border text-xs transition-colors",
-                                planOpen ? "bg-primary/10 border-primary text-primary" : "border-border text-muted-foreground hover:text-foreground hover:bg-secondary"
-                              )}
-                            >
-                              <CalendarClock size={14} /> Plan
-                              {planOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                            </button>
-                            <button
-                              onClick={async () => {
-                                if (await askConfirmation('Bu taksit planını silmek istediğinize emin misiniz? Gelecek aylar için ödeme oluşmayacaktır.')) {
-                                  deleteInstallment(inst.id);
-                                }
-                              }}
-                              className="text-muted-foreground hover:text-destructive transition-colors"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                         </div>
-                       </div>
-                    </div>
-                    {/* Progress Bar */}
-                    <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                       <div
-                         className="h-full bg-primary transition-all"
-                         style={{ width: `${(current / inst.installmentCount) * 100}%` }}
-                       />
-                    </div>
+                       {planOpen
+                         ? <ChevronUp size={20} className="text-muted-foreground shrink-0" />
+                         : <ChevronDown size={20} className="text-muted-foreground shrink-0" />}
+                    </button>
 
-                    {/* Ay-ay taksit plani (yerinde acilir) */}
                     {planOpen && (
-                      <div className="mt-3 pt-3 border-t border-dashed border-border">
+                      <div className="px-4 pb-4">
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <span className="text-sm font-semibold text-red-500">
+                            <Secret>{Math.abs(inst.monthlyAmount).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s/g, '')}</Secret>/ay
+                          </span>
+                          <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
+                            {current} / {inst.installmentCount}
+                          </span>
+                        </div>
+                        <div className="h-2 bg-secondary rounded-full overflow-hidden mb-3">
+                          <div className="h-full bg-primary transition-all" style={{ width: `${(current / inst.installmentCount) * 100}%` }} />
+                        </div>
+
                         <div className="grid grid-cols-3 gap-2 mb-3">
                           <div className="bg-secondary/50 rounded-lg px-2.5 py-2">
                             <div className="text-[11px] text-muted-foreground">Bitiş ayı</div>
@@ -579,7 +563,7 @@ export default function Debt() {
                           <div className="bg-secondary/50 rounded-lg px-2.5 py-2">
                             <div className="text-[11px] text-muted-foreground">Kalan tutar</div>
                             <div className="text-sm font-medium mt-0.5 text-red-500">
-                              <Secret>{remainingAmt.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s| /g, '')}</Secret>
+                              <Secret>{remainingAmt.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s/g, '')}</Secret>
                             </div>
                           </div>
                         </div>
@@ -605,7 +589,7 @@ export default function Debt() {
                                   <td className={cn("py-1.5 px-1.5", isCurrent ? "text-primary font-medium" : "text-muted-foreground")}>{k}</td>
                                   <td className={cn("py-1.5 px-1.5", isCurrent ? "text-primary font-medium" : isEnd ? "text-foreground font-medium" : "text-muted-foreground")}>{formatShortMonth(month)}</td>
                                   <td className={cn("py-1.5 px-1.5 text-right", isCurrent ? "text-primary font-medium" : "text-foreground/90")}>
-                                    <Secret>{Math.abs(inst.monthlyAmount).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s| /g, '')}</Secret>
+                                    <Secret>{Math.abs(inst.monthlyAmount).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s/g, '')}</Secret>
                                   </td>
                                   <td className="py-1.5 px-1.5 text-right whitespace-nowrap">
                                     {isEnd ? (
@@ -623,6 +607,20 @@ export default function Debt() {
                             })}
                           </tbody>
                         </table>
+
+                        <div className="flex justify-end mt-3">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (await askConfirmation('Bu taksit planını silmek istediğinize emin misiniz? Gelecek aylar için ödeme oluşmayacaktır.')) {
+                                deleteInstallment(inst.id);
+                              }
+                            }}
+                            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-border text-red-500 text-xs hover:bg-red-500/10 transition-colors"
+                          >
+                            <Trash2 size={14} /> Taksiti sil
+                          </button>
+                        </div>
                       </div>
                     )}
                  </div>
