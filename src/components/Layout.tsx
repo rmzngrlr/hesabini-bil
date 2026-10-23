@@ -269,7 +269,7 @@ export function Layout({ children }: LayoutProps) {
       )}
 
       {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 border-t glass-blur z-50 safe-area-pb">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 border-t glass-blur nav-opaque z-50 safe-area-pb">
         <div className="flex items-center justify-around h-16 max-w-md mx-auto px-2">
           {currentNavItems.map(({ path, label, icon: Icon }) => (
             <NavLink

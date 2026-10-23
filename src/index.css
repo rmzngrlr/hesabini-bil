@@ -197,6 +197,15 @@
       background-color: hsl(var(--card));
     }
   }
+
+  /* Alt gezinme menusu: arkadaki BEYAZ sistem (jest) cubugu glass'tan sizip ikonlari
+     soluklastirmasin diye zemin tema arka planinin %96'si (neredeyse opak) olur; blur korunur.
+     DIKKAT: karanlik modda --glass-bg BEYAZ oldugundan yalnizca --glass-bg-alpha'yi artirmak
+     meniyu BEYAZLATIRDI; o yuzden dogrudan --background kullaniyoruz (tema-duyarli). glass-blur'dan
+     SONRA tanimli -> background-color'i ezer, backdrop-filter (blur) aynen kalir. */
+  .nav-opaque {
+    background-color: hsl(var(--background) / 0.96);
+  }
 }
 
 /* Recharts: dilime tıklanınca çıkan varsayılan odak çerçevesini (siyah dikdörtgen) kaldır. */
