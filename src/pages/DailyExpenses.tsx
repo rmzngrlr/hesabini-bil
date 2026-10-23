@@ -155,6 +155,9 @@ export default function DailyExpenses() {
       if (lower === 'reşat') return 'Reşat Altın';
       if (lower === 'bilezik') return 'Bilezik Altın';
       if (lower === 'külçe') return 'Külçe Altın';
+      // Cok kelimeli bilezik adlari (ör. "22 Ayar Bilezik", "Ajda Bilezik") oldugu gibi gorunsun;
+      // yoksa asagidaki yedek sona " Altın" ekleyip "22 Ayar Bilezik Altın" gibi yapardi.
+      if (lower.includes('bilezik')) return name;
       return `${name} Altın`;
     }
 
@@ -460,7 +463,7 @@ export default function DailyExpenses() {
 
 
   const allFormTypes = useMemo(() => {
-    const defaultGolds = ["Gram", "Çeyrek", "Yarım", "Tam", "Ata Lira"];
+    const defaultGolds = ["Gram", "Çeyrek", "Yarım", "Tam", "Ata Lira", "22 Ayar Bilezik", "Ajda Bilezik"];
     const recordsGolds = vaultRecords
       .map(r => r.gold_type)
       .filter(t => isGoldType(t));
@@ -554,7 +557,9 @@ export default function DailyExpenses() {
   const [exchangeFromAmount, setExchangeFromAmount] = useState('');
   const [exchangeToAmount, setExchangeToAmount] = useState('');
   const [exchangeRate, setExchangeRate] = useState('');
-  const exchangeDate = getTodayStr();
+  // Doviz/Altin takasi da diger sekmeler gibi paylasilan 'date' (tarih secici) kullanir
+  // (eskiden sabit getTodayStr() idi -> tarih secilemiyordu).
+  const exchangeDate = date;
   const [exchangeNote, setExchangeNote] = useState('');
   const [exchangeFromCustomCode, setExchangeFromCustomCode] = useState('');
   const [exchangeToCustomCode, setExchangeToCustomCode] = useState('');
@@ -969,6 +974,7 @@ export default function DailyExpenses() {
       if (rec) {
         setActiveSubTab('EXCHANGE');
         setExchangeTabMode('GOLD');
+        setDate(String(rec.record_date).slice(0, 10));
         setType(rec.gold_type);
         setActiveTab(rec.gold_type);
         setAmount(String(Number(rec.amount) || 0));
@@ -1770,6 +1776,17 @@ export default function DailyExpenses() {
              </button>
           </div>
 
+          <div className="space-y-1 mb-3">
+            <label className="text-xs text-muted-foreground">Tarih</label>
+            <input
+              type="date"
+              value={date}
+              disabled={isFuture}
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full h-11 px-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60 disabled:cursor-not-allowed"
+            />
+          </div>
+
           {exchangeTabMode === 'CURRENCY' ? (
           <form onSubmit={handleExchangeSubmit} className="space-y-3 mt-2">
             <div className="flex flex-col md:flex-row gap-2 md:items-end">
@@ -1847,6 +1864,21 @@ export default function DailyExpenses() {
           </form>
           ) : (
           <form onSubmit={handleSubmit} className="space-y-3 mt-2">
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Altın Türü</label>
+              <select
+                value={type}
+                onChange={(e) => { setType(e.target.value); setActiveTab(e.target.value); }}
+                className="w-full h-11 px-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+              >
+                <optgroup label="Altın Türleri (Kasa)">
+                  {allFormTypes.golds.map(gold => (
+                    <option key={gold} value={gold}>{getAssetFullTitle(gold)}</option>
+                  ))}
+                </optgroup>
+              </select>
+            </div>
+
              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:items-end">
                <div className="space-y-1 col-span-1">
                   <label className="text-xs text-muted-foreground">Miktar (Adet/Gram)</label>
@@ -1898,21 +1930,6 @@ export default function DailyExpenses() {
                 Bozdurma
                 </button>
             </div>
-
-          <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Altın Türü</label>
-              <select
-                value={type}
-                onChange={(e) => { setType(e.target.value); setActiveTab(e.target.value); }}
-                className="w-full h-11 px-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
-              >
-                <optgroup label="Altın Türleri (Kasa)">
-                  {allFormTypes.golds.map(gold => (
-                    <option key={gold} value={gold}>{getAssetFullTitle(gold)}</option>
-                  ))}
-                </optgroup>
-              </select>
-          </div>
 
           {type === 'NEW_CURRENCY' && (
             <div className="space-y-1 mt-2">
