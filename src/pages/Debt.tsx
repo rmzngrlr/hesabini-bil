@@ -3,7 +3,7 @@ import { useBudget, generateId, resolveCardId, cardCutoffOf } from '../context/B
 import { Card } from '../components/ui/Card';
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Plus, Trash2, CalendarClock, CreditCard, Pencil, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, CalendarClock, CreditCard, Pencil, X, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Check } from 'lucide-react';
 import { cn, scrollToElement, scrollToSearchKey, getTodayStr, isDebtPending, statementMonth, ayinGunu } from '../lib/utils';
 import { searchKeyFor } from '../lib/search';
 import { SearchTrigger } from '../components/SearchTrigger';
@@ -14,6 +14,13 @@ import { SpendingCalendar } from '../components/SpendingCalendar';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import type { CCDebt } from '../types';
+
+/** "YYYY-MM" ayina n ay ekler (n negatif olabilir) ve yine "YYYY-MM" doner. */
+const addMonthsStr = (ym: string, n: number): string => {
+  const [y, m] = ym.split('-').map(Number);
+  const d = new Date(y, (m - 1) + n, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+};
 
 export default function Debt() {
   const { state, viewDate, setViewDate, addCCDebt, updateCCDebt, deleteCCDebt, addInstallment, deleteInstallment, addDailyExpense, askConfirmation, todayStr, ccDueNotices, dismissCCDueNotice, statementCutoffDay, creditCards } = useBudget();
@@ -63,6 +70,20 @@ export default function Debt() {
     const [y, m] = ym.split('-').map(Number);
     return format(new Date(y, m - 1, 1), 'LLLL yyyy', { locale: tr });
   };
+
+  // Tablo satirlari icin kisa ay: "Ağu 2026".
+  const formatShortMonth = (ym: string) => {
+    const [y, m] = ym.split('-').map(Number);
+    return format(new Date(y, m - 1, 1), 'LLL yyyy', { locale: tr });
+  };
+
+  // "Devam eden taksitler": hangi taksitin ay-ay plan tablosu acik (kart basina bagimsiz; kalici degil).
+  const [openPlanIds, setOpenPlanIds] = useState<Set<string>>(() => new Set());
+  const togglePlan = (id: string) => setOpenPlanIds(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
 
   const uniqueDescriptions = useMemo(() => {
     const descriptions = new Set<string>();
@@ -482,6 +503,16 @@ export default function Debt() {
           <div className="grid gap-3">
             {visibleInstallments.map((inst) => {
                const current = inst.installmentCount - inst.remainingInstallments + 1;
+               const planOpen = openPlanIds.has(inst.id);
+               const instCount = inst.installmentCount;
+               // Sabit capa startMonth'tan tur; yoksa (legacy) tarih+kesimden hesapla.
+               const firstMonth = inst.startMonth
+                 || statementMonth((inst.startDate || '').slice(0, 10), cardCutoffOf(cards, inst.cardId, statementCutoffDay))
+                 || getLocalMonth();
+               const safeCurrent = Number.isFinite(current) ? current : 1;
+               const remainingCount = Math.max(0, instCount - safeCurrent + 1);
+               const remainingAmt = remainingCount * Math.abs(inst.monthlyAmount);
+               const endMonth = addMonthsStr(firstMonth, instCount - 1);
 
                return (
                  <div key={inst.id} data-search-key={searchKeyFor('installment', inst.id)} className="p-4 rounded-xl bg-secondary/30 border border-border">
@@ -500,6 +531,18 @@ export default function Debt() {
                             <div className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
                               {current} / {inst.installmentCount}
                             </div>
+                            <button
+                              type="button"
+                              onClick={() => togglePlan(inst.id)}
+                              aria-label={planOpen ? 'Taksit planını gizle' : 'Taksit planını göster'}
+                              className={cn(
+                                "inline-flex items-center gap-1 h-7 px-2 rounded-lg border text-xs transition-colors",
+                                planOpen ? "bg-primary/10 border-primary text-primary" : "border-border text-muted-foreground hover:text-foreground hover:bg-secondary"
+                              )}
+                            >
+                              <CalendarClock size={14} /> Plan
+                              {planOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                            </button>
                             <button
                               onClick={async () => {
                                 if (await askConfirmation('Bu taksit planını silmek istediğinize emin misiniz? Gelecek aylar için ödeme oluşmayacaktır.')) {
@@ -520,6 +563,68 @@ export default function Debt() {
                          style={{ width: `${(current / inst.installmentCount) * 100}%` }}
                        />
                     </div>
+
+                    {/* Ay-ay taksit plani (yerinde acilir) */}
+                    {planOpen && (
+                      <div className="mt-3 pt-3 border-t border-dashed border-border">
+                        <div className="grid grid-cols-3 gap-2 mb-3">
+                          <div className="bg-secondary/50 rounded-lg px-2.5 py-2">
+                            <div className="text-[11px] text-muted-foreground">Bitiş ayı</div>
+                            <div className="text-sm font-medium mt-0.5">{formatStatementMonth(endMonth)}</div>
+                          </div>
+                          <div className="bg-secondary/50 rounded-lg px-2.5 py-2">
+                            <div className="text-[11px] text-muted-foreground">Kalan</div>
+                            <div className="text-sm font-medium mt-0.5">{remainingCount} taksit</div>
+                          </div>
+                          <div className="bg-secondary/50 rounded-lg px-2.5 py-2">
+                            <div className="text-[11px] text-muted-foreground">Kalan tutar</div>
+                            <div className="text-sm font-medium mt-0.5 text-red-500">
+                              <Secret>{remainingAmt.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s| /g, '')}</Secret>
+                            </div>
+                          </div>
+                        </div>
+
+                        <table className="w-full text-[13px]" style={{ tableLayout: 'fixed' }}>
+                          <thead>
+                            <tr className="text-[11px] text-muted-foreground text-left">
+                              <th className="font-normal py-1 px-1.5" style={{ width: '14%' }}>No</th>
+                              <th className="font-normal py-1 px-1.5" style={{ width: '34%' }}>Ay</th>
+                              <th className="font-normal py-1 px-1.5 text-right" style={{ width: '29%' }}>Tutar</th>
+                              <th className="font-normal py-1 px-1.5 text-right" style={{ width: '23%' }}>Durum</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {Array.from({ length: instCount }, (_, i) => {
+                              const k = i + 1;
+                              const month = addMonthsStr(firstMonth, i);
+                              const isEnd = k === instCount;
+                              const isCurrent = k === safeCurrent;
+                              const isPaid = k < safeCurrent;
+                              return (
+                                <tr key={k} className={cn("border-t border-border", isCurrent && "bg-primary/10")}>
+                                  <td className={cn("py-1.5 px-1.5", isCurrent ? "text-primary font-medium" : "text-muted-foreground")}>{k}</td>
+                                  <td className={cn("py-1.5 px-1.5", isCurrent ? "text-primary font-medium" : isEnd ? "text-foreground font-medium" : "text-muted-foreground")}>{formatShortMonth(month)}</td>
+                                  <td className={cn("py-1.5 px-1.5 text-right", isCurrent ? "text-primary font-medium" : "text-foreground/90")}>
+                                    <Secret>{Math.abs(inst.monthlyAmount).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s| /g, '')}</Secret>
+                                  </td>
+                                  <td className="py-1.5 px-1.5 text-right whitespace-nowrap">
+                                    {isEnd ? (
+                                      <span className="bg-red-500/10 text-red-500 text-[11px] px-2 py-0.5 rounded-full">Bitiş</span>
+                                    ) : isPaid ? (
+                                      <span className="text-green-500 inline-flex items-center gap-1"><Check size={13} /> Ödendi</span>
+                                    ) : isCurrent ? (
+                                      <span className="text-primary font-medium">Bu ay</span>
+                                    ) : (
+                                      <span className="text-muted-foreground">Bekliyor</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                  </div>
                );
             })}
