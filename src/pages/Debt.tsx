@@ -13,7 +13,7 @@ import { MonthNavigator } from '../components/MonthNavigator';
 import { SpendingCalendar } from '../components/SpendingCalendar';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
-import type { CCDebt } from '../types';
+import type { CCDebt, Installment } from '../types';
 
 /** "YYYY-MM" ayina n ay ekler (n negatif olabilir) ve yine "YYYY-MM" doner. */
 const addMonthsStr = (ym: string, n: number): string => {
@@ -252,11 +252,28 @@ export default function Debt() {
   const pendingCount = visibleDebts.filter(d => isDebtPending(d.date, isCurrentMonth, todayStr)).length;
   // Karta göre + görüntülenen aya kadar BAŞLAMIŞ ve BİTMEMİŞ taksitler (ileri-başlangıçlı plan
   // başlayana dek gizli; tümü ödenmiş plan gizli).
-  const visibleInstallments = state.installments.filter(
-    i => resolveCardId(i.cardId) === effSel
-      && (!i.startMonth || i.startMonth <= viewDate)
-      && (i.remainingInstallments === undefined || i.remainingInstallments > 0)
-  );
+  // Bir taksitin BİTİŞ sira anahtari: "YYYY-MM"(bitis ayi) + gun + tam tarih (kararli).
+  // Bitis ayi = ilk dilim ekstre ayi (sabit capa startMonth) + (adet-1) ay.
+  const installmentEndKey = (i: Installment): string => {
+    const firstMonth = i.startMonth
+      || statementMonth((i.startDate || '').slice(0, 10), cardCutoffOf(cards, i.cardId, statementCutoffDay))
+      || getLocalMonth();
+    const endMonth = addMonthsStr(firstMonth, i.installmentCount - 1);
+    const day = String(Number((i.startDate || '').slice(8, 10)) || 0).padStart(2, '0');
+    return `${endMonth}-${day}-${i.startDate || ''}`;
+  };
+  // Once EN ERKEN bitecek taksit, sonra sirayla; ayni ay bitenler gune gore. Yeni eklenenler
+  // de bu siraya otomatik oturur (render aninda siralanir).
+  const visibleInstallments = state.installments
+    .filter(
+      i => resolveCardId(i.cardId) === effSel
+        && (!i.startMonth || i.startMonth <= viewDate)
+        && (i.remainingInstallments === undefined || i.remainingInstallments > 0)
+    )
+    .sort((a, b) => {
+      const k = installmentEndKey(a).localeCompare(installmentEndKey(b));
+      return k !== 0 ? k : (a.description || '').localeCompare(b.description || '', 'tr');
+    });
 
   const groupedDebts = useMemo(() => {
     const groups: Record<string, CCDebt[]> = {};
