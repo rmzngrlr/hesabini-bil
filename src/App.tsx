@@ -13,6 +13,7 @@ import { BudgetProvider } from './context/BudgetContext';
 import { SearchProvider } from './context/SearchContext';
 import { PrivacyProvider } from './context/PrivacyContext';
 import { DeviceLockGate } from './components/DeviceLockGate';
+import { PWAUpdatePrompt } from './components/PWAUpdatePrompt';
 import { useViewportHeightVar } from './hooks/useViewportHeightVar';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -84,6 +85,7 @@ function App() {
       <AuthProvider>
         <AppRoutes />
       </AuthProvider>
+      <PWAUpdatePrompt />
     </BrowserRouter>
   );
 }
