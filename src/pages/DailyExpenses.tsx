@@ -1495,21 +1495,36 @@ export default function DailyExpenses() {
 
         // Check and delete twin currency transaction (Nakit <-> Currency)
         if (expense.type === 'NAKIT' || expense.type === 'YK') {
-          const twin = activeExpenses.find(e => 
+          const twin = activeExpenses.find(e =>
             e.id !== expense.id &&
-            e.date === expense.date && 
-            e.description === expense.description && 
-            e.type !== 'NAKIT' && 
+            e.date === expense.date &&
+            e.description === expense.description &&
+            e.type !== 'NAKIT' &&
             e.type !== 'YK'
           );
           if (twin) {
             deleteDailyExpense(twin.id);
           }
-        } else {
-          const twin = activeExpenses.find(e => 
+        } else if (EXCHANGE_TAKAS.test(descStr)) {
+          // Doviz <-> Doviz TAKAS: iki bacak da NAKIT/YK DEGIL (or. Dolar -> Suriye Lirasi).
+          // Iki bacak ayni tarih + ayni aciklama ("... Alimi (Takas) ...") tasir ama FARKLI
+          // tip ve ZIT isaret (cikis negatif / giris pozitif). Hangi bacaktan silinirse
+          // digerini de sil. (Not: altin takaslari isGoldType ust dalinda ele alinir.)
+          const twin = activeExpenses.find(e =>
             e.id !== expense.id &&
-            e.date === expense.date && 
-            e.description === expense.description && 
+            e.date === expense.date &&
+            e.description === expense.description &&
+            e.type !== expense.type &&
+            (e.amount < 0) !== (expense.amount < 0)
+          );
+          if (twin) {
+            deleteDailyExpense(twin.id);
+          }
+        } else {
+          const twin = activeExpenses.find(e =>
+            e.id !== expense.id &&
+            e.date === expense.date &&
+            e.description === expense.description &&
             (e.type === 'NAKIT' || e.type === 'YK')
           );
           if (twin) {
