@@ -1429,6 +1429,13 @@ export default function DailyExpenses() {
     }
 
 
+    // Eklenen takas, secilen tarihin ayina (goruntulenen aydan farkli) dustuyse o ayi goster
+    // (handleSubmit ile ayni davranis); aksi halde baska ay tarihli takas "kaybolmus" gibi gorunur.
+    if (!isFuture) {
+      const targetMonth = String(exchangeDate).substring(0, 7);
+      if (targetMonth && targetMonth !== viewDate) setViewDate(targetMonth);
+    }
+
     setExchangeFromAmount('');
     setExchangeToAmount('');
     setExchangeNote('');
