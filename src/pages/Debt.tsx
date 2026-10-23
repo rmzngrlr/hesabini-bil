@@ -612,12 +612,14 @@ export default function Debt() {
                            Toplam <Secret>{Math.abs(inst.totalAmount).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s/g, '')}</Secret>
                          </div>
                        </div>
-                       <div className="flex items-center gap-2 shrink-0">
-                         {/* Bitis ayi yalniz KAPALIYKEN basliktaki rozette; acilinca kaybolur (panel kutusunda). */}
+                       <div className="flex items-center gap-3 shrink-0">
+                         {/* Son taksit ayi yalniz KAPALIYKEN basliktaki iki satirli etikette ("Son taksit"
+                             ustte, ay altta -> her zaman sigar); acilinca kaybolur, panel kutusunda kalir. */}
                          {!planOpen && (
-                           <span className="text-xs text-primary bg-primary/10 px-2.5 py-1 rounded-full whitespace-nowrap">
-                             Bitiş {formatStatementMonth(endMonth)}
-                           </span>
+                           <div className="text-right leading-tight">
+                             <div className="text-[11px] text-muted-foreground">Son taksit</div>
+                             <div className="text-[13px] font-medium text-foreground">{formatStatementMonth(endMonth)}</div>
+                           </div>
                          )}
                          {planOpen
                            ? <ChevronUp size={20} className="text-muted-foreground" />
@@ -685,7 +687,7 @@ export default function Debt() {
                                     ) : isPaid ? (
                                       <span className="text-green-500 inline-flex items-center gap-1"><Check size={13} /> Ödendi</span>
                                     ) : isCurrent ? (
-                                      <span className="text-primary font-medium">Bu ay</span>
+                                      <span className="text-primary font-medium">Bu ekstre</span>
                                     ) : (
                                       <span className="text-muted-foreground">Bekliyor</span>
                                     )}
