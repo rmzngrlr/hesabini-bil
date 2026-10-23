@@ -77,7 +77,10 @@ export default function Debt() {
     return format(new Date(y, m - 1, 1), 'LLL yyyy', { locale: tr });
   };
 
-  // "Devam eden taksitler": hangi taksitin ay-ay plan tablosu acik (kart basina bagimsiz; kalici degil).
+  // "Devam eden taksitler" bolum modu: false = normal liste (eskisi gibi), true = ay-ay plan
+  // gorunumu. Basliktaki takvim ikonu ile acilir/kapanir (kalici degil).
+  const [planMode, setPlanMode] = useState(false);
+  // Plan modunda hangi taksitin ay-ay tablosu acik (kart basina bagimsiz; kalici degil).
   const [openPlanIds, setOpenPlanIds] = useState<Set<string>>(() => new Set());
   const togglePlan = (id: string) => setOpenPlanIds(prev => {
     const next = new Set(prev);
@@ -501,7 +504,19 @@ export default function Debt() {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">Devam Eden Taksitler</h2>
-            <CalendarClock size={20} className="text-primary" aria-hidden="true" />
+            <button
+              type="button"
+              onClick={() => setPlanMode(v => !v)}
+              aria-pressed={planMode}
+              aria-label={planMode ? 'Normal görünüme dön' : 'Taksit planını göster'}
+              title={planMode ? 'Normal görünüm' : 'Taksit planı'}
+              className={cn(
+                "inline-flex items-center justify-center w-9 h-9 rounded-lg border transition-colors",
+                planMode ? "bg-primary/10 border-primary text-primary" : "border-border text-muted-foreground hover:text-foreground hover:bg-secondary"
+              )}
+            >
+              <CalendarClock size={18} />
+            </button>
           </div>
           <div className="grid gap-3">
             {visibleInstallments.map((inst) => {
@@ -517,6 +532,49 @@ export default function Debt() {
                const remainingAmt = remainingCount * Math.abs(inst.monthlyAmount);
                const endMonth = addMonthsStr(firstMonth, instCount - 1);
 
+               // Normal (eski) gorunum: takvim ikonu kapaliyken.
+               if (!planMode) {
+                 return (
+                   <div key={inst.id} data-search-key={searchKeyFor('installment', inst.id)} className="p-4 rounded-xl bg-secondary/30 border border-border">
+                      <div className="flex justify-between items-start mb-2">
+                         <div>
+                           <div className="font-medium">{inst.description}</div>
+                           <div className="text-xs text-muted-foreground">
+                             Toplam: <Secret>{Math.abs(inst.totalAmount).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s/g, '')}</Secret>
+                           </div>
+                         </div>
+                         <div className="text-right">
+                           <div className="font-bold text-red-500">
+                             <Secret>{Math.abs(inst.monthlyAmount).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s/g, '')}</Secret>/ay
+                           </div>
+                           <div className="flex items-center justify-end gap-2 mt-1">
+                              <div className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
+                                {current} / {inst.installmentCount}
+                              </div>
+                              <button
+                                onClick={async () => {
+                                  if (await askConfirmation('Bu taksit planını silmek istediğinize emin misiniz? Gelecek aylar için ödeme oluşmayacaktır.')) {
+                                    deleteInstallment(inst.id);
+                                  }
+                                }}
+                                className="text-muted-foreground hover:text-destructive transition-colors"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                           </div>
+                         </div>
+                      </div>
+                      <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                         <div
+                           className="h-full bg-primary transition-all"
+                           style={{ width: `${(current / inst.installmentCount) * 100}%` }}
+                         />
+                      </div>
+                   </div>
+                 );
+               }
+
+               // Plan gorunumu: takvim ikonu acikken (ay-ay acilir-kapanir kart).
                return (
                  <div key={inst.id} data-search-key={searchKeyFor('installment', inst.id)} className="rounded-xl bg-secondary/30 border border-border overflow-hidden">
                     <button
