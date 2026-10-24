@@ -643,7 +643,7 @@ export default function Debt() {
 
                         <div className="grid grid-cols-3 gap-2 mb-3">
                           <div className="bg-secondary/50 rounded-lg px-2.5 py-2">
-                            <div className="text-[11px] text-muted-foreground">Bitiş ayı</div>
+                            <div className="text-[11px] text-muted-foreground">Son taksit</div>
                             <div className="text-sm font-medium mt-0.5">{formatStatementMonth(endMonth)}</div>
                           </div>
                           <div className="bg-secondary/50 rounded-lg px-2.5 py-2">
@@ -683,7 +683,7 @@ export default function Debt() {
                                   </td>
                                   <td className="py-1.5 px-1.5 text-right whitespace-nowrap">
                                     {isEnd ? (
-                                      <span className="bg-red-500/10 text-red-500 text-[11px] px-2 py-0.5 rounded-full">Bitiş</span>
+                                      <span className="bg-red-500/10 text-red-500 text-[11px] px-2 py-0.5 rounded-full">Son taksit</span>
                                     ) : isPaid ? (
                                       <span className="text-green-500 inline-flex items-center gap-1"><Check size={13} /> Ödendi</span>
                                     ) : isCurrent ? (
