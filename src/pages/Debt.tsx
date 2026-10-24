@@ -22,13 +22,6 @@ const addMonthsStr = (ym: string, n: number): string => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 };
 
-/** a -> b arasi tam ay farki. "YYYY-MM" x2 (negatif olabilir). */
-const monthDiffStr = (a: string, b: string): number => {
-  const [ay, am] = a.split('-').map(Number);
-  const [by, bm] = b.split('-').map(Number);
-  return (by - ay) * 12 + (bm - am);
-};
-
 export default function Debt() {
   const { state, viewDate, setViewDate, addCCDebt, updateCCDebt, deleteCCDebt, addInstallment, deleteInstallment, addDailyExpense, askConfirmation, todayStr, ccDueNotices, dismissCCDueNotice, statementCutoffDay, creditCards } = useBudget();
 
@@ -263,27 +256,54 @@ export default function Debt() {
   );
   const pendingCount = visibleDebts.filter(d => isDebtPending(d.date, isCurrentMonth, todayStr)).length;
 
+  // Bir taksitin BELLI bir aydaki GERCEK tutari: gerceklesmis dilim (bu ay/gecmis) -> o ayin
+  // ccDebt'inde installmentId eslesen kalemin tutari; gelecek ay -> futureData override; yoksa
+  // varsayilan monthlyAmount. Boylece ekstrede tek ay duzenlenince plan tablosu/toplamlar da yansir.
+  const instMonthAmt = (inst: Installment, month: string): number => {
+    const cur = state.currentMonth;
+    if (month === cur) {
+      const d = (state.ccDebts || []).find(x => x.installmentId === inst.id);
+      if (d) return Math.abs(d.amount);
+    } else if (month < cur) {
+      const d = (state.history || []).find(h => h.month === month)?.ccDebts?.find(x => x.installmentId === inst.id);
+      if (d) return Math.abs(d.amount);
+    } else {
+      const ov = state.futureData?.[month]?.installmentOverrides?.[inst.id];
+      if (ov !== undefined) return Math.abs(ov);
+    }
+    return Math.abs(inst.monthlyAmount);
+  };
+  // Bir taksitin TUM dilimlerinin (her ay kendi guncel tutariyla) toplami.
+  const installmentTotal = (inst: Installment): number => {
+    const first = inst.startMonth
+      || statementMonth((inst.startDate || '').slice(0, 10), cardCutoffOf(cards, inst.cardId, statementCutoffDay))
+      || getLocalMonth();
+    let sum = 0;
+    for (let k = 1; k <= inst.installmentCount; k++) sum += instMonthAmt(inst, addMonthsStr(first, k - 1));
+    return sum;
+  };
+
   // Plan modunda ust kartta gosterilecek "Kalan Toplam Borc" (SECILI kart):
   //  (1) bu ayin gunu GELMEMIS (pending) borclari + (2) goruntulenen aydan SONRAKI aylara dusen
-  //  taksit dilimleri. Gunu gelmis (odenmis kabul) bu-ay borclari HARIC; cift sayim yok (bu ayki
-  //  dilim pending'se (1)'de, odendiyse hic). Ileri tarihli tek cekimler DAHIL DEGIL (kullanici karari).
-  const planDebt = useMemo(() => {
+  //  taksit dilimleri (her ay KENDI guncel tutariyla). Gunu gelmis (odenmis kabul) bu-ay borclari
+  //  HARIC. Ileri tarihli tek cekimler DAHIL DEGIL (kullanici karari).
+  const planDebt = (() => {
     const thisMonthPending = Math.abs(
       visibleDebts.filter(d => isDebtPending(d.date, isCurrentMonth, todayStr)).reduce((s, d) => s + d.amount, 0)
     );
     let futureInstallments = 0;
     (state.installments || []).forEach(inst => {
       if (resolveCardId(inst.cardId) !== effSel) return;
-      const firstMonth = inst.startMonth
+      const first = inst.startMonth
         || statementMonth((inst.startDate || '').slice(0, 10), cardCutoffOf(cards, inst.cardId, statementCutoffDay))
         || getLocalMonth();
-      const count = inst.installmentCount;
-      const idx = monthDiffStr(firstMonth, viewDate) + 1; // viewDate'in dilim no'su
-      const futureSlices = idx < 1 ? count : (idx >= count ? 0 : count - idx);
-      futureInstallments += Math.max(0, futureSlices) * Math.abs(inst.monthlyAmount);
+      for (let k = 1; k <= inst.installmentCount; k++) {
+        const m = addMonthsStr(first, k - 1);
+        if (m > viewDate) futureInstallments += instMonthAmt(inst, m);
+      }
     });
     return { thisMonthPending, futureInstallments, total: thisMonthPending + futureInstallments };
-  }, [visibleDebts, isCurrentMonth, todayStr, state.installments, effSel, cards, statementCutoffDay, viewDate]);
+  })();
   // Karta göre + görüntülenen aya kadar BAŞLAMIŞ ve BİTMEMİŞ taksitler (ileri-başlangıçlı plan
   // başlayana dek gizli; tümü ödenmiş plan gizli).
   // Bir taksitin BİTİŞ sira anahtari: "YYYY-MM"(bitis ayi) + gun + tam tarih (kararli).
@@ -598,7 +618,8 @@ export default function Debt() {
                  || getLocalMonth();
                const safeCurrent = Number.isFinite(current) ? current : 1;
                const remainingCount = Math.max(0, instCount - safeCurrent + 1);
-               const remainingAmt = remainingCount * Math.abs(inst.monthlyAmount);
+               // Kalan tutar: kalan dilimlerin (safeCurrent..count) her ay kendi guncel tutari toplami.
+               const remainingAmt = (() => { let s = 0; for (let k = safeCurrent; k <= instCount; k++) s += instMonthAmt(inst, addMonthsStr(firstMonth, k - 1)); return s; })();
                const endMonth = addMonthsStr(firstMonth, instCount - 1);
 
                // Normal (eski) gorunum: takvim ikonu kapaliyken.
@@ -609,7 +630,7 @@ export default function Debt() {
                          <div>
                            <div className="font-medium">{inst.description}</div>
                            <div className="text-xs text-muted-foreground">
-                             Toplam: <Secret>{Math.abs(inst.totalAmount).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s/g, '')}</Secret>
+                             Toplam: <Secret>{installmentTotal(inst).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s/g, '')}</Secret>
                            </div>
                          </div>
                          <div className="text-right">
@@ -656,7 +677,7 @@ export default function Debt() {
                        <div className="min-w-0">
                          <div className="font-medium truncate">{inst.description}</div>
                          <div className="text-xs text-muted-foreground mt-0.5">
-                           Toplam <Secret>{Math.abs(inst.totalAmount).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s/g, '')}</Secret>
+                           Toplam <Secret>{installmentTotal(inst).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s/g, '')}</Secret>
                          </div>
                        </div>
                        <div className="flex items-center gap-3 shrink-0">
@@ -726,7 +747,7 @@ export default function Debt() {
                                   <td className={cn("py-1.5 px-1.5", isCurrent ? "text-primary font-medium" : "text-muted-foreground")}>{k}</td>
                                   <td className={cn("py-1.5 px-1.5", isCurrent ? "text-primary font-medium" : isEnd ? "text-foreground font-medium" : "text-muted-foreground")}>{formatShortMonth(month)}</td>
                                   <td className={cn("py-1.5 px-1.5 text-right", isCurrent ? "text-primary font-medium" : "text-foreground/90")}>
-                                    <Secret>{Math.abs(inst.monthlyAmount).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s/g, '')}</Secret>
+                                    <Secret>{instMonthAmt(inst, month).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s/g, '')}</Secret>
                                   </td>
                                   <td className="py-1.5 px-1.5 text-right whitespace-nowrap">
                                     {isEnd ? (
@@ -767,6 +788,7 @@ export default function Debt() {
         </div>
       )}
 
+      {!planMode && (
       <div className="space-y-6">
         <div>
           <h2 className="text-lg font-semibold">Bu Ayın Ekstresi</h2>
@@ -902,6 +924,7 @@ export default function Debt() {
         </>
         )}
       </div>
+      )}
     </div>
   );
 }
