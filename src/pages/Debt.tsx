@@ -22,6 +22,13 @@ const addMonthsStr = (ym: string, n: number): string => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 };
 
+/** a -> b arasi tam ay farki. "YYYY-MM" x2 (negatif olabilir). */
+const monthDiffStr = (a: string, b: string): number => {
+  const [ay, am] = a.split('-').map(Number);
+  const [by, bm] = b.split('-').map(Number);
+  return (by - ay) * 12 + (bm - am);
+};
+
 export default function Debt() {
   const { state, viewDate, setViewDate, addCCDebt, updateCCDebt, deleteCCDebt, addInstallment, deleteInstallment, addDailyExpense, askConfirmation, todayStr, ccDueNotices, dismissCCDueNotice, statementCutoffDay, creditCards } = useBudget();
 
@@ -255,6 +262,28 @@ export default function Debt() {
       .reduce((sum, d) => sum + d.amount, 0)
   );
   const pendingCount = visibleDebts.filter(d => isDebtPending(d.date, isCurrentMonth, todayStr)).length;
+
+  // Plan modunda ust kartta gosterilecek "Kalan Toplam Borc" (SECILI kart):
+  //  (1) bu ayin gunu GELMEMIS (pending) borclari + (2) goruntulenen aydan SONRAKI aylara dusen
+  //  taksit dilimleri. Gunu gelmis (odenmis kabul) bu-ay borclari HARIC; cift sayim yok (bu ayki
+  //  dilim pending'se (1)'de, odendiyse hic). Ileri tarihli tek cekimler DAHIL DEGIL (kullanici karari).
+  const planDebt = useMemo(() => {
+    const thisMonthPending = Math.abs(
+      visibleDebts.filter(d => isDebtPending(d.date, isCurrentMonth, todayStr)).reduce((s, d) => s + d.amount, 0)
+    );
+    let futureInstallments = 0;
+    (state.installments || []).forEach(inst => {
+      if (resolveCardId(inst.cardId) !== effSel) return;
+      const firstMonth = inst.startMonth
+        || statementMonth((inst.startDate || '').slice(0, 10), cardCutoffOf(cards, inst.cardId, statementCutoffDay))
+        || getLocalMonth();
+      const count = inst.installmentCount;
+      const idx = monthDiffStr(firstMonth, viewDate) + 1; // viewDate'in dilim no'su
+      const futureSlices = idx < 1 ? count : (idx >= count ? 0 : count - idx);
+      futureInstallments += Math.max(0, futureSlices) * Math.abs(inst.monthlyAmount);
+    });
+    return { thisMonthPending, futureInstallments, total: thisMonthPending + futureInstallments };
+  }, [visibleDebts, isCurrentMonth, todayStr, state.installments, effSel, cards, statementCutoffDay, viewDate]);
   // Karta göre + görüntülenen aya kadar BAŞLAMIŞ ve BİTMEMİŞ taksitler (ileri-başlangıçlı plan
   // başlayana dek gizli; tümü ödenmiş plan gizli).
   // Bir taksitin BİTİŞ sira anahtari: "YYYY-MM"(bitis ayi) + gun + tam tarih (kararli).
@@ -381,19 +410,37 @@ export default function Debt() {
         </div>
       )}
 
-      <Card title={`${cardById(effSel)?.name || 'Kredi Kartı'} — Bu Ay Ödenecek`} className="bg-gradient-to-br from-transparent to-red-500/12 border-red-500/25">
+      <Card title={`${cardById(effSel)?.name || 'Kredi Kartı'} — ${planMode ? 'Kalan Toplam Borç' : 'Bu Ay Ödenecek'}`} className="bg-gradient-to-br from-transparent to-red-500/12 border-red-500/25">
         <div className="text-3xl font-bold text-red-500 mt-2">
-          <Secret>{totalDebt.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}</Secret>
+          <Secret>{(planMode ? planDebt.total : totalDebt).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}</Secret>
         </div>
-        {pendingCount > 0 && (
-          <div className="text-xs text-muted-foreground mt-1">
-            günü gelmemiş {pendingCount} kalem hariç
-          </div>
-        )}
-        {multiCard && (
-          <div className="text-xs text-muted-foreground mt-1">
-            Tüm kartlar (Bilanço): <Secret>{grandTotalDebt.toLocaleString('tr-TR')} ₺</Secret>
-          </div>
+        {planMode ? (
+          <>
+            <div className="text-xs text-muted-foreground mt-1">bu ay kalan (günü gelmemiş) + gelecek ay taksitleri</div>
+            <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-dashed border-border">
+              <div>
+                <div className="text-[11px] text-muted-foreground">Bu ay kalan</div>
+                <div className="text-sm font-medium mt-0.5"><Secret>{planDebt.thisMonthPending.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s/g, '')}</Secret></div>
+              </div>
+              <div>
+                <div className="text-[11px] text-muted-foreground">Gelecek ay taksitleri</div>
+                <div className="text-sm font-medium mt-0.5"><Secret>{planDebt.futureInstallments.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s/g, '')}</Secret></div>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            {pendingCount > 0 && (
+              <div className="text-xs text-muted-foreground mt-1">
+                günü gelmemiş {pendingCount} kalem hariç
+              </div>
+            )}
+            {multiCard && (
+              <div className="text-xs text-muted-foreground mt-1">
+                Tüm kartlar (Bilanço): <Secret>{grandTotalDebt.toLocaleString('tr-TR')} ₺</Secret>
+              </div>
+            )}
+          </>
         )}
       </Card>
 
