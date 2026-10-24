@@ -816,6 +816,28 @@ export default function DailyExpenses() {
     return [];
   }, [showMealCard, activeCurrencies, activeExpenses, activeSubTab, isFuture]);
 
+  // Doviz/Altin (EXCHANGE) GOLD modunda cip-sekmeler: o ay HAREKETI olan altin turleri.
+  // availableTabs (yalniz dovizler) KORUNUR -> tum efektler onu kullanmaya devam eder, boylece
+  // altin-modu senkron efektiyle "sekme titremesi/sonsuz dongu" riskine HIC girilmez.
+  const activeGoldTypes = useMemo(() => {
+    const set = new Set<string>();
+    if (isFuture) {
+      (state.fixedExpenses || []).forEach(e => {
+        if (e.type === 'PLANNED_VAULT' && e.vault_gold_type && isGoldType(e.vault_gold_type)) set.add(e.vault_gold_type);
+      });
+    } else {
+      (vaultRecords || []).forEach(r => {
+        if (r && r.gold_type && isGoldType(r.gold_type) && typeof r.record_date === 'string' && r.record_date.slice(0, 7) === viewDate) set.add(r.gold_type);
+      });
+      activeExpenses.forEach(e => { if (isGoldType(e.type)) set.add(e.type); });
+    }
+    return Array.from(set);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFuture, state.fixedExpenses, vaultRecords, viewDate, activeExpenses]);
+
+  // Cip-cubugu kaynagi: GOLD modunda altin turleri, aksi halde dovizler (availableTabs).
+  const exchangeTabChips = (activeSubTab === 'EXCHANGE' && exchangeTabMode === 'GOLD') ? activeGoldTypes : availableTabs;
+
   // Yalniz sayfa ACILISINDA (mount/donus) calisir: sessionStorage'dan gelen activeTab bir
   // doviz/altinsa ve o an NORMAL'de hic dogrudan islemi yoksa TL'ye dus (eski davranis). Oturum
   // ici bilerek secim etkilenmez (isKnownAsset korumasi orada gecerli). Arama deep-link ile
@@ -856,15 +878,17 @@ export default function DailyExpenses() {
   useEffect(() => {
     if (activeSubTab !== 'EXCHANGE') return;
     if (exchangeTabMode === 'GOLD' && !isGoldType(type)) {
-      if (allFormTypes.golds.length > 0) {
-        setType(allFormTypes.golds[0]);
-        setActiveTab(allFormTypes.golds[0]);
+      // Once o ay HAREKETI olan ilk altin turu (liste bos gorunmesin); yoksa ilk tanimli tur (Gram).
+      const firstGold = activeGoldTypes[0] || allFormTypes.golds[0];
+      if (firstGold) {
+        setType(firstGold);
+        setActiveTab(firstGold);
       }
     } else if (exchangeTabMode === 'CURRENCY' && isGoldType(type)) {
         setType('NAKIT');
         setActiveTab('NAKIT');
     }
-  }, [activeSubTab, exchangeTabMode, allFormTypes.golds, type, setType, setActiveTab, isGoldType]);
+  }, [activeSubTab, exchangeTabMode, allFormTypes.golds, activeGoldTypes, type, setType, setActiveTab, isGoldType]);
 
   // Reset date draft if it belongs to a past day.
   // todayStr'e bağlı: uygulama açıkken gece yarısı geçse de yeniden çalışır.
@@ -2479,12 +2503,12 @@ export default function DailyExpenses() {
         <>
           {/* Tek tur (tek doviz/altin ya da yalniz Nakit) olsa bile o ismin sekmesi gorunur.
               Yalnizca hic sekme yokken (>=1 saglanmaz) cubuk cizilmez. */}
-          {availableTabs.length >= 1 && (
+          {exchangeTabChips.length >= 1 && (
             <div className="flex p-1 bg-secondary rounded-xl overflow-x-auto whitespace-nowrap scrollbar-none gap-1">
-                {availableTabs.map((tab) => (
+                {exchangeTabChips.map((tab) => (
                   <button
                     key={tab}
-                    onClick={() => setActiveTab(tab)}
+                    onClick={() => { setActiveTab(tab); if (isGoldType(tab)) setType(tab); }}
                     className={cn(
                         "flex-1 min-w-[100px] py-2 text-sm font-medium rounded-lg transition-all",
                         activeTab === tab ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
