@@ -21,11 +21,37 @@ export function useViewportHeightVar() {
       document.documentElement.style.setProperty('--app-vh', `${h}px`);
     };
     setAppVh();
+
+    // Klavye acilinca / odak degisince odaklanan input'u gorunur alana kaydir.
+    // interactive-widget=resizes-content ile layout kuculur ama tarayici bazen odakli
+    // alani kaydirmaz -> input klavyenin ARKASINDA kalir. Burada elle kaydiriyoruz.
+    const isEditable = (el: Element | null): el is HTMLElement =>
+      !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT');
+    const scrollFocusedIntoView = () => {
+      const el = document.activeElement;
+      if (isEditable(el)) {
+        try { el.scrollIntoView({ block: 'center' }); } catch { /* yoksay */ }
+      }
+    };
+    // Yeni bir input'a odaklaninca (klavye yeni acilir ya da zaten acikken input degisir):
+    // klavye animasyonu + layout kuculmesinden sonra kaydir.
+    const onFocusIn = (e: FocusEvent) => {
+      if (isEditable(e.target as Element)) setTimeout(scrollFocusedIntoView, 300);
+    };
+    // Klavye acildiginda (gorunur alan KUCULUNCE) odakli input'u hemen gorunur yap (hassas an).
+    const onVvResize = () => {
+      const prev = last;
+      setAppVh();
+      if (prev !== -1 && last < prev) setTimeout(scrollFocusedIntoView, 60);
+    };
+
     window.addEventListener('resize', setAppVh);
-    vv?.addEventListener('resize', setAppVh);
+    vv?.addEventListener('resize', onVvResize);
+    document.addEventListener('focusin', onFocusIn);
     return () => {
       window.removeEventListener('resize', setAppVh);
-      vv?.removeEventListener('resize', setAppVh);
+      vv?.removeEventListener('resize', onVvResize);
+      document.removeEventListener('focusin', onFocusIn);
     };
   }, []);
 }
