@@ -2207,7 +2207,7 @@ export default function DailyExpenses() {
       )}
       </div>
 
-      {viewDate <= state.currentMonth && (
+      {activeSubTab !== 'BILLS' && viewDate <= state.currentMonth && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Card title={`${isGoldType(activeTab) ? 'Toplam Birikim' : 'Bu Ay Harcanan'} (${getAssetFullTitle(activeTab)})`} className={`${isGoldType(activeTab) ? 'bg-yellow-500/5 border-yellow-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
               <div className={`text-2xl font-bold mt-2 ${isGoldType(activeTab) ? 'text-yellow-600 dark:text-yellow-500' : 'text-red-500'}`}>
