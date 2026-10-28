@@ -3,7 +3,7 @@ import { useBudget } from '../context/BudgetContext';
 import { useAuth } from '../context/AuthContext';
 import type { DailyExpense } from '../types';
 import { Card } from '../components/ui/Card';
-import { Trash2, Banknote, CreditCard, Pencil, X, ArrowRightLeft, CheckCircle, Circle, Wallet, AlertTriangle } from 'lucide-react';
+import { Trash2, Banknote, CreditCard, Pencil, X, ArrowRightLeft, CheckCircle, Circle, Wallet, AlertTriangle, Check } from 'lucide-react';
 import { MonthNavigator } from '../components/MonthNavigator';
 import { format } from 'date-fns';
 import React, { useMemo, useEffect, useState, useRef } from 'react';
@@ -15,7 +15,7 @@ import { PrivacyTrigger } from '../components/PrivacyTrigger';
 import { Secret } from '../components/Secret';
 import { SpendingCalendar } from '../components/SpendingCalendar';
 import { useSelectMode } from '../hooks/useSelectMode';
-import { SelectionBar, SelectIndicator } from '../components/SelectionBar';
+import { SelectionBar } from '../components/SelectionBar';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 const billColors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f43f5e', '#06b6d4'];
@@ -2373,7 +2373,9 @@ export default function DailyExpenses() {
                         {...sel.pressProps(bill.id, () => toggleFixedExpense(bill.id))}
                         className="flex items-center gap-3 flex-1 min-w-0"
                       >
-                        {bill.isPaid ? (
+                        {sel.isSelected(bill.id) ? (
+                          <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center flex-shrink-0"><Check size={16} strokeWidth={3} /></span>
+                        ) : bill.isPaid ? (
                           <CheckCircle className="text-green-500 flex-shrink-0" size={24} />
                         ) : (
                           <Circle className="text-muted-foreground flex-shrink-0" size={24} />
@@ -2399,11 +2401,7 @@ export default function DailyExpenses() {
                         </div>
                       </button>
 
-                      {sel.active ? (
-                        <div className="flex items-center pl-2">
-                          <SelectIndicator selected={sel.isSelected(bill.id)} />
-                        </div>
-                      ) : (
+                      {!sel.active && (
                       <div className="flex items-center">
                         <button
                           onClick={(e) => { e.stopPropagation(); handleEditBill(bill); }}
@@ -2456,7 +2454,9 @@ export default function DailyExpenses() {
                       {...sel.pressProps(bill.id, () => toggleFixedExpense(bill.id))}
                       className="flex items-center gap-3 flex-1 min-w-0"
                     >
-                      {bill.isPaid ? (
+                      {sel.isSelected(bill.id) ? (
+                        <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center flex-shrink-0"><Check size={16} strokeWidth={3} /></span>
+                      ) : bill.isPaid ? (
                         <CheckCircle className="text-green-500 flex-shrink-0" size={24} />
                       ) : (
                         <Circle className="text-muted-foreground flex-shrink-0" size={24} />
@@ -2482,11 +2482,7 @@ export default function DailyExpenses() {
                       </div>
                     </button>
 
-                    {sel.active ? (
-                      <div className="flex items-center pl-2">
-                        <SelectIndicator selected={sel.isSelected(bill.id)} />
-                      </div>
-                    ) : (
+                    {!sel.active && (
                     <div className="flex items-center">
                       <button
                         onClick={(e) => { e.stopPropagation(); handleEditBill(bill); }}
@@ -2579,8 +2575,8 @@ export default function DailyExpenses() {
                     )}
                   >
                     <div className="flex items-center gap-3">
-                        <div {...sel.pressProps(expense.id)} className={`p-2 rounded-full cursor-pointer ${expense.type === 'NAKIT' ? 'bg-green-500/10 text-green-500' : isGold ? 'bg-yellow-500/10 text-yellow-500' : 'bg-blue-500/10 text-blue-500'}`}>
-                          {expense.type === 'NAKIT' ? <Banknote size={20} /> : <CreditCard size={20} />}
+                        <div {...sel.pressProps(expense.id)} className={cn("p-2 rounded-full cursor-pointer", sel.isSelected(expense.id) ? "bg-primary text-primary-foreground" : expense.type === 'NAKIT' ? 'bg-green-500/10 text-green-500' : isGold ? 'bg-yellow-500/10 text-yellow-500' : 'bg-blue-500/10 text-blue-500')}>
+                          {sel.isSelected(expense.id) ? <Check size={20} /> : expense.type === 'NAKIT' ? <Banknote size={20} /> : <CreditCard size={20} />}
                         </div>
                         <div>
                           <div className="font-medium">{expense.description}</div>
@@ -2592,11 +2588,7 @@ export default function DailyExpenses() {
                           {expense.amount > 0 ? '+' : ''}
                           <Secret>{expense.amount.toLocaleString('tr-TR')}{isGoldType(expense.type) ? ' ' : ''}{getAssetUnitLabel(expense.type)}</Secret>
                         </div>
-                        {sel.active ? (
-                          <div className="flex justify-end mt-1">
-                            <SelectIndicator selected={sel.isSelected(expense.id)} />
-                          </div>
-                        ) : (
+                        {!sel.active && (
                         <div className="flex justify-end gap-3 mt-1">
                           <button
                             onClick={() => handleEdit(expense)}

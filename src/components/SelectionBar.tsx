@@ -1,4 +1,4 @@
-import { X, Check } from 'lucide-react';
+import { X } from 'lucide-react';
 import { Secret } from './Secret';
 
 /**
@@ -30,19 +30,5 @@ export function SelectionBar({ count, amountText, onClose }: {
         </button>
       </div>
     </div>
-  );
-}
-
-/**
- * Secim modunda satir sagindaki gosterge: secili ise dolu ✓, degilse bos daire.
- * Duzenle/Sil butonlarinin yerine gosterilir.
- */
-export function SelectIndicator({ selected }: { selected: boolean }) {
-  return selected ? (
-    <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-sm">
-      <Check size={14} strokeWidth={3} />
-    </span>
-  ) : (
-    <span className="w-6 h-6 rounded-full border-2 border-muted-foreground/40" />
   );
 }

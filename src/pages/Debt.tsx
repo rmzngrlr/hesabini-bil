@@ -12,7 +12,7 @@ import { Secret } from '../components/Secret';
 import { MonthNavigator } from '../components/MonthNavigator';
 import { SpendingCalendar } from '../components/SpendingCalendar';
 import { useSelectMode } from '../hooks/useSelectMode';
-import { SelectionBar, SelectIndicator } from '../components/SelectionBar';
+import { SelectionBar } from '../components/SelectionBar';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import type { CCDebt, Installment } from '../types';
@@ -849,8 +849,8 @@ export default function Debt() {
                   )}
                 >
                   <div className="flex items-center gap-3">
-                     <div {...sel.pressProps(debt.id)} className={cn("p-2 rounded-full cursor-pointer", debt.amount > 0 ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500")}>
-                       <CreditCard size={20} />
+                     <div {...sel.pressProps(debt.id)} className={cn("p-2 rounded-full cursor-pointer", sel.isSelected(debt.id) ? "bg-primary text-primary-foreground" : debt.amount > 0 ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500")}>
+                       {sel.isSelected(debt.id) ? <Check size={20} /> : <CreditCard size={20} />}
                      </div>
                      <div>
                        <div className="font-medium">{debt.description}</div>
@@ -862,11 +862,7 @@ export default function Debt() {
                       {debt.amount > 0 ? '+' : ''}
                       <Secret>{debt.amount.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}</Secret>
                     </div>
-                    {sel.active ? (
-                      <div className="flex justify-end mt-1">
-                        <SelectIndicator selected={sel.isSelected(debt.id)} />
-                      </div>
-                    ) : (
+                    {!sel.active && (
                     <div className="flex justify-end gap-3 mt-1">
                       <button
                         onClick={() => handleEdit(debt)}
@@ -914,8 +910,8 @@ export default function Debt() {
                 )}
               >
                 <div className="flex items-center gap-3">
-                   <div {...sel.pressProps(debt.id)} className={cn("p-2 rounded-full cursor-pointer", debt.amount > 0 ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500")}>
-                     <CreditCard size={20} />
+                   <div {...sel.pressProps(debt.id)} className={cn("p-2 rounded-full cursor-pointer", sel.isSelected(debt.id) ? "bg-primary text-primary-foreground" : debt.amount > 0 ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500")}>
+                     {sel.isSelected(debt.id) ? <Check size={20} /> : <CreditCard size={20} />}
                    </div>
                    <div>
                      <div className="font-medium">{debt.description}</div>
@@ -927,11 +923,7 @@ export default function Debt() {
                     {debt.amount > 0 ? '+' : ''}
                     <Secret>{debt.amount.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}</Secret>
                   </div>
-                  {sel.active ? (
-                    <div className="flex justify-end mt-1">
-                      <SelectIndicator selected={sel.isSelected(debt.id)} />
-                    </div>
-                  ) : (
+                  {!sel.active && (
                   <div className="flex justify-end gap-3 mt-1">
                     <button
                       onClick={() => handleEdit(debt)}
