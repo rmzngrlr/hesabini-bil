@@ -14,6 +14,8 @@ import { SearchTrigger } from '../components/SearchTrigger';
 import { PrivacyTrigger } from '../components/PrivacyTrigger';
 import { Secret } from '../components/Secret';
 import { SpendingCalendar } from '../components/SpendingCalendar';
+import { useSelectMode } from '../hooks/useSelectMode';
+import { SelectionBar, SelectIndicator } from '../components/SelectionBar';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 const billColors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f43f5e', '#06b6d4'];
@@ -515,6 +517,10 @@ export default function DailyExpenses() {
   }, [username]);
 
   const [activeSubTab, setActiveSubTab] = useState<'NORMAL' | 'EXCHANGE' | 'BILLS'>('NORMAL');
+  // Basili tutarak coklu secim modu (liste kalemlerinin net toplamini alttan gosterir).
+  const sel = useSelectMode();
+  // Baska sekme/para birimine ya da baska aya gecince secim modundan cik.
+  useEffect(() => { sel.exit(); }, [activeSubTab, activeTab, viewDate, sel.exit]);
   // Tarih barina cift tiklama gunluk liste yerine takvim gorunumunu acar/kapatir (bu sayfaya ozel).
   const [showCalendar, setShowCalendar] = useState(false);
   // "Yeni İşlem Ekle" formu acilir-kapanir (cihaz-bazli tercih; VARSAYILAN KAPALI; duzenlerken zorla acik).
@@ -2350,6 +2356,7 @@ export default function DailyExpenses() {
                     <div
                       key={bill.id}
                       data-search-key={searchKeyFor('bill', bill.id)}
+                      onClick={() => { if (sel.active) sel.toggle(bill.id); }}
                       className={cn(
                         "flex items-center justify-between p-4 rounded-xl glass transition-all",
                         // Odeme gunu gelmis ama hala odenmemisse uyari cercevesi.
@@ -2357,11 +2364,13 @@ export default function DailyExpenses() {
                         !bill.isPaid && !!bill.date && bill.date <= todayStr
                           ? "border-red-500/60 bg-gradient-to-br from-transparent to-red-500/15"
                           : "border-border",
-                        bill.isPaid && "opacity-60"
+                        bill.isPaid && "opacity-60",
+                        sel.active && "cursor-pointer",
+                        sel.isSelected(bill.id) && "ring-2 ring-primary bg-primary/5"
                       )}
                     >
                       <button
-                        onClick={() => toggleFixedExpense(bill.id)}
+                        {...sel.pressProps(bill.id, () => toggleFixedExpense(bill.id))}
                         className="flex items-center gap-3 flex-1 min-w-0"
                       >
                         {bill.isPaid ? (
@@ -2390,6 +2399,11 @@ export default function DailyExpenses() {
                         </div>
                       </button>
 
+                      {sel.active ? (
+                        <div className="flex items-center pl-2">
+                          <SelectIndicator selected={sel.isSelected(bill.id)} />
+                        </div>
+                      ) : (
                       <div className="flex items-center">
                         <button
                           onClick={(e) => { e.stopPropagation(); handleEditBill(bill); }}
@@ -2410,6 +2424,7 @@ export default function DailyExpenses() {
                           <Trash2 size={20} />
                         </button>
                       </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -2429,13 +2444,16 @@ export default function DailyExpenses() {
                   <div
                     key={bill.id}
                     data-search-key={searchKeyFor('bill', bill.id)}
+                    onClick={() => { if (sel.active) sel.toggle(bill.id); }}
                     className={cn(
                       "flex items-center justify-between p-4 rounded-xl glass transition-all",
-                      bill.isPaid && "opacity-60"
+                      bill.isPaid && "opacity-60",
+                      sel.active && "cursor-pointer",
+                      sel.isSelected(bill.id) && "ring-2 ring-primary bg-primary/5"
                     )}
                   >
                     <button
-                      onClick={() => toggleFixedExpense(bill.id)}
+                      {...sel.pressProps(bill.id, () => toggleFixedExpense(bill.id))}
                       className="flex items-center gap-3 flex-1 min-w-0"
                     >
                       {bill.isPaid ? (
@@ -2464,6 +2482,11 @@ export default function DailyExpenses() {
                       </div>
                     </button>
 
+                    {sel.active ? (
+                      <div className="flex items-center pl-2">
+                        <SelectIndicator selected={sel.isSelected(bill.id)} />
+                      </div>
+                    ) : (
                     <div className="flex items-center">
                       <button
                         onClick={(e) => { e.stopPropagation(); handleEditBill(bill); }}
@@ -2484,6 +2507,7 @@ export default function DailyExpenses() {
                         <Trash2 size={20} />
                       </button>
                     </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -2544,9 +2568,18 @@ export default function DailyExpenses() {
                 {groupedExpenses[date].map((expense) => {
                   const isGold = isGoldType(expense.type);
                   return (
-                  <div key={expense.id} data-search-key={searchKeyFor('daily', expense.id)} className="flex items-center justify-between p-4 rounded-xl glass">
+                  <div
+                    key={expense.id}
+                    data-search-key={searchKeyFor('daily', expense.id)}
+                    onClick={() => { if (sel.active) sel.toggle(expense.id); }}
+                    className={cn(
+                      "flex items-center justify-between p-4 rounded-xl glass transition-all",
+                      sel.active && "cursor-pointer",
+                      sel.isSelected(expense.id) && "ring-2 ring-primary bg-primary/5"
+                    )}
+                  >
                     <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-full ${expense.type === 'NAKIT' ? 'bg-green-500/10 text-green-500' : isGold ? 'bg-yellow-500/10 text-yellow-500' : 'bg-blue-500/10 text-blue-500'}`}>
+                        <div {...sel.pressProps(expense.id)} className={`p-2 rounded-full cursor-pointer ${expense.type === 'NAKIT' ? 'bg-green-500/10 text-green-500' : isGold ? 'bg-yellow-500/10 text-yellow-500' : 'bg-blue-500/10 text-blue-500'}`}>
                           {expense.type === 'NAKIT' ? <Banknote size={20} /> : <CreditCard size={20} />}
                         </div>
                         <div>
@@ -2559,6 +2592,11 @@ export default function DailyExpenses() {
                           {expense.amount > 0 ? '+' : ''}
                           <Secret>{expense.amount.toLocaleString('tr-TR')}{isGoldType(expense.type) ? ' ' : ''}{getAssetUnitLabel(expense.type)}</Secret>
                         </div>
+                        {sel.active ? (
+                          <div className="flex justify-end mt-1">
+                            <SelectIndicator selected={sel.isSelected(expense.id)} />
+                          </div>
+                        ) : (
                         <div className="flex justify-end gap-3 mt-1">
                           <button
                             onClick={() => handleEdit(expense)}
@@ -2573,6 +2611,7 @@ export default function DailyExpenses() {
                             <Trash2 size={12} /> Sil
                           </button>
                         </div>
+                        )}
                     </div>
                   </div>
                   );
@@ -2590,6 +2629,21 @@ export default function DailyExpenses() {
           )}
         </>
       )}
+
+      {sel.active && (() => {
+        // Secili kalemlerin net toplami (liste birimine gore). Faturalar hep
+        // gider oldugundan duz toplam; digerlerinde isaretli (gelir-gider) toplam.
+        // (Her dal ayri dizi tipiyle calisir: birlesik tipte filter/reduce TS hatasi verir.)
+        if (activeSubTab === 'BILLS') {
+          const items = currentMonthBills.filter(b => sel.isSelected(b.id));
+          const net = items.reduce((s, b) => s + b.amount, 0);
+          return <SelectionBar count={items.length} amountText={`${net.toLocaleString('tr-TR')} ₺`} onClose={sel.exit} />;
+        }
+        const items = filteredExpenses.filter(e => sel.isSelected(e.id));
+        const net = items.reduce((s, e) => s + e.amount, 0);
+        const text = `${net > 0 ? '+' : ''}${net.toLocaleString('tr-TR')}${isGoldType(activeTab) ? ' ' : ''}${getAssetUnitLabel(activeTab)}`;
+        return <SelectionBar count={items.length} amountText={text} onClose={sel.exit} />;
+      })()}
     </div>
   );
 }

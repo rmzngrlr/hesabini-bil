@@ -11,6 +11,8 @@ import { PrivacyTrigger } from '../components/PrivacyTrigger';
 import { Secret } from '../components/Secret';
 import { MonthNavigator } from '../components/MonthNavigator';
 import { SpendingCalendar } from '../components/SpendingCalendar';
+import { useSelectMode } from '../hooks/useSelectMode';
+import { SelectionBar, SelectIndicator } from '../components/SelectionBar';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import type { CCDebt, Installment } from '../types';
@@ -92,6 +94,11 @@ export default function Debt() {
   useEffect(() => {
     setOpenPlanIds(prev => (prev.size ? new Set() : prev));
   }, [planMode, effSel]);
+
+  // Basili tutarak coklu secim modu ("Bu Ayın Ekstresi" listesi icin).
+  const sel = useSelectMode();
+  // Kart, mod ya da ay degisince secim modundan cik.
+  useEffect(() => { sel.exit(); }, [effSel, planMode, viewDate, sel.exit]);
 
   const uniqueDescriptions = useMemo(() => {
     const descriptions = new Set<string>();
@@ -831,9 +838,18 @@ export default function Debt() {
               </div>
 
               {groupedDebts.groups[date].map((debt) => (
-                <div key={debt.id} data-search-key={searchKeyFor('ccdebt', debt.id)} className="flex items-center justify-between p-4 rounded-xl glass">
+                <div
+                  key={debt.id}
+                  data-search-key={searchKeyFor('ccdebt', debt.id)}
+                  onClick={() => { if (sel.active) sel.toggle(debt.id); }}
+                  className={cn(
+                    "flex items-center justify-between p-4 rounded-xl glass transition-all",
+                    sel.active && "cursor-pointer",
+                    sel.isSelected(debt.id) && "ring-2 ring-primary bg-primary/5"
+                  )}
+                >
                   <div className="flex items-center gap-3">
-                     <div className={cn("p-2 rounded-full", debt.amount > 0 ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500")}>
+                     <div {...sel.pressProps(debt.id)} className={cn("p-2 rounded-full cursor-pointer", debt.amount > 0 ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500")}>
                        <CreditCard size={20} />
                      </div>
                      <div>
@@ -846,6 +862,11 @@ export default function Debt() {
                       {debt.amount > 0 ? '+' : ''}
                       <Secret>{debt.amount.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}</Secret>
                     </div>
+                    {sel.active ? (
+                      <div className="flex justify-end mt-1">
+                        <SelectIndicator selected={sel.isSelected(debt.id)} />
+                      </div>
+                    ) : (
                     <div className="flex justify-end gap-3 mt-1">
                       <button
                         onClick={() => handleEdit(debt)}
@@ -860,6 +881,7 @@ export default function Debt() {
                         <Trash2 size={12} /> Sil
                       </button>
                     </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -881,9 +903,18 @@ export default function Debt() {
             </div>
 
             {groupedDebts.noDateGroup.map((debt) => (
-              <div key={debt.id} data-search-key={searchKeyFor('ccdebt', debt.id)} className="flex items-center justify-between p-4 rounded-xl glass">
+              <div
+                key={debt.id}
+                data-search-key={searchKeyFor('ccdebt', debt.id)}
+                onClick={() => { if (sel.active) sel.toggle(debt.id); }}
+                className={cn(
+                  "flex items-center justify-between p-4 rounded-xl glass transition-all",
+                  sel.active && "cursor-pointer",
+                  sel.isSelected(debt.id) && "ring-2 ring-primary bg-primary/5"
+                )}
+              >
                 <div className="flex items-center gap-3">
-                   <div className={cn("p-2 rounded-full", debt.amount > 0 ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500")}>
+                   <div {...sel.pressProps(debt.id)} className={cn("p-2 rounded-full cursor-pointer", debt.amount > 0 ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500")}>
                      <CreditCard size={20} />
                    </div>
                    <div>
@@ -896,6 +927,11 @@ export default function Debt() {
                     {debt.amount > 0 ? '+' : ''}
                     <Secret>{debt.amount.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}</Secret>
                   </div>
+                  {sel.active ? (
+                    <div className="flex justify-end mt-1">
+                      <SelectIndicator selected={sel.isSelected(debt.id)} />
+                    </div>
+                  ) : (
                   <div className="flex justify-end gap-3 mt-1">
                     <button
                       onClick={() => handleEdit(debt)}
@@ -910,6 +946,7 @@ export default function Debt() {
                       <Trash2 size={12} /> Sil
                     </button>
                   </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -925,6 +962,14 @@ export default function Debt() {
         )}
       </div>
       )}
+
+      {sel.active && (() => {
+        // Secili ekstre kalemlerinin net toplami (gelir-gider, ₺).
+        const selItems = visibleDebts.filter(d => sel.isSelected(d.id));
+        const net = selItems.reduce((s, d) => s + d.amount, 0);
+        const text = `${net > 0 ? '+' : ''}${net.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s/g, '')}`;
+        return <SelectionBar count={selItems.length} amountText={text} onClose={sel.exit} />;
+      })()}
     </div>
   );
 }
