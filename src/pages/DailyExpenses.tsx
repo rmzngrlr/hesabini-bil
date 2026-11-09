@@ -2622,6 +2622,9 @@ export default function DailyExpenses() {
         </>
       )}
 
+      {/* Secim cubugu sabit (fixed) oldugundan son kalemi ortmesin diye alttan bosluk. */}
+      {sel.active && <div className="h-28" aria-hidden="true" />}
+
       {sel.active && (() => {
         // Secili kalemlerin net toplami (liste birimine gore). Faturalar hep
         // gider oldugundan duz toplam; digerlerinde isaretli (gelir-gider) toplam.

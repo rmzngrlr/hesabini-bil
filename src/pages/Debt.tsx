@@ -955,6 +955,9 @@ export default function Debt() {
       </div>
       )}
 
+      {/* Secim cubugu sabit (fixed) oldugundan son kalemi ortmesin diye alttan bosluk. */}
+      {sel.active && <div className="h-28" aria-hidden="true" />}
+
       {sel.active && (() => {
         // Secili ekstre kalemlerinin net toplami (gelir-gider, ₺).
         const selItems = visibleDebts.filter(d => sel.isSelected(d.id));
