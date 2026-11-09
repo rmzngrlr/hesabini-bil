@@ -7,7 +7,7 @@ import { PrivacyTrigger } from '../components/PrivacyTrigger';
 import { Secret } from '../components/Secret';
 import { MonthNavigator } from '../components/MonthNavigator';
 import { useBudget } from '../context/BudgetContext';
-import { isDebtPending } from '../lib/utils';
+import { isDebtPending, ccSettleDate } from '../lib/utils';
 import { Card } from '../components/ui/Card';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Sector } from 'recharts';
 import { ProgressBar } from '../components/ui/ProgressBar';
@@ -439,7 +439,7 @@ export default function Dashboard() {
   // sayfasiyla ayni kural, ortak isDebtPending). Gelecek/gecmis aylarda tam sayilir.
   const totalCCDebt = Math.abs(
     state.ccDebts
-      .filter(d => !isDebtPending(d.date, isCurrentMonth, todayStr))
+      .filter(d => !isDebtPending(ccSettleDate(d), isCurrentMonth, todayStr))
       .reduce((sum, d) => sum + d.amount, 0)
   );
   

@@ -4,7 +4,7 @@ import { Card } from '../components/ui/Card';
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Plus, Trash2, CalendarClock, CreditCard, Pencil, X, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Check } from 'lucide-react';
-import { cn, scrollToElement, scrollToSearchKey, getTodayStr, isDebtPending, statementMonth, ayinGunu } from '../lib/utils';
+import { cn, scrollToElement, scrollToSearchKey, getTodayStr, isDebtPending, statementMonth, ayinGunu, ccSettleDate } from '../lib/utils';
 import { searchKeyFor } from '../lib/search';
 import { SearchTrigger } from '../components/SearchTrigger';
 import { PrivacyTrigger } from '../components/PrivacyTrigger';
@@ -250,18 +250,20 @@ export default function Debt() {
     () => state.ccDebts.filter(d => resolveCardId(d.cardId) === effSel),
     [state.ccDebts, effSel]
   );
+  // Taksitli kalemler görünen günün BİR GÜN SONRASINDA yerleşir (ccSettleDate); bekleme/toplam
+  // kararları bu efektif tarihe göre. Görünen debt.date değişmez.
   const totalDebt = Math.abs(
     visibleDebts
-      .filter(d => !isDebtPending(d.date, isCurrentMonth, todayStr))
+      .filter(d => !isDebtPending(ccSettleDate(d), isCurrentMonth, todayStr))
       .reduce((sum, d) => sum + d.amount, 0)
   );
   // Tüm kartların toplamı (= Bilanço'daki tek sayı). Belirli kart seçiliyken ikincil satırda gösterilir.
   const grandTotalDebt = Math.abs(
     state.ccDebts
-      .filter(d => !isDebtPending(d.date, isCurrentMonth, todayStr))
+      .filter(d => !isDebtPending(ccSettleDate(d), isCurrentMonth, todayStr))
       .reduce((sum, d) => sum + d.amount, 0)
   );
-  const pendingCount = visibleDebts.filter(d => isDebtPending(d.date, isCurrentMonth, todayStr)).length;
+  const pendingCount = visibleDebts.filter(d => isDebtPending(ccSettleDate(d), isCurrentMonth, todayStr)).length;
 
   // Bir taksitin BELLI bir aydaki GERCEK tutari: gerceklesmis dilim (bu ay/gecmis) -> o ayin
   // ccDebt'inde installmentId eslesen kalemin tutari; gelecek ay -> futureData override; yoksa
@@ -296,7 +298,7 @@ export default function Debt() {
   //  HARIC. Ileri tarihli tek cekimler DAHIL DEGIL (kullanici karari).
   const planDebt = (() => {
     const thisMonthPending = Math.abs(
-      visibleDebts.filter(d => isDebtPending(d.date, isCurrentMonth, todayStr)).reduce((s, d) => s + d.amount, 0)
+      visibleDebts.filter(d => isDebtPending(ccSettleDate(d), isCurrentMonth, todayStr)).reduce((s, d) => s + d.amount, 0)
     );
     let futureInstallments = 0;
     (state.installments || []).forEach(inst => {
@@ -819,7 +821,9 @@ export default function Debt() {
           const dailyTotal = groupedDebts.groups[date].reduce((sum, item) => sum + item.amount, 0);
           // Bu ayda gunu henuz gelmemis grup: soluk + "gunu gelmedi" etiketi.
           // Gunu gelince (todayStr canli oldugundan gece yarisi dahil) kendiliginden aktiflesir.
-          const isPending = isDebtPending(date, isCurrentMonth, todayStr);
+          // Taksit kalemleri +1 gun sonra yerlestiginden grup, kalemlerin EFEKTIF gunune gore
+          // (grupta bekleyen varsa) pending sayilir -> toplam/bildirimle tutarli.
+          const isPending = groupedDebts.groups[date].some(d => isDebtPending(ccSettleDate(d), isCurrentMonth, todayStr));
           return (
             <div key={date} className={cn("space-y-3 transition-opacity", isPending && "opacity-50")}>
               <div className="flex justify-between items-center ml-1 pr-1">

@@ -43,6 +43,33 @@ export function isDebtPending(
 }
 
 /**
+ * Bir 'YYYY-MM-DD' tarihine n gün ekler (ay/yıl taşmasını UTC ile doğru yapar).
+ * Geçersiz/boş girdide girdinin kendisini döndürür.
+ */
+export function addDaysISO(dateStr: string | undefined, n: number): string | undefined {
+  const s = (dateStr || '').slice(0, 10);
+  const [y, m, d] = s.split('-').map(Number);
+  if (!y || !m || !d) return dateStr;
+  const dt = new Date(Date.UTC(y, m - 1, d + n));
+  const yy = dt.getUTCFullYear();
+  const mm = String(dt.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(dt.getUTCDate()).padStart(2, '0');
+  return `${yy}-${mm}-${dd}`;
+}
+
+/**
+ * Bir KK borcunun "yerleşme/ödeme" tarihi (bekleme & toplam & bildirim kararlarında kullanılır).
+ * TAKSİTLİ kalemler (installmentId) görünen günün BİR GÜN SONRASINDA yerleşir:
+ * örn. 10 Kasım tarihli taksit 11 Kasım'da karta dahil olur / ödenmiş görünür.
+ * Görünen debt.date hiç değişmez; yalnız bu tarih hesaplarda baz alınır.
+ * Taksitsiz (tek çekim) kalemlerde tarih aynen döner.
+ */
+export function ccSettleDate(debt: { date?: string; installmentId?: string }): string | undefined {
+  if (!debt.date) return debt.date;
+  return debt.installmentId ? addDaysISO(debt.date, 1) : debt.date;
+}
+
+/**
  * Bir kredi kartı harcamasının hangi ekstreye (YYYY-MM) düştüğünü döndürür.
  * cutoff = hesap kesim günü. Gün <= cutoff ise o ay; gün > cutoff ise SONRAKİ ay
  * (Aralık'ta yıl döner). cutoff yoksa (null/undefined/0) takvim ayı = mevcut davranış.

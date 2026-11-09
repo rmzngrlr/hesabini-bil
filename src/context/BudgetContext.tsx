@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useMemo, useRef, type ReactNode } from 'react';
-import { getTodayStr, toLocalMonthStr, statementMonth } from '../lib/utils';
+import { getTodayStr, toLocalMonthStr, statementMonth, ccSettleDate } from '../lib/utils';
 import type { BudgetState, FixedExpense, CustomIncome, DailyExpense, CCDebt, Installment, MonthlyHistory, GoldRecord, CreditCard } from '../types';
 import { fetchWithAuth } from '../services/api';
 import { useAuth } from './AuthContext';
@@ -3026,13 +3026,13 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   useEffect(() => {
     if (isLoading || !isAuthenticated) return;
     const needsMark = (realState.ccDebts || []).some(d =>
-      d.dueNoticeSeen === undefined && !!d.date && d.date > todayStr && !String(d.id).startsWith('bill-cc-')
+      d.dueNoticeSeen === undefined && !!d.date && (ccSettleDate(d) || '') > todayStr && !String(d.id).startsWith('bill-cc-')
     );
     if (!needsMark) return;
     setRealState(prev => ({
       ...prev,
       ccDebts: (prev.ccDebts || []).map(d =>
-        (d.dueNoticeSeen === undefined && !!d.date && d.date > todayStr && !String(d.id).startsWith('bill-cc-'))
+        (d.dueNoticeSeen === undefined && !!d.date && (ccSettleDate(d) || '') > todayStr && !String(d.id).startsWith('bill-cc-'))
           ? { ...d, dueNoticeSeen: false }
           : d
       )
@@ -3041,7 +3041,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   // Gunu gelmis (tarih <= bugun) ve bildirimi henuz kapatilmamis (dueNoticeSeen===false) borclar.
   const ccDueNotices = useMemo(
-    () => (realState.ccDebts || []).filter(d => d.dueNoticeSeen === false && !!d.date && d.date <= todayStr),
+    () => (realState.ccDebts || []).filter(d => d.dueNoticeSeen === false && !!d.date && (ccSettleDate(d) || '') <= todayStr),
     [realState.ccDebts, todayStr]
   );
   const ccDueNoticeCount = ccDueNotices.length;
