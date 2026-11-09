@@ -2622,9 +2622,10 @@ export default function DailyExpenses() {
         </>
       )}
 
-      {/* Secim cubugu sabit (fixed) oldugundan son kalemi ortmesin diye alttan bosluk
-          (cubuk ~140px, mevcut alt dolgu ~80px -> ufak bir pay birakacak kadar). */}
-      {sel.active && <div className="h-20" aria-hidden="true" />}
+      {/* Secim cubugu sabit (fixed) oldugundan son kalemi ortmesin diye alttan bosluk.
+          Kok space-y-6 (24px) + main p-4 + scroll pb-16 (80px) + bu spacer hesaba katilinca
+          h-12 (48px) son kart ile cubuk arasini ~kartlar-arasi (12px) kadar birakir. */}
+      {sel.active && <div className="h-12" aria-hidden="true" />}
 
       {sel.active && (() => {
         // Secili kalemlerin net toplami (liste birimine gore). Faturalar hep
