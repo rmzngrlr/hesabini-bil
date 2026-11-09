@@ -819,11 +819,15 @@ export default function Debt() {
         <>
         {sortedDates.map((date) => {
           const dailyTotal = groupedDebts.groups[date].reduce((sum, item) => sum + item.amount, 0);
-          // Bu ayda gunu henuz gelmemis grup: soluk + "gunu gelmedi" etiketi.
-          // Gunu gelince (todayStr canli oldugundan gece yarisi dahil) kendiliginden aktiflesir.
-          // Taksit kalemleri +1 gun sonra yerlestiginden grup, kalemlerin EFEKTIF gunune gore
-          // (grupta bekleyen varsa) pending sayilir -> toplam/bildirimle tutarli.
-          const isPending = groupedDebts.groups[date].some(d => isDebtPending(ccSettleDate(d), isCurrentMonth, todayStr));
+          // Bu ayda gunu henuz GELMEMIS (ileri tarihli) grup: soluk + "gunu gelmedi" etiketi.
+          // Gunu gelince kendiliginden aktiflesir. (Ileri tarihli taksitler de burada soluk kalir.)
+          const isPending = isDebtPending(date, isCurrentMonth, todayStr);
+          // Display gunu GELMIS ama taksit oldugu icin +1 gune kadar henuz yerlesmemis kalem
+          // (date <= bugun < date+1): SOLUK DEGIL; "gunu gelmedi" yerine odeme gununu gosterir.
+          const dueInstallment = !isPending && isCurrentMonth
+            ? groupedDebts.groups[date].find(d => d.installmentId && isDebtPending(ccSettleDate(d), isCurrentMonth, todayStr))
+            : undefined;
+          const dueDateStr = dueInstallment ? ccSettleDate(dueInstallment) : undefined;
           return (
             <div key={date} className={cn("space-y-3 transition-opacity", isPending && "opacity-50")}>
               <div className="flex justify-between items-center ml-1 pr-1">
@@ -832,6 +836,11 @@ export default function Debt() {
                   {isPending && (
                     <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-500 whitespace-nowrap">
                       günü gelmedi
+                    </span>
+                  )}
+                  {dueDateStr && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-600 dark:text-sky-400 whitespace-nowrap">
+                      Ödeme günü: {format(new Date(dueDateStr), 'd MMMM', { locale: tr })}
                     </span>
                   )}
                 </h3>
