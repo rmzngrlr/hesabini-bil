@@ -541,14 +541,14 @@ export default function Dashboard() {
 
   // --- Premium donut yardımcıları ---
   // Merkez: toplam bütçe + "%X kalan" (açık varsa "%X açık" kırmızı).
-  const centerTotalStr = `${Math.round(totalCashResources).toLocaleString('tr-TR')} ₺`;
+  const centerTotalStr = `${totalCashResources.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺`;
   const remainPct = totalCashResources > 0 ? Math.round((trueRemaining / totalCashResources) * 100) : 0;
   const remainStr = trueRemaining >= 0 ? `%${remainPct} kalan` : `%${Math.abs(remainPct)} açık`;
   const remainColor = trueRemaining >= 0 ? '#22c55e' : '#ef4444';
 
   // Aktif dilim: dokunulan dilimin bilgisi merkezde gösterilir (uçan tooltip yok).
   const activeSlice = activeSliceIndex != null ? pieData[activeSliceIndex] : null;
-  const activeSliceValueStr = activeSlice ? `${Math.round(activeSlice.value).toLocaleString('tr-TR')} ₺` : '';
+  const activeSliceValueStr = activeSlice ? `${activeSlice.value.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺` : '';
   const activeSlicePct = activeSlice && totalPieValue > 0 ? ((activeSlice.value / totalPieValue) * 100).toFixed(1) : '0';
 
   // Aktif dilim büyütme (recharts activeShape). v3'te aktif durumu görünmez Tooltip sürüyor.
