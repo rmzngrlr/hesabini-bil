@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ChevronDown, ChevronUp, Utensils, CreditCard, Check, X, Gift } from 'lucide-react';
 import { SwipeNavCard } from '../components/SwipeNavCard';
 import { FlipCard } from '../components/FlipCard';
@@ -146,6 +147,7 @@ function CurrencyAssetCard({ fullTitle, isoCode, symbol, value, colors }: {
 
 export default function Dashboard() {
   const { state, nextMonthState, viewDate, showMealCard, vaultRecords, activeCurrencies, todayStr, allVaultRecords, acceptVaultRecord, rejectVaultRecord } = useBudget();
+  const navigate = useNavigate();
 
   // Altin emanetleri (yalniz gorunum icin tam liste 'allVaultRecords'tan): bana gelen bekleyenler
   // (kabul/ret) ve benim baskasina emanet ettiklerim (durum). Sayilan toplamlar 'vaultRecords'ta.
@@ -633,8 +635,15 @@ export default function Dashboard() {
       {/* Top Summary Cards */}
       <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
         {isCurrentMonth ? (
-          // Bu ayda: swipe ile Kalan TL <-> Reel TL cevrilir (gezinme yerine).
-          <FlipCard front={kalanCard} back={reelCard} />
+          // Bu ayda: Kalan yuzde soldan saga -> Reel; sagdan sola -> Islemler (TL).
+          // Reel yuzde sagdan sola -> Kalan'a geri.
+          <FlipCard
+            front={kalanCard}
+            back={reelCard}
+            onNavigate={() => { sessionStorage.setItem('daily_draft_tab', JSON.stringify('NAKIT')); navigate('/islemler'); }}
+            navIcon={<span className="text-2xl font-bold">₺</span>}
+            navRevealClassName="text-foreground"
+          />
         ) : (
           <SwipeNavCard to="/islemler" beforeNavigate={() => sessionStorage.setItem('daily_draft_tab', JSON.stringify('NAKIT'))} icon={<span className="text-2xl font-bold">₺</span>} revealClassName="text-foreground">
             {kalanCard}
