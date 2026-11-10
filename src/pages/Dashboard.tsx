@@ -595,7 +595,7 @@ export default function Dashboard() {
         <Secret>{reelTL.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s| /g, '')}</Secret>
       </div>
       <div className="text-xs text-muted-foreground mt-1">
-        Güncel Kalan TL + Önümüzdeki Ayın Güncel Tüm Gelirleri + Önümüzdeki Ayın Güncel Tüm Giderleri
+        Gerçek Kalan TL = Güncel Kalan TL + Önümüzdeki Ayın Güncel Tüm Gelirleri − Önümüzdeki Ayın Güncel Tüm Giderleri
       </div>
     </Card>
   );
