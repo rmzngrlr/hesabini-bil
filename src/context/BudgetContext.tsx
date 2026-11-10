@@ -152,6 +152,7 @@ const installmentFirstMonth = (
 
 interface BudgetContextType {
   state: BudgetState;
+  nextMonthState: BudgetState;
   viewDate: string;
   earliestAllowedMonth: string;
   setViewDate: (date: string) => void;
@@ -1628,7 +1629,10 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   }, [theme]);
 
   // Projection Logic
-  const derivedState = useMemo(() => {
+  // Projeksiyon mantigi targetMonth parametresiyle (icerde viewDate golgelenir): hem goruntulenen
+  // ay (derivedState) hem de bir sonraki ay (nextMonthDerived = "Reel TL") icin yeniden kullanilir.
+  const computeDerivedState = (targetMonth: string): BudgetState => {
+    const viewDate = targetMonth;
     if (viewDate === realState.currentMonth) {
         return realState;
     }
@@ -1935,7 +1939,10 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     return realState;
 
 
-  }, [realState, viewDate]);
+  };
+  const derivedState = useMemo(() => computeDerivedState(viewDate), [realState, viewDate]);
+  // "Reel TL" icin: bir sonraki ayin (gercek currentMonth + 1) projeksiyonu — Aralik gorunumuyle ayni.
+  const nextMonthDerived = useMemo(() => computeDerivedState(addMonths(realState.currentMonth, 1)), [realState]);
 
   const toggleTheme = () => {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
@@ -3079,6 +3086,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     <BudgetContext.Provider
         value={{
             state: derivedState,
+            nextMonthState: nextMonthDerived,
             viewDate,
             earliestAllowedMonth,
             setViewDate,

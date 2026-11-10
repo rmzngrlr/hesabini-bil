@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { ChevronDown, ChevronUp, Utensils, CreditCard, Check, X, Gift } from 'lucide-react';
 import { SwipeNavCard } from '../components/SwipeNavCard';
+import { FlipCard } from '../components/FlipCard';
 import { MobileProfileMenu } from '../components/MobileProfileMenu';
 import { SearchTrigger } from '../components/SearchTrigger';
 import { PrivacyTrigger } from '../components/PrivacyTrigger';
@@ -144,7 +145,7 @@ function CurrencyAssetCard({ fullTitle, isoCode, symbol, value, colors }: {
 }
 
 export default function Dashboard() {
-  const { state, viewDate, showMealCard, vaultRecords, activeCurrencies, todayStr, allVaultRecords, acceptVaultRecord, rejectVaultRecord } = useBudget();
+  const { state, nextMonthState, viewDate, showMealCard, vaultRecords, activeCurrencies, todayStr, allVaultRecords, acceptVaultRecord, rejectVaultRecord } = useBudget();
 
   // Altin emanetleri (yalniz gorunum icin tam liste 'allVaultRecords'tan): bana gelen bekleyenler
   // (kabul/ret) ve benim baskasina emanet ettiklerim (durum). Sayilan toplamlar 'vaultRecords'ta.
@@ -559,6 +560,51 @@ export default function Dashboard() {
     );
   };
 
+  // --- Reel TL: bir sonraki ekstrenin ödendiği ayın (currentMonth+1) öngörülen Kalan TL'si ---
+  // Dashboard'ın isFuture dalındaki Kalan TL formülünün AYNISI, nextMonthState (gelecek ay projeksiyonu)
+  // üzerinde -> o aya (Aralık) gidince görülecek sayıyla birebir. Bugünkü nakdin borç-düşülmüş gerçek karşılığı.
+  const reelTL = (() => {
+    const st = nextMonthState;
+    const res = st.income + st.rollover
+      + st.dailyExpenses.filter(e => e.amount > 0 && e.type === 'NAKIT').reduce((s, e) => s + e.amount, 0)
+      + (st.customIncomes || []).reduce((s, e) => s + e.amount, 0);
+    const spent = (st.fixedExpenses || []).filter(e => e.paymentMethod !== 'KK').reduce((s, e) => s + e.amount, 0);
+    return res - spent;
+  })();
+  const MONTHS_TR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+  const reelMonthLabel = (() => {
+    const [yy, mm] = (state.currentMonth || '').split('-').map(Number);
+    if (!yy || !mm) return '';
+    const d = new Date(yy, mm, 1); // mm (1-tabanlı) 0-tabanlı indekste bir SONRAKİ ay
+    return `${MONTHS_TR[d.getMonth()]} ${d.getFullYear()}`;
+  })();
+
+  const kalanCard = (
+    <Card title={isFuture ? "Tahmini Kalan Türk Lirası" : "Kalan Türk Lirası"} className="bg-gradient-to-br from-transparent to-secondary/20 h-full">
+      <div className={`text-3xl font-bold mt-2 ${remainingCash < 0 ? 'text-red-500' : 'text-foreground'}`}>
+        <Secret>{remainingCash.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s| /g, '')}</Secret>
+      </div>
+      <div className="text-xs text-muted-foreground mt-1">
+        Toplam: <Secret>{totalCashResources.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s| /g, '')}</Secret>
+      </div>
+      {isCurrentMonth && (
+        <div className="text-xs text-muted-foreground mt-1">
+          Kalan {daysLeftInMonth} gün · günde ~<span className={`font-semibold ${dailyAvgCash < 0 ? 'text-red-500' : 'text-foreground'}`}><Secret>{truncTo2(dailyAvgCash).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/\s| /g, '')}</Secret></span>
+        </div>
+      )}
+    </Card>
+  );
+  const reelCard = (
+    <Card title="Reel TL" className="bg-gradient-to-br from-transparent to-sky-500/10 border-sky-500/20 h-full">
+      <div className={`text-3xl font-bold mt-2 ${reelTL < 0 ? 'text-red-500' : 'text-foreground'}`}>
+        <Secret>{reelTL.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s| /g, '')}</Secret>
+      </div>
+      <div className="text-xs text-muted-foreground mt-1">
+        {reelMonthLabel} kalanı · borçlar düşülünce gerçek karşılık
+      </div>
+    </Card>
+  );
+
   return (
     <div className="space-y-6">
       <header className="flex flex-col gap-4">
@@ -586,22 +632,14 @@ export default function Dashboard() {
 
       {/* Top Summary Cards */}
       <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
-        <SwipeNavCard to="/islemler" beforeNavigate={() => sessionStorage.setItem('daily_draft_tab', JSON.stringify('NAKIT'))} icon={<span className="text-2xl font-bold">₺</span>} revealClassName="text-foreground">
-        <Card title={isFuture ? "Tahmini Kalan Türk Lirası" : "Kalan Türk Lirası"} className="bg-gradient-to-br from-transparent to-secondary/20 h-full">
-
-           <div className={`text-3xl font-bold mt-2 ${remainingCash < 0 ? 'text-red-500' : 'text-foreground'}`}>
-             <Secret>{remainingCash.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}</Secret>
-           </div>
-           <div className="text-xs text-muted-foreground mt-1">
-             Toplam: <Secret>{totalCashResources.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}</Secret>
-           </div>
-           {isCurrentMonth && (
-             <div className="text-xs text-muted-foreground mt-1">
-               Kalan {daysLeftInMonth} gün · günde ~<span className={`font-semibold ${dailyAvgCash < 0 ? 'text-red-500' : 'text-foreground'}`}><Secret>{truncTo2(dailyAvgCash).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/\s|\u00A0/g, '')}</Secret></span>
-             </div>
-           )}
-        </Card>
-        </SwipeNavCard>
+        {isCurrentMonth ? (
+          // Bu ayda: swipe ile Kalan TL <-> Reel TL cevrilir (gezinme yerine).
+          <FlipCard front={kalanCard} back={reelCard} />
+        ) : (
+          <SwipeNavCard to="/islemler" beforeNavigate={() => sessionStorage.setItem('daily_draft_tab', JSON.stringify('NAKIT'))} icon={<span className="text-2xl font-bold">₺</span>} revealClassName="text-foreground">
+            {kalanCard}
+          </SwipeNavCard>
+        )}
 
         {showMealCard && (
             <SwipeNavCard to="/islemler" beforeNavigate={() => sessionStorage.setItem('daily_draft_tab', JSON.stringify('YK'))} icon={<Utensils size={24} />} revealClassName="text-orange-600 dark:text-orange-500">
