@@ -573,13 +573,6 @@ export default function Dashboard() {
     const spent = (st.fixedExpenses || []).filter(e => e.paymentMethod !== 'KK').reduce((s, e) => s + e.amount, 0);
     return res - spent;
   })();
-  const MONTHS_TR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
-  const reelMonthLabel = (() => {
-    const [yy, mm] = (state.currentMonth || '').split('-').map(Number);
-    if (!yy || !mm) return '';
-    const d = new Date(yy, mm, 1); // mm (1-tabanlı) 0-tabanlı indekste bir SONRAKİ ay
-    return `${MONTHS_TR[d.getMonth()]} ${d.getFullYear()}`;
-  })();
 
   const kalanCard = (
     <Card title={isFuture ? "Tahmini Kalan Türk Lirası" : "Kalan Türk Lirası"} className="bg-gradient-to-br from-transparent to-secondary/20 h-full">
@@ -597,12 +590,12 @@ export default function Dashboard() {
     </Card>
   );
   const reelCard = (
-    <Card title="Reel TL" className="bg-gradient-to-br from-transparent to-sky-500/10 border-sky-500/20 h-full">
+    <Card title="Gerçek Kalan TL" className="bg-gradient-to-br from-transparent to-sky-500/10 border-sky-500/20 h-full">
       <div className={`text-3xl font-bold mt-2 ${reelTL < 0 ? 'text-red-500' : 'text-foreground'}`}>
         <Secret>{reelTL.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s| /g, '')}</Secret>
       </div>
       <div className="text-xs text-muted-foreground mt-1">
-        {reelMonthLabel} kalanı · borçlar düşülünce gerçek karşılık
+        Tüm borçlar ödenince kalacak TL
       </div>
     </Card>
   );
