@@ -12,9 +12,9 @@
 	# Admin API varsayilan olarak yalniz container ici localhost'ta.
 }
 
-# IP uzerinden HTTPS, ozel port 8443 (80/443 sunucuda baska servislerce dolu).
-# Erisim: https://31.223.20.76:8443
-https://31.223.20.76:8443 {
+# IP uzerinden HTTPS, ozel port 3000 (80/443 sunucuda baska servislerce dolu).
+# Erisim: https://31.223.20.76:3000
+https://31.223.20.76:3000 {
 	tls internal
 
 	encode zstd gzip
