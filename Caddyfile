@@ -12,8 +12,9 @@
 	# Admin API varsayilan olarak yalniz container ici localhost'ta.
 }
 
-# IP uzerinden HTTPS. 80 -> 443 yonlendirmesi Caddy tarafindan otomatik yapilir.
-https://31.223.20.76 {
+# IP uzerinden HTTPS, ozel port 8443 (80/443 sunucuda baska servislerce dolu).
+# Erisim: https://31.223.20.76:8443
+https://31.223.20.76:8443 {
 	tls internal
 
 	encode zstd gzip

@@ -3,10 +3,10 @@ services:
   caddy:
     image: caddy:2-alpine
     container_name: hesabini_bil_caddy
+    # 80/443 sunucuda baska servislerce dolu -> ozel port 8443.
     ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"   # HTTP/3
+      - "8443:8443"
+      - "8443:8443/udp"   # HTTP/3
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
