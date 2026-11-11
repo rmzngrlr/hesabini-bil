@@ -1,0 +1,23 @@
+# Self-signed HTTPS — alan adi gerekmez.
+# Caddy, kendi YEREL CA'si ile 31.223.20.76 icin sertifika uretir (tls internal).
+# - Tarayici ilk girista "guvenli degil" uyarisi verir; "Yine de devam et" dersen
+#   sayfa secure-context olur -> biyometrik kilit (WebAuthn) calisir.
+# - PWA kurulumu/offline icin service worker, sertifika guvenilir olmali:
+#   server'daki Caddy root CA'sini cihazina kurarsan uyari kalkar ve PWA tam calisir.
+#   Root CA'yi disari almak icin (server'da):
+#     docker exec hesabini_bil_caddy cat /data/caddy/pki/authorities/local/root.crt > caddy-root.crt
+
+{
+	# Halka acik ACME (Let's Encrypt) KULLANILMAZ; sadece dahili CA.
+	# Admin API varsayilan olarak yalniz container ici localhost'ta.
+}
+
+# IP uzerinden HTTPS. 80 -> 443 yonlendirmesi Caddy tarafindan otomatik yapilir.
+https://31.223.20.76 {
+	tls internal
+
+	encode zstd gzip
+
+	# Statik SPA + /api proxy'si zaten frontend nginx container'inda (nginx.conf).
+	reverse_proxy frontend:3002
+}
