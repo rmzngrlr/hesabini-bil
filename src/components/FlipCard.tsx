@@ -106,8 +106,8 @@ export function FlipCard({ front, back, onNavigate, navIcon, navRevealClassName 
       </div>
       {/* iki-nokta ipucu: aktif yuz vurgulu */}
       <div className="pointer-events-none absolute bottom-2 right-2 z-10 flex gap-1">
-        <span className={`h-1.5 w-1.5 rounded-full transition-colors ${!flipped ? 'bg-foreground/70' : 'bg-foreground/25'}`} />
         <span className={`h-1.5 w-1.5 rounded-full transition-colors ${flipped ? 'bg-foreground/70' : 'bg-foreground/25'}`} />
+        <span className={`h-1.5 w-1.5 rounded-full transition-colors ${!flipped ? 'bg-foreground/70' : 'bg-foreground/25'}`} />
       </div>
     </div>
   );
