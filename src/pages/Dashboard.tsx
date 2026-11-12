@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import type { ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { ChevronDown, ChevronUp, Utensils, CreditCard, Check, X, Gift } from 'lucide-react';
 import { SwipeNavCard } from '../components/SwipeNavCard';
@@ -142,6 +144,80 @@ function CurrencyAssetCard({ fullTitle, isoCode, symbol, value, colors }: {
         </div>
       )}
     </div>
+  );
+}
+
+// Kucuk bilgi baloncugu: PC'de fareyle uzerine gelince, mobilde tek dokunusla acilir;
+// disari dokununca veya kaydirinca kapanir. FlipCard'in overflow-hidden'i kirpmasin diye
+// body'ye portal ile basilir; konum trigger'a gore hesaplanip ekran icine clamp'lenir.
+function InfoTooltip({ children, content, triggerClassName = '' }: {
+  children: ReactNode;
+  content: ReactNode;
+  triggerClassName?: string;
+}) {
+  const triggerRef = useRef<HTMLSpanElement>(null);
+  const tipRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const [center, setCenter] = useState(0);
+  const [box, setBox] = useState<{ top: number; left: number } | null>(null);
+
+  const place = () => {
+    const el = triggerRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    setCenter(r.left + r.width / 2);
+    setBox({ top: r.top, left: r.left + r.width / 2 });
+  };
+
+  // Acilinca genisligi olcup yatayda ekran icine clamp et (tasmasin).
+  useLayoutEffect(() => {
+    if (!open || !tipRef.current) return;
+    const w = tipRef.current.offsetWidth;
+    const m = 8;
+    const vw = window.innerWidth;
+    const left = Math.min(Math.max(center, m + w / 2), vw - m - w / 2);
+    setBox(b => (b ? { ...b, left } : b));
+  }, [open, center]);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    const onDoc = (e: Event) => {
+      if (triggerRef.current && !triggerRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('click', onDoc);
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('resize', close);
+    return () => {
+      document.removeEventListener('click', onDoc);
+      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('resize', close);
+    };
+  }, [open]);
+
+  return (
+    <span
+      ref={triggerRef}
+      className={`cursor-help ${triggerClassName}`}
+      onMouseEnter={() => { place(); setOpen(true); }}
+      onMouseLeave={() => setOpen(false)}
+      onClick={(e) => { e.stopPropagation(); if (open) { setOpen(false); } else { place(); setOpen(true); } }}
+    >
+      {children}
+      {open && box && createPortal(
+        <div
+          ref={tipRef}
+          className="fixed z-[100] w-max max-w-[17rem] -translate-x-1/2 -translate-y-full"
+          style={{ top: box.top - 10, left: box.left }}
+        >
+          <div className="relative rounded-lg border border-border bg-popover px-3 py-2 text-xs font-normal leading-snug text-popover-foreground shadow-xl text-left">
+            {content}
+            <span className="absolute left-1/2 top-full h-2 w-2 -translate-x-1/2 -translate-y-1/2 rotate-45 border-b border-r border-border bg-popover" />
+          </div>
+        </div>,
+        document.body
+      )}
+    </span>
   );
 }
 
@@ -598,9 +674,22 @@ export default function Dashboard() {
     <Card title="Gerçek Kalan TL" className="bg-gradient-to-br from-transparent to-sky-500/10 border-sky-500/20 h-full">
       <div className={`text-3xl font-bold mt-2 ${reelTL < 0 ? 'text-red-500' : 'text-foreground'}`}>
         <Secret>{reelTL.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s| /g, '')}</Secret>
-        <span className={`text-sm font-semibold ml-2 align-baseline ${reelDiffColor}`}>
+        <InfoTooltip
+          triggerClassName={`text-sm font-semibold ml-2 align-baseline underline decoration-dotted decoration-1 underline-offset-4 ${reelDiffColor}`}
+          content={
+            <div className="space-y-1.5">
+              <div className="font-semibold text-foreground">Gerçek Kalan - Kalan TL farkı</div>
+              <div>Gelecek aydaki <b>Gerçek Kalan TL</b>'nin bugünkü <b>Kalan Türk Lirası</b>'na göre durumu:</div>
+              <div className="space-y-0.5 pt-0.5">
+                <div><span className="font-semibold text-green-500">Yeşil +</span> · gelecek ay daha rahat (fazla)</div>
+                <div><span className="font-semibold text-red-500">Kırmızı -</span> · gelecek ay daha dar (az)</div>
+                <div><span className="font-semibold text-muted-foreground">Gri 0</span> · fark yok</div>
+              </div>
+            </div>
+          }
+        >
           <Secret>{reelDiff.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', signDisplay: 'exceptZero' }).replace(/\s/g, '')}</Secret>
-        </span>
+        </InfoTooltip>
       </div>
       <div className="text-xs text-muted-foreground mt-1">
         Gerçek Kalan TL = Güncel Kalan TL + Önümüzdeki Ayın Tüm Gelirleri − Önümüzdeki Ayın Tüm Giderleri
