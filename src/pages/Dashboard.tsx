@@ -574,6 +574,11 @@ export default function Dashboard() {
     return res - spent;
   })();
 
+  // Bilanço farkı: Gerçek Kalan TL − Kalan Türk Lirası (reelTL − remainingCash).
+  // + ise yeşil, − ise kırmızı, 0 ise gri. Kuruş yuvarlaması + (-0 -> 0) normalizasyonu.
+  const reelDiff = (Math.round((reelTL - remainingCash) * 100) / 100) || 0;
+  const reelDiffColor = reelDiff > 0 ? 'text-green-500' : reelDiff < 0 ? 'text-red-500' : 'text-muted-foreground';
+
   const kalanCard = (
     <Card title={isFuture ? "Tahmini Kalan Türk Lirası" : "Kalan Türk Lirası"} className="bg-gradient-to-br from-transparent to-secondary/20 h-full">
       <div className={`text-3xl font-bold mt-2 ${remainingCash < 0 ? 'text-red-500' : 'text-foreground'}`}>
@@ -596,6 +601,12 @@ export default function Dashboard() {
       </div>
       <div className="text-xs text-muted-foreground mt-1">
         Gerçek Kalan TL = Güncel Kalan TL + Önümüzdeki Ayın Tüm Gelirleri − Önümüzdeki Ayın Tüm Giderleri
+      </div>
+      <div className="text-sm font-semibold mt-1">
+        <span className="font-normal text-muted-foreground">Bilanço: </span>
+        <span className={reelDiffColor}>
+          <Secret>{reelDiff.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', signDisplay: 'exceptZero' }).replace(/\s/g, '')}</Secret>
+        </span>
       </div>
     </Card>
   );
