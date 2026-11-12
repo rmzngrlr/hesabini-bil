@@ -4,8 +4,9 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
     container_name: hesabini_bil_frontend
-    ports:
-      - "3002:3002"
+    # Host portu YOK: uygulamaya yalniz Cloudflare Tunnel (cloudflared) uzerinden
+    # erisilir. cloudflared ayni compose aginda "frontend:3002"e ulasir; LAN/IP ile
+    # dogrudan erisim kapali (yalniz domain + gecerli HTTPS).
     restart: unless-stopped
     depends_on:
       - backend
@@ -15,8 +16,8 @@ services:
       context: ./server
       dockerfile: Dockerfile
     container_name: hesabini_bil_backend
-    ports:
-      - "3005:3005"
+    # Host portu YOK: backend'e yalniz frontend (nginx) compose agindan "backend:3005"
+    # ile ulasir; disaridan dogrudan erisim kapali.
     env_file:
       - ./server/.env
     environment:
