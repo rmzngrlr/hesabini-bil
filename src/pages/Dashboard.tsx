@@ -598,15 +598,12 @@ export default function Dashboard() {
     <Card title="Gerçek Kalan TL" className="bg-gradient-to-br from-transparent to-sky-500/10 border-sky-500/20 h-full">
       <div className={`text-3xl font-bold mt-2 ${reelTL < 0 ? 'text-red-500' : 'text-foreground'}`}>
         <Secret>{reelTL.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s| /g, '')}</Secret>
+        <span className={`text-sm font-semibold ml-2 align-baseline ${reelDiffColor}`}>
+          <Secret>{reelDiff.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', signDisplay: 'exceptZero' }).replace(/\s/g, '')}</Secret>
+        </span>
       </div>
       <div className="text-xs text-muted-foreground mt-1">
         Gerçek Kalan TL = Güncel Kalan TL + Önümüzdeki Ayın Tüm Gelirleri − Önümüzdeki Ayın Tüm Giderleri
-      </div>
-      <div className="text-sm font-semibold mt-1">
-        <span className="font-normal text-muted-foreground">Bilanço: </span>
-        <span className={reelDiffColor}>
-          <Secret>{reelDiff.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', signDisplay: 'exceptZero' }).replace(/\s/g, '')}</Secret>
-        </span>
       </div>
     </Card>
   );
