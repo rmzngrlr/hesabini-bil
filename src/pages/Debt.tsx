@@ -48,8 +48,10 @@ export default function Debt() {
   const dlLocation = useLocation();
   const dlNavigate = useNavigate();
   useEffect(() => {
-    const dl = (dlLocation.state as { deepLink?: { key?: string } } | null)?.deepLink;
+    const dl = (dlLocation.state as { deepLink?: { key?: string; cardId?: string | null } } | null)?.deepLink;
     if (!dl || !dl.key) return;
+    // Bildirim/arama ilgili KARTI da secmeli; aksi halde borc baska kartta olup DOM'da bulunmaz.
+    if (dl.cardId) setSelectedCardId(resolveCardId(dl.cardId));
     scrollToSearchKey(dl.key);
     dlNavigate(dlLocation.pathname, { replace: true, state: null });
     // eslint-disable-next-line react-hooks/exhaustive-deps

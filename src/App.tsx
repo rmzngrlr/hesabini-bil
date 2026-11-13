@@ -15,6 +15,7 @@ import { PrivacyProvider } from './context/PrivacyContext';
 import { DeviceLockGate } from './components/DeviceLockGate';
 import { PWAUpdatePrompt } from './components/PWAUpdatePrompt';
 import { PushSync } from './components/PushSync';
+import { DeepLinkBootstrap } from './components/DeepLinkBootstrap';
 import { useViewportHeightVar } from './hooks/useViewportHeightVar';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -34,6 +35,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
         <SearchProvider>
           <PrivacyProvider>
             <PushSync />
+            <DeepLinkBootstrap />
             <Layout>{children}</Layout>
           </PrivacyProvider>
         </SearchProvider>

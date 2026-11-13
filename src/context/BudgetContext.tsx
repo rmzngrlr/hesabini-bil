@@ -3082,7 +3082,8 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             key: `bill:${e.id}`,
             title: 'Fatura hatırlatması',
             body: `${e.title}: ${fmt(e.amount)} — ödeme günü geldi.`,
-            url: '/islemler',
+            // Bildirime tiklayinca Islemler > Faturalar sekmesine gidip kaleme kaydirir (deep-link).
+            url: `/islemler?dlk=${encodeURIComponent(`bill:${e.id}`)}&dls=BILLS`,
             fireAt: t,
           });
         }
@@ -3099,7 +3100,8 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             key: `fixed:${e.title}:${month}`,
             title: 'Ödeme hatırlatması',
             body: `${e.title}: ${fmt(e.amount)} — bu ay henüz ödenmedi.`,
-            url: '/varliklarim',
+            // Bildirime tiklayinca Varliklarim'da ilgili sabit gidere kaydirir (deep-link).
+            url: `/varliklarim?dlk=${encodeURIComponent(`fixed:${e.id}`)}`,
             fireAt: t2,
           });
         }
@@ -3116,7 +3118,8 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             key: `ccdue:${d.id}`,
             title: 'Kredi kartı ekstresi',
             body: `${d.description}: ${fmt(d.amount)} — kredi kartına yansıdı.`,
-            url: '/borc',
+            // Bildirime tiklayinca Borc'ta ilgili KARTI secip borca kaydirir (deep-link).
+            url: `/borc?dlk=${encodeURIComponent(`debt:${d.id}`)}&dlc=${encodeURIComponent(resolveCardId(d.cardId))}`,
             fireAt: t,
           });
         }
