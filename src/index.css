@@ -113,10 +113,12 @@
 
   html, body {
     max-width: 100vw;
+    /* Yatay kaymayi engelle (saga/sola tasma olmasin). Dikeyde overscroll SERBEST:
+       asagi cekince tarayicinin "sayfayi yenile" (pull-to-refresh) hareketi calismali.
+       NOT: html,body'ye 'overscroll-behavior: none' KOYMA -> pull-to-refresh'i de
+       kapatir (rubber-band esneme ile ayni mekanizma). Giris sayfalarindaki gereksiz
+       esneme zaten --app-vh yukseklik olcumuyle cozuldu. */
     overflow-x: hidden;
-    /* Mobilde rubber-band (lastik) scroll esnemesini kapat; icerik sigsa bile
-       asagi/yukari cekince olusan gereksiz bounce'u engeller. */
-    overscroll-behavior: none;
   }
 
   #root {
