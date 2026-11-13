@@ -4,18 +4,20 @@ import { useAuth, getAuthToken } from '../context/AuthContext';
 import { Card } from '../components/ui/Card';
 import { Avatar } from '../components/ui/Avatar';
 import { AvatarCropModal } from '../components/AvatarCropModal';
-import { Download, Upload, CreditCard, KeyRound, AlertCircle, CheckCircle2, ArrowLeft, Camera, Trash2, Fingerprint, Lock } from 'lucide-react';
+import { Download, Upload, CreditCard, KeyRound, AlertCircle, CheckCircle2, ArrowLeft, Camera, Trash2, Fingerprint, Lock, Bell } from 'lucide-react';
 import { exportToExcel, importFromExcel } from '../services/excelService';
 import { API_URL } from '../services/api';
 import { cn, ayinGunu } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { isDeviceLockEnabled, isDeviceLockSupported, isPlatformAuthenticatorAvailable, registerDeviceLock, disableDeviceLock } from '../lib/deviceLock';
 import { computePinRecord } from '../lib/pinLock';
+import { pushSupported, pushPermission, isPushEnabled, enablePush, disablePush, sendTestPush, syncReminders } from '../services/push';
 
 export default function Settings() {
   const { state, loadState, showMealCard, toggleShowMealCard, showVault, toggleShowVault, askConfirmation, askInfo,
     creditCards, addCreditCard, updateCreditCard, deleteCreditCard, isCardInUse,
-    lockPin, setLockPin, lockOnMobile, setLockOnMobile, lockOnDesktop, setLockOnDesktop, lockRelockMinutes, setLockRelockMinutes } = useBudget();
+    lockPin, setLockPin, lockOnMobile, setLockOnMobile, lockOnDesktop, setLockOnDesktop, lockRelockMinutes, setLockRelockMinutes,
+    pushReminders } = useBudget();
 
   // --- Kredi Kartlarim yonetimi (coklu kart). Bilanço tek toplam; her kart ayri ekstre/kesim. ---
   const CARD_COLORS = ['#378ADD', '#D4537E', '#639922', '#BA7517', '#7F77DD', '#1D9E75', '#D85A30'];
@@ -293,6 +295,85 @@ export default function Settings() {
       setPwdError(err.message || 'Beklenmeyen bir hata oluştu.');
     } finally {
       setIsPwdLoading(false);
+    }
+  };
+
+  // --- Bildirimler (Web Push) ---
+  // HTTPS (güvenli bağlam) + service worker + PushManager gerekir. İzin verilip abone
+  // olununca fatura/KK vadeleri uygulama kapalı olsa bile telefona bildirim olarak gelir.
+  const notifSupported = pushSupported();
+  const [notifEnabled, setNotifEnabled] = useState(false);
+  const [notifBusy, setNotifBusy] = useState(false);
+  const [notifMsg, setNotifMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+  const [notifPerm, setNotifPerm] = useState<NotificationPermission>(notifSupported ? pushPermission() : 'denied');
+
+  useEffect(() => {
+    let alive = true;
+    if (notifSupported) {
+      isPushEnabled().then((v) => { if (alive) setNotifEnabled(v); });
+    }
+    return () => { alive = false; };
+  }, [notifSupported]);
+
+  // iOS yalnız ana ekrana EKLENMİŞ (standalone) PWA'da push destekler.
+  const isStandalone =
+    typeof window !== 'undefined' &&
+    ((window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+      (navigator as any).standalone === true);
+  const isIOS = typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const iosNeedsInstall = isIOS && !isStandalone && !notifSupported;
+
+  const handleToggleNotif = async () => {
+    if (notifBusy) return;
+    setNotifMsg(null);
+    setNotifBusy(true);
+    try {
+      if (notifEnabled) {
+        await disablePush();
+        setNotifEnabled(false);
+        setNotifMsg({ type: 'success', text: 'Bildirimler kapatıldı.' });
+      } else {
+        const res = await enablePush();
+        if (res.ok) {
+          setNotifEnabled(true);
+          setNotifPerm('granted');
+          // Mevcut hatırlatıcıları hemen sunucuya gönder (bir sonraki state değişimini bekleme).
+          void syncReminders(pushReminders);
+          setNotifMsg({
+            type: 'success',
+            text: 'Bildirimler açıldı. Deneme bildirimi gönderildi — telefonunun bildirim çubuğunu kontrol et.',
+          });
+        } else {
+          const reasons: Record<string, string> = {
+            unsupported: 'Bu cihaz/tarayıcı bildirimleri desteklemiyor.',
+            denied: 'Bildirim izni verilmedi. Tarayıcı/site ayarlarından izin vermelisin.',
+            'no-sw': 'Servis çalışanı bulunamadı. Sayfayı yenileyip tekrar dene.',
+            'no-key': 'Sunucu anahtarı alınamadı. Daha sonra tekrar dene.',
+            server: 'Sunucuya kaydedilemedi. Daha sonra tekrar dene.',
+            error: 'Bir hata oluştu. Daha sonra tekrar dene.',
+          };
+          setNotifPerm(notifSupported ? pushPermission() : 'denied');
+          setNotifMsg({ type: 'error', text: reasons[res.reason] || 'Bildirimler açılamadı.' });
+        }
+      }
+    } finally {
+      setNotifBusy(false);
+    }
+  };
+
+  const handleTestNotif = async () => {
+    if (notifBusy) return;
+    setNotifMsg(null);
+    setNotifBusy(true);
+    try {
+      const ok = await sendTestPush();
+      setNotifMsg(
+        ok
+          ? { type: 'success', text: 'Deneme bildirimi gönderildi — bildirim çubuğunu kontrol et.' }
+          : { type: 'error', text: 'Deneme bildirimi gönderilemedi.' }
+      );
+    } finally {
+      setNotifBusy(false);
     }
   };
 
@@ -650,6 +731,68 @@ export default function Settings() {
                 <option value={5}>5 dakika sonra</option>
                 <option value={15}>15 dakika sonra</option>
               </select>
+            </div>
+          )}
+        </div>
+      </Card>
+
+      <Card title="Bildirimler">
+        <div className="p-2 space-y-4">
+          {notifMsg && (
+            <div
+              className={cn(
+                'flex items-center gap-2 text-sm rounded-lg px-3 py-2',
+                notifMsg.type === 'error' ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-600 dark:text-green-400'
+              )}
+            >
+              {notifMsg.type === 'error' ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
+              <span>{notifMsg.text}</span>
+            </div>
+          )}
+
+          {/* Ana açma/kapama */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-sky-500/10 text-sky-500">
+                <Bell size={20} />
+              </div>
+              <div>
+                <div className="font-medium">Telefon bildirimleri</div>
+                <div className="text-xs text-muted-foreground">
+                  {iosNeedsInstall
+                    ? 'iPhone/iPad: önce bu siteyi Safari’de “Ana Ekrana Ekle” ile uygulama olarak ekle, sonra buradan aç.'
+                    : !notifSupported
+                    ? 'Bu cihaz/tarayıcı bildirimleri desteklemiyor (güvenli bağlantı/HTTPS gerekir).'
+                    : notifPerm === 'denied'
+                    ? 'İzin reddedilmiş. Tarayıcı/site ayarlarından bildirime izin verip tekrar dene.'
+                    : 'Fatura ve kredi kartı ödeme günleri geldiğinde — uygulama kapalı olsa bile — telefonuna bildirim gelir.'}
+                </div>
+              </div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                className="sr-only peer"
+                checked={notifEnabled}
+                onChange={handleToggleNotif}
+                disabled={notifBusy || !notifSupported || notifPerm === 'denied'}
+              />
+              <div className="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary peer-disabled:opacity-40 peer-disabled:cursor-not-allowed"></div>
+            </label>
+          </div>
+
+          {/* Test bildirimi — yalnız açıkken */}
+          {notifEnabled && (
+            <div className="flex items-center justify-between gap-3 pl-11">
+              <span className="text-xs text-muted-foreground">Bildirimlerin geldiğini doğrulamak için bir test gönder.</span>
+              <button
+                type="button"
+                onClick={handleTestNotif}
+                disabled={notifBusy}
+                className="shrink-0 h-9 px-3 rounded-lg bg-secondary text-foreground text-sm font-medium hover:bg-secondary/70 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Test bildirimi gönder
+              </button>
             </div>
           )}
         </div>

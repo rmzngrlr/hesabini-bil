@@ -25,6 +25,12 @@ export default defineConfig({
     VitePWA({
       registerType: 'prompt',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+      // Web Push: generateSW ile üretilen sw.js'e push/notificationclick davranışını
+      // ekle. push-handler.js public/ altında -> kök (/push-handler.js) olarak yayınlanır;
+      // SW kök kapsamında olduğundan importScripts onu buradan yükler.
+      workbox: {
+        importScripts: ['push-handler.js'],
+      },
       manifest: {
         name: 'Hesabını Bil!',
         short_name: 'HesabınıBil',

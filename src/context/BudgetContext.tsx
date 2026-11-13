@@ -5,6 +5,7 @@ import { fetchWithAuth } from '../services/api';
 import { useAuth } from './AuthContext';
 import { ConfirmationModal } from '../components/ConfirmationModal';
 import { buildSearchIndex, type SearchRecord } from '../lib/search';
+import type { ReminderIntent } from '../services/push';
 
 const getCurrentMonth = () => {
   const d = new Date();
@@ -232,6 +233,8 @@ interface BudgetContextType {
   autoPaidBillsCount: number;
   /** Bir otomatik ödeme bildirimini kapatır (X). */
   dismissAutoPaidBill: (id: string) => void;
+  /** Web Push için hesaplanan hatırlatıcılar (fatura/KK vadeleri). Sunucuya eşitlenir. */
+  pushReminders: ReminderIntent[];
   /** Goruntulenen ay icin belirlenmis gunluk nakit harclik (yoksa 0). */
   dailyAllowance: number;
   updateDailyAllowance: (daily: number) => void;
@@ -3053,6 +3056,76 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   );
   const ccDueNoticeCount = ccDueNotices.length;
 
+  // --- Web Push hatırlatıcıları ---
+  // Vade mantığının tek sahibi istemci olduğundan, "yaklaşan hatırlatıcılar" burada
+  // hesaplanır ve (PushSync aracılığıyla) sunucuya eşitlenir. Sunucu vadesi gelince
+  // uygulama kapalı olsa bile push atar. Tarih = ilgili günün yerel saat 09:00'u.
+  const pushReminders = useMemo<ReminderIntent[]>(() => {
+    const out: ReminderIntent[] = [];
+    const fmt = (n: number) =>
+      (Math.abs(Number(n) || 0)).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
+    // Verilen YYYY-MM-DD için o günün yerel 09:00'unun epoch ms değeri (geçersizse NaN).
+    const at9 = (ymd?: string): number => {
+      if (!ymd) return NaN;
+      const [y, m, d] = String(ymd).substring(0, 10).split('-').map(Number);
+      if (!y || !m || !d) return NaN;
+      return new Date(y, m - 1, d, 9, 0, 0, 0).getTime();
+    };
+    const month = realState.currentMonth; // YYYY-MM
+
+    // 1) Faturalar: vadesi (date) olan, ödenmemiş, PLANNED_VAULT olmayan kalemler.
+    for (const e of realState.fixedExpenses || []) {
+      if (e.isBill && e.type !== 'PLANNED_VAULT' && !e.isPaid && e.date) {
+        const t = at9(e.date);
+        if (!isNaN(t)) {
+          out.push({
+            key: `bill:${e.id}`,
+            title: 'Fatura hatırlatması',
+            body: `${e.title}: ${fmt(e.amount)} — ödeme günü geldi.`,
+            url: '/islemler',
+            fireAt: t,
+          });
+        }
+      }
+    }
+
+    // 2) Kira / Kredi Kartı (tarihsiz sabit giderler, ay başından itibaren geçerli): ödenmemiş.
+    const monthStart = `${month}-01`;
+    const t2 = at9(monthStart);
+    if (!isNaN(t2)) {
+      for (const e of realState.fixedExpenses || []) {
+        if (isFixedExpenseOverdue(e)) {
+          out.push({
+            key: `fixed:${e.title}:${month}`,
+            title: 'Ödeme hatırlatması',
+            body: `${e.title}: ${fmt(e.amount)} — bu ay henüz ödenmedi.`,
+            url: '/varliklarim',
+            fireAt: t2,
+          });
+        }
+      }
+    }
+
+    // 3) Kredi kartı ekstre bildirimi: kullanıcı kapatmamış (dueNoticeSeen === false) borçlar.
+    //    Yerleşme (ccSettleDate) gününde bildir — ileri tarihliyse o gün, geçmişse ilk tetikte.
+    for (const d of realState.ccDebts || []) {
+      if (d.dueNoticeSeen === false && d.date) {
+        const t = at9(ccSettleDate(d) || d.date);
+        if (!isNaN(t)) {
+          out.push({
+            key: `ccdue:${d.id}`,
+            title: 'Kredi kartı ekstresi',
+            body: `${d.description}: ${fmt(d.amount)} — kredi kartına yansıdı.`,
+            url: '/borc',
+            fireAt: t,
+          });
+        }
+      }
+    }
+
+    return out;
+  }, [realState.fixedExpenses, realState.ccDebts, realState.currentMonth]);
+
   // Ekstre bildirimini X ile kapat: sadece isareti kaldirir, borcu/toplami bozmaz.
   const dismissCCDueNotice = (id: string) => {
     setRealState(prev => ({
@@ -3155,6 +3228,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             ccDueNotices,
             ccDueNoticeCount,
             dismissCCDueNotice,
+            pushReminders,
             dailyAllowance,
             updateDailyAllowance,
             todayStr,

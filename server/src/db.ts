@@ -160,6 +160,53 @@ export const getDb = async () => {
             WHERE transaction_type IN ('Çıkış', 'Düğün Hediyesi');
         `);
 
+        // --- Web Push bildirimleri ---
+        // VAPID anahtarları (sıfır-konfig): ilk açılışta üretilip buraya yazılır.
+        // public_key gizli değil; private_key yalnız sunucuda kalır.
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS push_config (
+                id INT PRIMARY KEY,
+                public_key VARCHAR(255) NOT NULL,
+                private_key VARCHAR(255) NOT NULL,
+                subject VARCHAR(255) DEFAULT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        `);
+
+        // Tarayıcı/cihaz push abonelikleri (bir kullanıcının birden çok cihazı olabilir).
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS push_subscriptions (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                endpoint VARCHAR(512) NOT NULL,
+                p256dh VARCHAR(255) NOT NULL,
+                auth VARCHAR(255) NOT NULL,
+                user_agent VARCHAR(255) DEFAULT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY uniq_endpoint (endpoint(191)),
+                FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        `);
+
+        // Zamanlanmış hatırlatıcılar (istemci hesaplar, sunucu vadesi gelince push atar).
+        // fire_at / sent_at = epoch ms (BIGINT); kullanıcı+anahtar benzersiz (upsert).
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS push_reminders (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                reminder_key VARCHAR(191) NOT NULL,
+                title VARCHAR(255) NOT NULL,
+                body VARCHAR(500) NOT NULL,
+                url VARCHAR(255) DEFAULT '/',
+                fire_at BIGINT NOT NULL,
+                sent_at BIGINT DEFAULT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY uniq_user_key (user_id, reminder_key),
+                KEY idx_due (sent_at, fire_at),
+                FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        `);
+
     } finally {
         connection.release();
     }
