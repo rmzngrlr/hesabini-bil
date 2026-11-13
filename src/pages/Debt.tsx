@@ -252,11 +252,23 @@ export default function Debt() {
   );
   // Taksitli kalemler görünen günün BİR GÜN SONRASINDA yerleşir (ccSettleDate); bekleme/toplam
   // kararları bu efektif tarihe göre. Görünen debt.date değişmez.
-  const totalDebt = Math.abs(
-    visibleDebts
-      .filter(d => !isDebtPending(ccSettleDate(d), isCurrentMonth, todayStr))
-      .reduce((sum, d) => sum + d.amount, 0)
-  );
+  // Bu ayin gunu gelmis (odenmis kabul) kalemlerinin NET toplami (ISARETLI).
+  // Harcamalar negatif, odemeler pozitif biriktigi icin isaret durumu dogrudan verir:
+  //   < 0 -> net BORC (odenecek, kirmizi) | > 0 -> net FAZLA ODEME / lehte (yesil) | ~0 -> notr
+  const totalDebtRaw = visibleDebts
+    .filter(d => !isDebtPending(ccSettleDate(d), isCurrentMonth, todayStr))
+    .reduce((sum, d) => sum + d.amount, 0);
+  const totalDebt = Math.abs(totalDebtRaw);
+  // Ust kart durumu (plan modunda her zaman "Kalan Toplam Borc" -> borc gibi gosterilir).
+  const dueState: 'debt' | 'credit' | 'zero' =
+    planMode || totalDebtRaw < -0.005 ? 'debt' : totalDebtRaw > 0.005 ? 'credit' : 'zero';
+  const dueAmountClass = dueState === 'debt' ? 'text-red-500' : dueState === 'credit' ? 'text-green-500' : 'text-muted-foreground';
+  const dueCardClass = dueState === 'debt'
+    ? 'bg-gradient-to-br from-transparent to-red-500/12 border-red-500/25'
+    : dueState === 'credit'
+      ? 'bg-gradient-to-br from-transparent to-green-500/12 border-green-500/25'
+      : 'bg-gradient-to-br from-transparent to-secondary/20 border-border';
+  const dueLabel = planMode ? 'Kalan Toplam Borç' : dueState === 'credit' ? 'Bu Ay Fazla Ödeme' : 'Bu Ay Ödenecek';
   // Tüm kartların toplamı (= Bilanço'daki tek sayı). Belirli kart seçiliyken ikincil satırda gösterilir.
   const grandTotalDebt = Math.abs(
     state.ccDebts
@@ -439,8 +451,8 @@ export default function Debt() {
         </div>
       )}
 
-      <Card title={`${cardById(effSel)?.name || 'Kredi Kartı'} — ${planMode ? 'Kalan Toplam Borç' : 'Bu Ay Ödenecek'}`} className="bg-gradient-to-br from-transparent to-red-500/12 border-red-500/25">
-        <div className="text-3xl font-bold text-red-500 mt-2">
+      <Card title={`${cardById(effSel)?.name || 'Kredi Kartı'} — ${dueLabel}`} className={dueCardClass}>
+        <div className={`text-3xl font-bold mt-2 ${dueAmountClass}`}>
           <Secret>{(planMode ? planDebt.total : totalDebt).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }).replace(/\s|\u00A0/g, '')}</Secret>
         </div>
         {planMode ? (
