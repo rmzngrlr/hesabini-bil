@@ -80,9 +80,12 @@ export async function enablePush(): Promise<EnableResult> {
 
     let sub = await reg.pushManager.getSubscription();
     if (!sub) {
+      // NOT: Yeni TS/lib.dom'da Uint8Array artik Uint8Array<ArrayBufferLike>; applicationServerKey
+      // ise BufferSource (ArrayBuffer tabanli) bekliyor. Deger calisma zamaninda gecerli bir
+      // BufferSource; tip uyusmazligini cift-assertion ile asiyoruz.
       sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey),
+        applicationServerKey: urlBase64ToUint8Array(publicKey) as unknown as BufferSource,
       });
     }
 
