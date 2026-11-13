@@ -114,6 +114,9 @@
   html, body {
     max-width: 100vw;
     overflow-x: hidden;
+    /* Mobilde rubber-band (lastik) scroll esnemesini kapat; icerik sigsa bile
+       asagi/yukari cekince olusan gereksiz bounce'u engeller. */
+    overscroll-behavior: none;
   }
 
   #root {

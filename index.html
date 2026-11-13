@@ -37,6 +37,12 @@
           event.preventDefault(); // Stop pinch to zoom
         }
       }, { passive: false });
+      // iOS Safari pinch-zoom'u gesture olaylariyla da engelle: touchmove tek basina
+      // iOS'ta her zaman yakalamaz, bu yuzden gesture* ile gereksiz yakinlastirmayi
+      // kokten kapatiyoruz (tek parmak scroll etkilenmez).
+      ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (ev) {
+        document.addEventListener(ev, function (e) { e.preventDefault(); }, { passive: false });
+      });
     </script>
   </head>
   <body>
