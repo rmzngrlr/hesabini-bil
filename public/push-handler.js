@@ -19,8 +19,8 @@ self.addEventListener('push', function (event) {
   var title = data.title || 'Hesabını Bil!';
   var options = {
     body: data.body || '',
-    icon: '/icon.svg',
-    badge: '/icon.svg',
+    icon: '/pwa-192.png',
+    badge: '/badge-96.png',
     tag: data.tag || 'hesabini-bil',
     renotify: true,
     data: { url: data.url || '/' },
