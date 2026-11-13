@@ -17,10 +17,12 @@ self.addEventListener('push', function (event) {
   }
 
   var title = data.title || 'Hesabını Bil!';
-  // 'icon' (buyuk sag gorsel) BILEREK yok: soldaki uygulama ikonu (pwa-192) zaten ₺'yi
-  // gosteriyor; sagda ayni logoyu tekrar gostermek gereksiz. 'badge' = durum cubugu siluet.
+  // Sagdaki buyuk ikon ISTENMIYOR. 'icon' tamamen cikarilinca Android otomatik bir harf
+  // monogrami (or. "H") koyuyor; bunu bastirmak icin SEFFAF 1x1 PNG veriyoruz -> sagda
+  // gorsel cikmaz. Sol kucuk ikon 'badge' (beyaz ₺ siluet, durum cubugu/kucuk ikon).
   var options = {
     body: data.body || '',
+    icon: '/transparent.png',
     badge: '/badge-96.png',
     tag: data.tag || 'hesabini-bil',
     renotify: true,

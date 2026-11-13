@@ -11,7 +11,7 @@ import { cn, ayinGunu } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { isDeviceLockEnabled, isDeviceLockSupported, isPlatformAuthenticatorAvailable, registerDeviceLock, disableDeviceLock } from '../lib/deviceLock';
 import { computePinRecord } from '../lib/pinLock';
-import { pushSupported, pushPermission, isPushEnabled, enablePush, disablePush, sendTestPush, syncReminders } from '../services/push';
+import { pushSupported, pushPermission, isPushEnabled, enablePush, disablePush, syncReminders } from '../services/push';
 
 export default function Settings() {
   const { state, loadState, showMealCard, toggleShowMealCard, showVault, toggleShowVault, askConfirmation, askInfo,
@@ -356,22 +356,6 @@ export default function Settings() {
           setNotifMsg({ type: 'error', text: reasons[res.reason] || 'Bildirimler açılamadı.' });
         }
       }
-    } finally {
-      setNotifBusy(false);
-    }
-  };
-
-  const handleTestNotif = async () => {
-    if (notifBusy) return;
-    setNotifMsg(null);
-    setNotifBusy(true);
-    try {
-      const ok = await sendTestPush();
-      setNotifMsg(
-        ok
-          ? { type: 'success', text: 'Deneme bildirimi gönderildi — bildirim çubuğunu kontrol et.' }
-          : { type: 'error', text: 'Deneme bildirimi gönderilemedi.' }
-      );
     } finally {
       setNotifBusy(false);
     }
@@ -781,20 +765,6 @@ export default function Settings() {
             </label>
           </div>
 
-          {/* Test bildirimi — yalnız açıkken */}
-          {notifEnabled && (
-            <div className="flex items-center justify-between gap-3 pl-11">
-              <span className="text-xs text-muted-foreground">Bildirimlerin geldiğini doğrulamak için bir test gönder.</span>
-              <button
-                type="button"
-                onClick={handleTestNotif}
-                disabled={notifBusy}
-                className="shrink-0 h-9 px-3 rounded-lg bg-secondary text-foreground text-sm font-medium hover:bg-secondary/70 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                Test bildirimi gönder
-              </button>
-            </div>
-          )}
         </div>
       </Card>
 
