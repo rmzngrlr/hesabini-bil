@@ -17,9 +17,10 @@ self.addEventListener('push', function (event) {
   }
 
   var title = data.title || 'Hesabını Bil!';
+  // 'icon' (buyuk sag gorsel) BILEREK yok: soldaki uygulama ikonu (pwa-192) zaten ₺'yi
+  // gosteriyor; sagda ayni logoyu tekrar gostermek gereksiz. 'badge' = durum cubugu siluet.
   var options = {
     body: data.body || '',
-    icon: '/pwa-192.png',
     badge: '/badge-96.png',
     tag: data.tag || 'hesabini-bil',
     renotify: true,
