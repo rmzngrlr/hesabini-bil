@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useMemo, useRef,
 import { getTodayStr, toLocalMonthStr, statementMonth, ccSettleDate } from '../lib/utils';
 import type { BudgetState, FixedExpense, CustomIncome, DailyExpense, CCDebt, Installment, MonthlyHistory, GoldRecord, CreditCard } from '../types';
 import { fetchWithAuth } from '../services/api';
+import { startSync, stopSync } from '../services/sync';
 import { useAuth } from './AuthContext';
 import { ConfirmationModal } from '../components/ConfirmationModal';
 import { buildSearchIndex, type SearchRecord } from '../lib/search';
@@ -1333,6 +1334,11 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const [loadError, setLoadError] = useState<string | null>(null);
 
+  // Canlı senkron: uzaktan (başka cihaz) gelen değişikliği UYGULARKEN kendi
+  // POST'umuzu bastırır. Aksi halde uzaktan çekilen veri tekrar sunucuya
+  // yazılır -> karşı cihaza echo -> sonsuz döngü olur.
+  const applyingRemoteRef = useRef(false);
+
   // Fetch initial state from server when authenticated
   useEffect(() => {
     if (isAuthenticated) {
@@ -1599,6 +1605,12 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       return;
     }
 
+    // Uzaktan uygulanan değişiklik: bir kez POST'u atla (echo/döngü engeli).
+    if (applyingRemoteRef.current) {
+      applyingRemoteRef.current = false;
+      return;
+    }
+
     // Skip sync if we are just loading from the server
     if (isLoading || !isAuthenticated) return;
 
@@ -1617,6 +1629,62 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     const timeoutId = setTimeout(syncState, 500);
     return () => clearTimeout(timeoutId);
   }, [realState, isAuthenticated, isLoading]);
+
+  // --- Cihazlar arası canlı senkron (SSE) ---------------------------------
+  // Başka bir cihaz veri değiştirince sunucu "değişti" der; burada ilgili veriyi
+  // bir kez çekip realState'e uygularız. Her şey realState'ten türediği için tüm
+  // ekranlar otomatik güncellenir. viewDate'e DOKUNMAYIZ (kullanıcının baktığı ay
+  // kaymasın) ve isLoading'i değiştirmeyiz (ilk yükleme akışı ayrı).
+  const reloadRef = useRef<(scope: 'budget' | 'vault' | 'all') => Promise<void>>(async () => {});
+  reloadRef.current = async (scope) => {
+    try {
+      if ((scope === 'vault' || scope === 'all') && isAdmin) {
+        await loadVaultRecords();
+        if (scope === 'vault') {
+          // Vault kayıtları değişti -> türetilmiş değerleri (Kasa/Bilanço) tazele.
+          applyingRemoteRef.current = true;
+          setRealState(prev => recalculateHistoryAndCurrent(prev));
+        }
+      }
+      if (scope === 'budget' || scope === 'all') {
+        const res = await fetchWithAuth('/budget');
+        if (res.ok) {
+          const data = await res.json();
+          if (data) {
+            const migrated = migrateState(data);
+            applyingRemoteRef.current = true;
+            setRealState(recalculateHistoryAndCurrent(migrated));
+          }
+        }
+        // 404 (henüz veri yok) -> yoksay
+      }
+    } catch (e) {
+      console.error('Canlı senkron tazeleme hatası', e);
+    }
+  };
+
+  // Gelen olayları 400ms birleştir: üst üste gelen event/yakalama tek GET'e düşsün.
+  const reloadDebounceRef = useRef<number | null>(null);
+  const pendingScopeRef = useRef<'budget' | 'vault' | 'all' | null>(null);
+  const scheduleReloadRef = useRef<(scope: 'budget' | 'vault' | 'all') => void>(() => {});
+  scheduleReloadRef.current = (scope) => {
+    const prev = pendingScopeRef.current;
+    pendingScopeRef.current = !prev ? scope : prev === scope ? scope : 'all';
+    if (reloadDebounceRef.current != null) return;
+    reloadDebounceRef.current = window.setTimeout(() => {
+      const s = pendingScopeRef.current || 'all';
+      pendingScopeRef.current = null;
+      reloadDebounceRef.current = null;
+      void reloadRef.current(s);
+    }, 400);
+  };
+
+  // İlk yükleme bitince (isLoading false) akışı başlat; çıkışta/kapanışta durdur.
+  useEffect(() => {
+    if (!isAuthenticated || isLoading) return;
+    startSync(ev => scheduleReloadRef.current((ev.scope as 'budget' | 'vault' | 'all') || 'all'));
+    return () => stopSync();
+  }, [isAuthenticated, isLoading]);
 
   useEffect(() => {
     localStorage.setItem('theme', theme);

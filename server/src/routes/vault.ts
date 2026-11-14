@@ -1,6 +1,7 @@
 import express from 'express';
 import { getDb } from '../db';
 import { authenticate, AuthRequest } from '../middleware/authMiddleware';
+import { broadcast } from '../sse';
 
 const router = express.Router();
 
@@ -10,6 +11,22 @@ router.use(authenticate);
 router.use((req, res, next) => {
     if (!(req as AuthRequest).user?.isAdmin) {
         return res.status(403).json({ error: 'Bu sayfaya erişim yetkiniz yok.' });
+    }
+    next();
+});
+
+// Canlı senkron: başarılı bir vault mutasyonundan (POST/PUT/DELETE) sonra, aynı
+// kullanıcının DİĞER cihazlarına "vault değişti" sinyali gönder (yapan sekme hariç).
+// Tek yerde: yanıt bittiğinde ve 2xx/3xx ise yayınla.
+router.use((req, res, next) => {
+    const m = req.method.toUpperCase();
+    if (m === 'POST' || m === 'PUT' || m === 'DELETE' || m === 'PATCH') {
+        res.on('finish', () => {
+            if (res.statusCode < 400) {
+                const userId = (req as AuthRequest).user?.userId;
+                if (userId) broadcast(userId, { scope: 'vault' }, req.header('X-Tab-Id') || undefined);
+            }
+        });
     }
     next();
 });
