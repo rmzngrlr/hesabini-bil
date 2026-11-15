@@ -3133,23 +3133,34 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     const fmt = (n: number) =>
       (Math.abs(Number(n) || 0)).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
     // Verilen YYYY-MM-DD için o günün yerel 09:00'unun epoch ms değeri (geçersizse NaN).
-    const at9 = (ymd?: string): number => {
+    // Verilen YYYY-MM-DD için o günün yerel GÜN BAŞI (00:00) epoch ms değeri.
+    // TÜM hatırlatıcılar gün başında fire olur: zamanlayıcının ilk tetiğinde (~5 dk)
+    // gider, uygulama-içi kart/rozetle ~aynı anda (kullanıcı tercihi: hepsi aynı olsun).
+    const at0 = (ymd?: string): number => {
       if (!ymd) return NaN;
       const [y, m, d] = String(ymd).substring(0, 10).split('-').map(Number);
       if (!y || !m || !d) return NaN;
-      return new Date(y, m - 1, d, 9, 0, 0, 0).getTime();
+      return new Date(y, m - 1, d, 0, 0, 0, 0).getTime();
     };
     const month = realState.currentMonth; // YYYY-MM
 
-    // 1) Faturalar: vadesi (date) olan, ödenmemiş, PLANNED_VAULT olmayan kalemler.
+    // 1) Faturalar: vadesi (date) olan, PLANNED_VAULT olmayan kalemler.
+    //    Ödenmemiş faturalar + AYRICA KK ödemeli olup günü gelince OTOMATİK "ödendi"
+    //    işaretlenmiş ama kullanıcı Faturalar kartını kapatmamış (autoPaidPending) faturalar.
+    //    autoPaidPending'i de dahil etmek ŞART: aksi halde KK faturası günün başında (ör.
+    //    00:0x) uygulama açılınca otomatik ödenir, hatırlatıcı 09:00 tetiğinden ÖNCE
+    //    listeden düşüp sunucudan silinir ve bar bildirimi HİÇ gönderilmez.
     for (const e of realState.fixedExpenses || []) {
-      if (e.isBill && e.type !== 'PLANNED_VAULT' && !e.isPaid && e.date) {
-        const t = at9(e.date);
+      if (e.isBill && e.type !== 'PLANNED_VAULT' && (!e.isPaid || e.autoPaidPending) && e.date) {
+        const t = at0(e.date); // vade günü başı (00:00) -> en erken tetik
         if (!isNaN(t)) {
+          const yansidi = !!e.isPaid && !!e.autoPaidPending; // KK: otomatik ödendi, karta yansıdı
           out.push({
             key: `bill:${e.id}`,
             title: 'Fatura hatırlatması',
-            body: `${e.title}: ${fmt(e.amount)} — ödeme günü geldi.`,
+            body: yansidi
+              ? `${e.title}: ${fmt(e.amount)} — bugün kredi kartına yansıdı.`
+              : `${e.title}: ${fmt(e.amount)} — ödeme günü geldi.`,
             // Bildirime tiklayinca Islemler > Faturalar sekmesine gidip kaleme kaydirir (deep-link).
             url: `/islemler?dlk=${encodeURIComponent(`bill:${e.id}`)}&dls=BILLS`,
             fireAt: t,
@@ -3160,7 +3171,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     // 2) Kira / Kredi Kartı (tarihsiz sabit giderler, ay başından itibaren geçerli): ödenmemiş.
     const monthStart = `${month}-01`;
-    const t2 = at9(monthStart);
+    const t2 = at0(monthStart);
     if (!isNaN(t2)) {
       for (const e of realState.fixedExpenses || []) {
         if (isFixedExpenseOverdue(e)) {
@@ -3180,7 +3191,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     //    Yerleşme (ccSettleDate) gününde bildir — ileri tarihliyse o gün, geçmişse ilk tetikte.
     for (const d of realState.ccDebts || []) {
       if (d.dueNoticeSeen === false && d.date) {
-        const t = at9(ccSettleDate(d) || d.date);
+        const t = at0(ccSettleDate(d) || d.date);
         if (!isNaN(t)) {
           out.push({
             key: `ccdue:${d.id}`,
