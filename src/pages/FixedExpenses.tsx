@@ -261,7 +261,7 @@ export default function FixedExpenses() {
       </header>
 
       <header className="flex items-center gap-2 flex-wrap">
-        <h1 className="text-2xl font-bold tracking-tight">Sabit Gelirler</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Gelirler</h1>
         {isFuture && <span className="text-xs bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded">Planlama Modu</span>}
       </header>
 
@@ -361,7 +361,7 @@ export default function FixedExpenses() {
       </div>
 
       <div className="mt-6 mb-8 space-y-4">
-        <h2 className="text-xl font-semibold tracking-tight">Ek Sabit Gelirler</h2>
+        <h2 className="text-xl font-semibold tracking-tight">Ek Gelirler</h2>
         <form id="edit-income-form-card" onSubmit={handleAddCustomIncome} className="flex flex-col sm:flex-row gap-2 w-full">
           <input
             type="text"
@@ -439,7 +439,7 @@ export default function FixedExpenses() {
         </div>
       </div>
 
-      <h1 className="text-2xl font-bold tracking-tight mt-8">Sabit Giderler</h1>
+      <h1 className="text-2xl font-bold tracking-tight mt-8">Giderler</h1>
 
       {/* Nakit Harçlık editörü ARTIK ayrı üst kart DEĞİL: aşağıdaki listede harçlık
           satırının altında, satırdaki kalem tuşuyla açılır (bkz. allowanceEditorOpen). */}
