@@ -808,16 +808,20 @@ export default function DailyExpenses() {
     if (activeSubTab === 'NORMAL') {
       // Normal'de bir doviz sekmesi ancak o dovizde DOGRUDAN bir islem (harcama/gelir) varsa
       // gorunur; yalniz alim (takas) yapildiysa Normal'de sekme cikmaz (o Doviz-Altin'a ait).
-      const cur = isFuture
-        ? activeCurrencies
-        : activeCurrencies.filter(c => activeExpenses.some(e => passesSubTabFilter(e, c, 'NORMAL', isFuture)));
+      // GELECEK (planlama) ay: YALNIZCA o ay girdisi/plani olan birimler sekme olur -- TL/YK dahil.
+      // Hicbiri yoksa cubuk tamamen kaybolur (asagida length>=1 kosulu). Planlama yine mumkun:
+      // formun kendi birim secicisi tum birimleri + "Diger"i gosterir (activeTab'dan bagimsiz).
+      if (isFuture) {
+        const all = ['NAKIT', ...(showMealCard ? ['YK'] : []), ...activeCurrencies];
+        return all.filter(c => activeExpenses.some(e => passesSubTabFilter(e, c, 'NORMAL', isFuture)));
+      }
+      const cur = activeCurrencies.filter(c => activeExpenses.some(e => passesSubTabFilter(e, c, 'NORMAL', isFuture)));
       return ['NAKIT', ...(showMealCard ? ['YK'] : []), ...cur];
     }
     if (activeSubTab === 'EXCHANGE') {
-      // Doviz-Altin'da bir doviz sekmesi ancak o dovizde alim/satis/takas varsa gorunur.
-      return isFuture
-        ? activeCurrencies
-        : activeCurrencies.filter(c => activeExpenses.some(e => passesSubTabFilter(e, c, 'EXCHANGE', isFuture)));
+      // Doviz-Altin'da bir doviz sekmesi ancak o dovizde alim/satis/takas varsa gorunur
+      // (gelecek ay dahil: yalnizca o ay plani olan birimler; yoksa cubuk kaybolur).
+      return activeCurrencies.filter(c => activeExpenses.some(e => passesSubTabFilter(e, c, 'EXCHANGE', isFuture)));
     }
     return [];
   }, [showMealCard, activeCurrencies, activeExpenses, activeSubTab, isFuture]);
