@@ -15,6 +15,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import type { FixedExpense, CustomIncome } from '../types';
 import { VaultSection } from '../components/VaultSection';
 import { PlannedVaultSection } from '../components/PlannedVaultSection';
+import { IncomeChangeModal } from '../components/IncomeChangeModal';
 
 
 const formatTitleCase = (str: string) => {
@@ -35,6 +36,7 @@ export default function FixedExpenses() {
     deleteCustomIncome,
     updateCustomIncome,
     updateIncome,
+    applyIncomeChange,
     updateRollover,
     updateYkIncome,
     updateYkRollover,
@@ -85,6 +87,8 @@ export default function FixedExpenses() {
   const [allowanceInput, setAllowanceInput] = useState('');
   // Harçlık düzenleyici: satırdaki kalemle açılan/kapanan panel (yalnız gelecek ayda, tek harçlık kalemi).
   const [allowanceEditorOpen, setAllowanceEditorOpen] = useState(false);
+  // Gelir değişikliği popup'ı: hangi gelir (ana/YK), yeni değer, değişken-gelir sorulsun mu.
+  const [incomeModal, setIncomeModal] = useState<{ field: 'income' | 'ykIncome'; value: number; allowVariable: boolean } | null>(null);
   const [income, setIncome] = useState(state.income.toString());
   const [rollover, setRollover] = useState(state.rollover.toFixed(2));
   const [ykIncome, setYkIncome] = useState((state.ykIncome || 0).toString());
@@ -102,7 +106,12 @@ export default function FixedExpenses() {
   useEffect(() => { setAllowanceEditorOpen(false); }, [viewDate]);
 
   const handleIncomeSave = () => {
-    updateIncome(parseFloat(income) || 0);
+    const val = parseFloat(income) || 0;
+    if (val === state.income) return; // değişmediyse popup yok
+    // Geçmiş aya bakarken: popup yok, eski davranış (yalnız o ay).
+    if (viewDate < getLocalDateMonth()) { updateIncome(val); return; }
+    // Current/future: Maaş mı Değişken mi? sor.
+    setIncomeModal({ field: 'income', value: val, allowVariable: true });
   };
 
   const handleRolloverSave = () => {
@@ -110,7 +119,11 @@ export default function FixedExpenses() {
   };
 
   const handleYkIncomeSave = () => {
-    updateYkIncome(parseFloat(ykIncome) || 0);
+    const val = parseFloat(ykIncome) || 0;
+    if (val === (state.ykIncome || 0)) return; // değişmediyse popup yok
+    if (viewDate < getLocalDateMonth()) { updateYkIncome(val); return; }
+    // YK gelirinde değişken gelir yok -> doğrudan 6/12 sorulur.
+    setIncomeModal({ field: 'ykIncome', value: val, allowVariable: false });
   };
 
   const handleYkRolloverSave = () => {
@@ -481,11 +494,13 @@ export default function FixedExpenses() {
 
       <div className="space-y-3">
         {state.fixedExpenses.filter(e => e.type !== 'PLANNED_VAULT' && !e.isBill).map((expense) => (
-          <div key={expense.id}>
+          <div key={expense.id} className={cn(expense.isAllowance && allowanceEditorOpen && "rounded-xl glass overflow-hidden")}>
           <div
             data-search-key={searchKeyFor('fixed', expense.id)}
             className={cn(
-              "flex items-center justify-between p-4 rounded-xl glass transition-all",
+              "flex items-center justify-between p-4 transition-all",
+              // Harçlık paneli açıkken satır çıplak kalır: glass/rounded birleşik sarmalayıcıda (tek kart görünümü).
+              !(expense.isAllowance && allowanceEditorOpen) && "rounded-xl glass",
               // Kira ve Kredi Karti icin uyari: bu ayda, odenmemisse kirmizi.
               // Kosul menu rozetiyle ORTAK (isFixedExpenseOverdue), ayrisamazlar.
               isCurrentMonth
@@ -573,10 +588,12 @@ export default function FixedExpenses() {
             </div>
           </div>
 
-            {/* Harçlık düzenleyici: kaleme basınca satırın ALTINDA açılır (taşındı: eski üstteki ayrı kart). */}
+            {/* Harçlık düzenleyici: kaleme basınca satırın ALTINDA açılır; satırla BİRLEŞİK kart
+                (üst sarmalayıcı glass/rounded verir; burada yalnız üst ayraç + emerald zemin). */}
             {expense.isAllowance && allowanceEditorOpen && (
-              <Card title="Nakit Harçlık (Bu Ay İçin Ayrılan)" className="mt-2 bg-gradient-to-br from-transparent to-emerald-500/12 border-emerald-500/30">
-                <div className="flex flex-wrap items-end justify-between gap-x-5 gap-y-3 mt-2">
+              <div className="border-t border-border/50 bg-gradient-to-br from-transparent to-emerald-500/12 px-4 pt-4 pb-4">
+                <div className="text-sm font-semibold text-foreground mb-3">Nakit Harçlık (Bu Ay İçin Ayrılan)</div>
+                <div className="flex flex-wrap items-end justify-between gap-x-5 gap-y-3">
                   <div className="space-y-1">
                     <label className="text-xs text-muted-foreground font-medium">Günlük tutar (TL)</label>
                     <div className="flex gap-2">
@@ -633,7 +650,7 @@ export default function FixedExpenses() {
                 <div className="text-xs text-muted-foreground mt-3 pt-3 border-t border-border/50">
                   Bu aya geçildiğinde kalem otomatik çözülür ve tutarı <strong>Kalan Türk Lirası</strong>'na eklenir.
                 </div>
-              </Card>
+              </div>
             )}
           </div>
         ))}
@@ -652,6 +669,25 @@ export default function FixedExpenses() {
             <VaultSection />
           </div>
         </div>
+      )}
+
+      {/* Gelir değişikliği onay popup'ı (ana gelir: Maaş/Değişken -> 6/12; YK: doğrudan 6/12). */}
+      {incomeModal && (
+        <IncomeChangeModal
+          isOpen={true}
+          allowVariable={incomeModal.allowVariable}
+          amountLabel={`${incomeModal.value.toLocaleString('tr-TR')} ₺`}
+          onApply={(months) => {
+            applyIncomeChange(incomeModal.field, incomeModal.value, months);
+            setIncomeModal(null);
+          }}
+          onCancel={() => {
+            // İptal: input'u görüntülenen ayın mevcut değerine geri döndür.
+            if (incomeModal.field === 'income') setIncome(state.income.toString());
+            else setYkIncome((state.ykIncome || 0).toString());
+            setIncomeModal(null);
+          }}
+        />
       )}
     </div>
   );

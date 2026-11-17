@@ -184,6 +184,9 @@ interface BudgetContextType {
   updateCCDebt: (id: string, debt: Partial<CCDebt>) => void;
   updateFixedExpense: (id: string, expense: Partial<FixedExpense>) => void;
   updateIncome: (amount: number) => void;
+  // Gelir (ana ya da YK) degisikligini bulunulan ay dahil ileri `months` aya uygular.
+  // months=1: yalniz bu ay (degisken). 6/12: maas/periyodik (bu ay + ilerleyen).
+  applyIncomeChange: (field: 'income' | 'ykIncome', value: number, months: number) => void;
   updateRollover: (amount: number) => void;
   updateYkIncome: (amount: number) => void;
   updateYkRollover: (amount: number) => void;
@@ -2868,6 +2871,29 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     });
   };
 
+  // Gelir/YK gelir degisikligini bulunulan aydan (viewDate) baslayarak ileri `months` aya yazar.
+  // months=1 -> yalniz bu ay (degisken gelir). 6/12 -> maas (bu ay dahil ilerleyen aylar).
+  // Her hedef ay: currentMonth ise realState[field], gelecekse futureData[m][field].
+  // (Gecmis ay bu metoda gelmez; UI popup'i yalniz current/future icin acar.)
+  const applyIncomeChange = (field: 'income' | 'ykIncome', value: number, months: number) => {
+    setRealState(prev => {
+      const n = Math.max(1, Math.floor(months));
+      const futureData = { ...prev.futureData };
+      let next: BudgetState = { ...prev };
+      for (let i = 0; i < n; i++) {
+        const m = addMonths(viewDate, i);
+        if (m === prev.currentMonth) {
+          next = field === 'income' ? { ...next, income: value } : { ...next, ykIncome: value };
+        } else if (m > prev.currentMonth) {
+          const f = futureData[m] || {};
+          futureData[m] = field === 'income' ? { ...f, income: value } : { ...f, ykIncome: value };
+        }
+        // m < currentMonth: gelmez (UI engeller) -> atla.
+      }
+      return { ...next, futureData };
+    });
+  };
+
   const updateRollover = (rollover: number) => {
     // Rollover is dynamic. Allow manual override only for current month or history if really needed.
     // Actually, setting rollover in history will just be overwritten by recalculateHistoryAndCurrent.
@@ -3268,6 +3294,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             updateCCDebt,
             updateFixedExpense,
             updateIncome,
+            applyIncomeChange,
             updateRollover,
             updateYkIncome,
             updateYkRollover,
