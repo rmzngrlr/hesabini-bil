@@ -106,6 +106,7 @@ export default function FixedExpenses() {
   useEffect(() => { setAllowanceEditorOpen(false); }, [viewDate]);
 
   const handleIncomeSave = () => {
+    if (incomeModal) return; // popup zaten açıksa tekrar tetikleme (blur + Enter/✓ çakışması)
     const val = parseFloat(income) || 0;
     if (val === state.income) return; // değişmediyse popup yok
     // Geçmiş aya bakarken: popup yok, eski davranış (yalnız o ay).
@@ -119,6 +120,7 @@ export default function FixedExpenses() {
   };
 
   const handleYkIncomeSave = () => {
+    if (incomeModal) return; // popup zaten açıksa tekrar tetikleme
     const val = parseFloat(ykIncome) || 0;
     if (val === (state.ykIncome || 0)) return; // değişmediyse popup yok
     if (viewDate < getLocalDateMonth()) { updateYkIncome(val); return; }
@@ -227,6 +229,10 @@ export default function FixedExpenses() {
   const previewTotal = previewDaily * daysInMonth(viewDate);
   const allowancePending = previewDaily !== dailyAllowance;
   const applyAllowance = () => updateDailyAllowance(previewDaily);
+
+  // Gelir input'larındaki ✓ tik aktifliği: yazılan değer görüntülenen ayınkinden farklıysa aktif.
+  const incomeChanged = (parseFloat(income) || 0) !== state.income;
+  const ykIncomeChanged = (parseFloat(ykIncome) || 0) !== (state.ykIncome || 0);
   const formatTL = (n: number) =>
     n.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 0, maximumFractionDigits: 0 })
       .replace(/\s/g, '');
@@ -261,14 +267,28 @@ export default function FixedExpenses() {
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card title="Aylık Gelir (TL)">
-          <div className="mt-2">
+          <div className="mt-2 flex gap-2">
             <SecretInput
               type="number"
               value={income}
               onChange={(e) => setIncome(e.target.value)}
               onBlur={handleIncomeSave}
-              className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleIncomeSave(); } }}
+              className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             />
+            {/* Sona tik: Enter gibi popup'ı açar (değişiklik varsa aktif). */}
+            <button
+              type="button"
+              onClick={handleIncomeSave}
+              disabled={!incomeChanged}
+              title={incomeChanged ? 'Onayla' : 'Onaylanacak değişiklik yok'}
+              className={cn(
+                "px-3 rounded-lg font-medium transition-all flex items-center justify-center shrink-0",
+                incomeChanged ? "bg-emerald-500 text-white hover:bg-emerald-600" : "bg-secondary text-muted-foreground cursor-not-allowed opacity-50"
+              )}
+            >
+              <Check size={20} />
+            </button>
           </div>
         </Card>
 
@@ -293,14 +313,28 @@ export default function FixedExpenses() {
         {showMealCard && (
             <>
                 <Card title="Yemek Kartı Geliri">
-                <div className="mt-2">
+                <div className="mt-2 flex gap-2">
                     <SecretInput
                     type="number"
                     value={ykIncome}
                     onChange={(e) => setYkIncome(e.target.value)}
                     onBlur={handleYkIncomeSave}
-                    className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleYkIncomeSave(); } }}
+                    className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     />
+                    {/* Sona tik: Enter gibi popup'ı açar (değişiklik varsa aktif). */}
+                    <button
+                      type="button"
+                      onClick={handleYkIncomeSave}
+                      disabled={!ykIncomeChanged}
+                      title={ykIncomeChanged ? 'Onayla' : 'Onaylanacak değişiklik yok'}
+                      className={cn(
+                        "px-3 rounded-lg font-medium transition-all flex items-center justify-center shrink-0",
+                        ykIncomeChanged ? "bg-emerald-500 text-white hover:bg-emerald-600" : "bg-secondary text-muted-foreground cursor-not-allowed opacity-50"
+                      )}
+                    >
+                      <Check size={20} />
+                    </button>
                 </div>
                 </Card>
 
