@@ -141,6 +141,12 @@ export interface FutureMonthData {
   /** O ay icin gunluk nakit harclik (TL). Toplam = bu deger x ayin gun sayisi. */
   dailyAllowance?: number;
   income?: number;
+  /**
+   * Bu ayın gelir override'ının türü. 'salary' (maaş): kalıcı taban — projeksiyonda
+   * ileriye TAŞINIR (sonraki override'a kadar sürer). 'variable' (değişken): yalnız bu
+   * aya özel, taşınmaz. Tanımsız (eski kayıtlar): maaş gibi davranır (taşınır).
+   */
+  incomeKind?: 'salary' | 'variable';
   ykIncome?: number;
   fixedExpenses?: FixedExpense[];
   customIncomes?: CustomIncome[];

@@ -50,8 +50,8 @@ export const IncomeChangeModal: React.FC<IncomeChangeModalProps> = ({
         onClick={onCancel}
       />
 
-      {/* Modal */}
-      <div className="relative text-card-foreground p-6 rounded-2xl border glass-blur shadow-2xl max-w-[340px] sm:max-w-[380px] w-full flex flex-col items-center text-center mx-4">
+      {/* Modal — opak zemin (koyu temada da saydam değil) */}
+      <div className="relative text-card-foreground bg-card p-6 rounded-2xl border border-border shadow-2xl max-w-[340px] sm:max-w-[380px] w-full flex flex-col items-center text-center mx-4">
         <div className="w-16 h-16 rounded-full border-2 border-emerald-200 dark:border-emerald-500/20 flex items-center justify-center text-emerald-500 mb-4 bg-emerald-50/10 dark:bg-emerald-500/5">
           <span className="font-sans font-semibold text-3xl leading-none select-none">₺</span>
         </div>
@@ -62,22 +62,26 @@ export const IncomeChangeModal: React.FC<IncomeChangeModalProps> = ({
             <p className="text-muted-foreground text-sm mb-5 leading-relaxed max-w-[280px]">
               {amountNote}Bu bir maaş mı, yoksa yalnız bu aya özel değişken gelir mi?
             </p>
+            {/* Seçim butonları (gelir türü) */}
             <div className="flex flex-col gap-2 w-full">
               <button
                 onClick={() => setStep('duration')}
-                className="w-full px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition-all shadow-sm active:scale-[0.98]"
+                className="w-full px-4 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-all shadow-sm active:scale-[0.98]"
               >
                 Maaş
               </button>
               <button
                 onClick={() => onApply(1)}
-                className="w-full px-4 py-2.5 rounded-lg bg-secondary hover:bg-secondary/80 text-foreground font-medium text-sm transition-all active:scale-[0.98]"
+                className="w-full px-4 py-3 rounded-lg bg-secondary hover:bg-secondary/80 text-foreground font-semibold text-sm transition-all active:scale-[0.98]"
               >
-                Değişken gelir (yalnız bu ay)
+                Değişken gelir <span className="font-normal opacity-80">(yalnız bu ay)</span>
               </button>
+            </div>
+            {/* Gezinme (iptal) — seçimden AYRI, ince ayraç + nötr stil */}
+            <div className="flex gap-2 w-full mt-4 pt-3 border-t border-border/50">
               <button
                 onClick={onCancel}
-                className="w-full px-4 py-2 rounded-lg text-muted-foreground hover:text-foreground text-sm transition-all"
+                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
               >
                 İptal
               </button>
@@ -91,32 +95,34 @@ export const IncomeChangeModal: React.FC<IncomeChangeModalProps> = ({
             <p className="text-muted-foreground text-sm mb-5 leading-relaxed max-w-[280px]">
               {amountNote}Bu ay dahil kaç ay boyunca geçerli olsun?
             </p>
+            {/* Seçim butonları (süre) — büyük, belirgin */}
             <div className="flex gap-2 w-full">
               <button
                 onClick={() => onApply(6)}
-                className="flex-1 px-4 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-all shadow-sm active:scale-[0.98]"
+                className="flex-1 px-4 py-3.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-base transition-all shadow-sm active:scale-[0.98]"
               >
                 6 ay
               </button>
               <button
                 onClick={() => onApply(12)}
-                className="flex-1 px-4 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-all shadow-sm active:scale-[0.98]"
+                className="flex-1 px-4 py-3.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-base transition-all shadow-sm active:scale-[0.98]"
               >
                 12 ay
               </button>
             </div>
-            <div className="flex gap-2 w-full mt-2">
+            {/* Gezinme (geri/iptal) — seçimden AYRI, ince ayraç + nötr stil */}
+            <div className="flex gap-2 w-full mt-4 pt-3 border-t border-border/50">
               {allowVariable && (
                 <button
                   onClick={() => setStep('kind')}
-                  className="flex-1 px-4 py-2 rounded-lg bg-secondary hover:bg-secondary/80 text-foreground text-sm transition-all"
+                  className="flex-1 px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
                 >
-                  Geri
+                  ← Geri
                 </button>
               )}
               <button
                 onClick={onCancel}
-                className="flex-1 px-4 py-2 rounded-lg text-muted-foreground hover:text-foreground text-sm transition-all"
+                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
               >
                 İptal
               </button>

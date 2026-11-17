@@ -1576,8 +1576,10 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
              });
         }
 
-        // 6. Merge planned income if available
-        const finalIncome = futurePlan.income !== undefined ? futurePlan.income : prev.income;
+        // 6. Merge planned income if available.
+        // Tasimali maas: 'variable' (degisken) override kalici tabana YAZILMAZ -> taban (prev.income)
+        // korunur; override'siz veya maas override'li ay tabani surdurur/gunceller.
+        const finalIncome = (futurePlan.income !== undefined && futurePlan.incomeKind !== 'variable') ? futurePlan.income : prev.income;
         const finalYkIncome = futurePlan.ykIncome !== undefined ? futurePlan.ykIncome : prev.ykIncome;
 
         currentState = {
@@ -1804,13 +1806,22 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     // Iterate intervening months
     let iterMonth = addMonths(realState.currentMonth, 1);
 
+    // Tasimali maas: son MAAS (kalici) gelir ileriye tasinir; override'i olmayan ay,
+    // onceki ayin maas tabanini surdurur (eski tabana geri DONMEZ). 'variable' (degisken)
+    // override yalniz kendi ayinda gecerlidir, tasinmaz. Tanimsiz incomeKind (eski kayit) = maas.
+    // YK geliri hep maastir -> tasir.
+    let runningIncome = realState.income;
+    let runningYk = realState.ykIncome;
+
     while (iterMonth <= viewDate) {
         const isTarget = iterMonth === viewDate;
         const future = realState.futureData[iterMonth] || {};
 
-        // Income
-        const monthIncome = future.income !== undefined ? future.income : realState.income;
-        const monthYkIncome = future.ykIncome !== undefined ? future.ykIncome : realState.ykIncome;
+        // Income (tasimali)
+        if (future.income !== undefined && future.incomeKind !== 'variable') runningIncome = future.income;
+        if (future.ykIncome !== undefined) runningYk = future.ykIncome;
+        const monthIncome = (future.income !== undefined && future.incomeKind === 'variable') ? future.income : runningIncome;
+        const monthYkIncome = runningYk;
 
         // Custom Incomes (Always empty in future unless explicitly added for that month)
         const monthCustomIncomes = future.customIncomes || [];
@@ -2878,6 +2889,8 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const applyIncomeChange = (field: 'income' | 'ykIncome', value: number, months: number) => {
     setRealState(prev => {
       const n = Math.max(1, Math.floor(months));
+      // months=1 -> degisken (yalniz bu ay). 6/12 -> maas (kalici taban, ileriye TASINIR).
+      const kind: 'salary' | 'variable' = n <= 1 ? 'variable' : 'salary';
       const futureData = { ...prev.futureData };
       let next: BudgetState = { ...prev };
       for (let i = 0; i < n; i++) {
@@ -2886,7 +2899,9 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           next = field === 'income' ? { ...next, income: value } : { ...next, ykIncome: value };
         } else if (m > prev.currentMonth) {
           const f = futureData[m] || {};
-          futureData[m] = field === 'income' ? { ...f, income: value } : { ...f, ykIncome: value };
+          futureData[m] = field === 'income'
+            ? { ...f, income: value, incomeKind: kind }
+            : { ...f, ykIncome: value }; // YK hep maas -> tasir (incomeKind gerekmez)
         }
         // m < currentMonth: gelmez (UI engeller) -> atla.
       }
