@@ -83,6 +83,8 @@ export default function FixedExpenses() {
   // Gunluk harclik girdisi yerel tutulur: hesap yazarken anlik gorunur ama
   // global state'e ancak tik tusuna basilinca yazilir.
   const [allowanceInput, setAllowanceInput] = useState('');
+  // Harçlık düzenleyici: satırdaki kalemle açılan/kapanan panel (yalnız gelecek ayda, tek harçlık kalemi).
+  const [allowanceEditorOpen, setAllowanceEditorOpen] = useState(false);
   const [income, setIncome] = useState(state.income.toString());
   const [rollover, setRollover] = useState(state.rollover.toFixed(2));
   const [ykIncome, setYkIncome] = useState((state.ykIncome || 0).toString());
@@ -95,6 +97,9 @@ export default function FixedExpenses() {
     setYkRollover(Number(state.ykRollover || 0).toFixed(2));
     setAllowanceInput(dailyAllowance > 0 ? String(dailyAllowance) : '');
   }, [state.income, state.rollover, state.ykIncome, state.ykRollover, viewDate, dailyAllowance]);
+
+  // Ay değişince harçlık düzenleyici panelini kapat (başka aya açık taşınmasın).
+  useEffect(() => { setAllowanceEditorOpen(false); }, [viewDate]);
 
   const handleIncomeSave = () => {
     updateIncome(parseFloat(income) || 0);
@@ -389,69 +394,8 @@ export default function FixedExpenses() {
 
       <h1 className="text-2xl font-bold tracking-tight mt-8">Sabit Giderler</h1>
 
-      {/* Nakit harclik yalnizca GELECEK aylar icin ayrilir. Icinde bulunulan aya
-          gecildiginde kalem cozulur ve tutari Kalan Turk Lirasi'na doner. */}
-      {isFuture && (
-        <Card title="Nakit Harçlık (Bu Ay İçin Ayrılan)" className="bg-gradient-to-br from-transparent to-emerald-500/12 border-emerald-500/30">
-          <div className="flex flex-wrap items-end justify-between gap-x-5 gap-y-3 mt-2">
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground font-medium">Günlük tutar (TL)</label>
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0"
-                  value={allowanceInput}
-                  onChange={(e) => setAllowanceInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applyAllowance(); } }}
-                  className="w-28 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
-                />
-                {/* Hesap anlik yapilir; kalem ancak bu tusa basilinca olusur. */}
-                <button
-                  type="button"
-                  onClick={applyAllowance}
-                  disabled={!allowancePending}
-                  title={allowancePending ? 'Onayla' : 'Onaylanacak değişiklik yok'}
-                  className={cn(
-                    "px-3 rounded-lg font-medium transition-all flex items-center justify-center shrink-0",
-                    allowancePending
-                      ? "bg-emerald-500 text-white hover:bg-emerald-600"
-                      : "bg-secondary text-muted-foreground cursor-not-allowed opacity-50"
-                  )}
-                >
-                  <Check size={20} />
-                </button>
-              </div>
-            </div>
-            <div className="text-sm pb-1 text-right ml-auto">
-              {previewDaily > 0 ? (
-                <div className="text-muted-foreground">
-                  <span className={cn(
-                    "font-bold text-lg",
-                    allowancePending ? "text-muted-foreground" : "text-emerald-600 dark:text-emerald-500"
-                  )}>
-                    <Secret>{formatTL(previewTotal)}</Secret>
-                  </span>
-                  <div className="text-xs mt-0.5">{daysInMonth(viewDate)} gün × günlük tutar</div>
-                  {allowancePending && (
-                    <div className="text-xs mt-1 text-emerald-600 dark:text-emerald-500 font-medium">
-                      Uygulamak için ✓ tuşuna bas
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-xs text-muted-foreground">
-                  Günlük tutar yazarsan, bu ayın bütçesinden ayrılıp aşağıda gider olarak görünür.
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="text-xs text-muted-foreground mt-3 pt-3 border-t border-border/50">
-            Bu aya geçildiğinde kalem otomatik çözülür ve tutarı <strong>Kalan Türk Lirası</strong>'na eklenir.
-          </div>
-        </Card>
-      )}
+      {/* Nakit Harçlık editörü ARTIK ayrı üst kart DEĞİL: aşağıdaki listede harçlık
+          satırının altında, satırdaki kalem tuşuyla açılır (bkz. allowanceEditorOpen). */}
 
       <Card title="Gider Özeti" className="bg-gradient-to-br from-transparent to-primary/10">
         <div className="space-y-4 mt-2">
@@ -537,8 +481,8 @@ export default function FixedExpenses() {
 
       <div className="space-y-3">
         {state.fixedExpenses.filter(e => e.type !== 'PLANNED_VAULT' && !e.isBill).map((expense) => (
+          <div key={expense.id}>
           <div
-            key={expense.id}
             data-search-key={searchKeyFor('fixed', expense.id)}
             className={cn(
               "flex items-center justify-between p-4 rounded-xl glass transition-all",
@@ -587,6 +531,16 @@ export default function FixedExpenses() {
             )}
 
             <div className="flex items-center">
+              {/* Harçlık: kalemle satırın ALTINDA editör paneli açılır/kapanır (eski üst kart buraya taşındı). */}
+              {expense.isAllowance && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setAllowanceEditorOpen(v => !v); }}
+                  title={allowanceEditorOpen ? 'Düzenlemeyi kapat' : 'Günlük harçlığı düzenle'}
+                  className="p-2 text-primary hover:text-primary/80 transition-colors"
+                >
+                  <Pencil size={20} />
+                </button>
+              )}
               {/* "Geçen Ay" KK borcu otomatik uretilir: Duzenle VE Sil gizlenir (1 kurus dahi
                   borc varsa odenmelidir, silinemez; 0 olunca kart yukarida silik gorunur). */}
               {!expense.isAllowance && expense.title !== CC_DEBT_TITLE && (
@@ -617,6 +571,70 @@ export default function FixedExpenses() {
               </button>
               )}
             </div>
+          </div>
+
+            {/* Harçlık düzenleyici: kaleme basınca satırın ALTINDA açılır (taşındı: eski üstteki ayrı kart). */}
+            {expense.isAllowance && allowanceEditorOpen && (
+              <Card title="Nakit Harçlık (Bu Ay İçin Ayrılan)" className="mt-2 bg-gradient-to-br from-transparent to-emerald-500/12 border-emerald-500/30">
+                <div className="flex flex-wrap items-end justify-between gap-x-5 gap-y-3 mt-2">
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground font-medium">Günlük tutar (TL)</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0"
+                        value={allowanceInput}
+                        onChange={(e) => setAllowanceInput(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applyAllowance(); } }}
+                        className="w-28 px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
+                      />
+                      {/* Hesap anlik yapilir; kalem ancak bu tusa basilinca olusur. */}
+                      <button
+                        type="button"
+                        onClick={applyAllowance}
+                        disabled={!allowancePending}
+                        title={allowancePending ? 'Onayla' : 'Onaylanacak değişiklik yok'}
+                        className={cn(
+                          "px-3 rounded-lg font-medium transition-all flex items-center justify-center shrink-0",
+                          allowancePending
+                            ? "bg-emerald-500 text-white hover:bg-emerald-600"
+                            : "bg-secondary text-muted-foreground cursor-not-allowed opacity-50"
+                        )}
+                      >
+                        <Check size={20} />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="text-sm pb-1 text-right ml-auto">
+                    {previewDaily > 0 ? (
+                      <div className="text-muted-foreground">
+                        <span className={cn(
+                          "font-bold text-lg",
+                          allowancePending ? "text-muted-foreground" : "text-emerald-600 dark:text-emerald-500"
+                        )}>
+                          <Secret>{formatTL(previewTotal)}</Secret>
+                        </span>
+                        <div className="text-xs mt-0.5">{daysInMonth(viewDate)} gün × günlük tutar</div>
+                        {allowancePending && (
+                          <div className="text-xs mt-1 text-emerald-600 dark:text-emerald-500 font-medium">
+                            Uygulamak için ✓ tuşuna bas
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-muted-foreground">
+                        Günlük tutar yazarsan, bu ayın bütçesinden ayrılıp aşağıda gider olarak görünür.
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="text-xs text-muted-foreground mt-3 pt-3 border-t border-border/50">
+                  Bu aya geçildiğinde kalem otomatik çözülür ve tutarı <strong>Kalan Türk Lirası</strong>'na eklenir.
+                </div>
+              </Card>
+            )}
           </div>
         ))}
         {state.fixedExpenses.filter(e => e.type !== 'PLANNED_VAULT' && !e.isBill).length === 0 && (
