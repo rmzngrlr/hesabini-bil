@@ -1716,6 +1716,11 @@ export default function DailyExpenses() {
     new Date(b).getTime() - new Date(a).getTime()
   );
 
+  // Planlama (gelecek ay) + bu görünümde hiç girdi/plan yok -> özet kartları ve listeyi GİZLE
+  // (hep 0 kartlar + "kayıt bulunmuyor" gürültü olmasın). Plan eklenince ikisi de normal görünür.
+  // Sekmeler ve takas/işlem formu korunur (planlama yapmaya engel değil).
+  const planningEmpty = isFuture && sortedDates.length === 0;
+
   const assetOptions = (
     <>
       <option value="NAKIT">TL</option>
@@ -2213,7 +2218,7 @@ export default function DailyExpenses() {
       )}
       </div>
 
-      {activeSubTab !== 'BILLS' && viewDate <= state.currentMonth && (
+      {activeSubTab !== 'BILLS' && viewDate <= state.currentMonth && !planningEmpty && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Card title={`${isGoldType(activeTab) ? 'Toplam Birikim' : 'Bu Ay Harcanan'} (${getAssetFullTitle(activeTab)})`} className={`${isGoldType(activeTab) ? 'bg-yellow-500/5 border-yellow-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
               <div className={`text-2xl font-bold mt-2 ${isGoldType(activeTab) ? 'text-yellow-600 dark:text-yellow-500' : 'text-red-500'}`}>
@@ -2540,7 +2545,7 @@ export default function DailyExpenses() {
             </div>
           )}
 
-          {showCalendar ? (
+          {!planningEmpty && (showCalendar ? (
             <SpendingCalendar
               viewDate={viewDate}
               entries={filteredExpenses.map(e => ({ date: e.date, amount: e.amount }))}
@@ -2618,7 +2623,7 @@ export default function DailyExpenses() {
               </div>
             )}
           </div>
-          )}
+          ))}
         </>
       )}
 
