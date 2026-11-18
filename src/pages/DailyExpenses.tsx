@@ -759,17 +759,10 @@ export default function DailyExpenses() {
     // 1. Sabit Giderler altındaki PLANNED_VAULT (altın/döviz) planları ve NAKIT/YK sabit gider planları
     (state.fixedExpenses || []).forEach(e => {
       if (e.type === 'PLANNED_VAULT') {
-        if (e.vault_gold_type === activeTab) {
-          const isSale = e.title?.toLowerCase().includes('satış') || e.title?.toLowerCase().includes('bozdurma');
-
-          plans.push({
-            id: e.id,
-            date: `${viewDate}-01`,
-            description: e.title || 'Planlanan Birikim',
-            amount: isSale ? -(e.vault_amount || 0) : (e.vault_amount || 0),
-            type: e.vault_gold_type
-          });
-        }
+        // Hibrit: bekleyen döviz/altın yatırım PLANLARI İşlemler görünümünde sekme/kart/liste
+        // OLUŞTURMAZ (plan onaylanmadan "sahipmiş gibi" görünmesin). Yalnız Varlıklarım'daki
+        // Yatırım Planı kartında + EXCHANGE'deki bilgi şeridinde gösterilir.
+        return;
       } else {
         const expenseType = e.type || 'NAKIT';
         if (expenseType === activeTab) {
@@ -832,9 +825,8 @@ export default function DailyExpenses() {
   const activeGoldTypes = useMemo(() => {
     const set = new Set<string>();
     if (isFuture) {
-      (state.fixedExpenses || []).forEach(e => {
-        if (e.type === 'PLANNED_VAULT' && e.vault_gold_type && isGoldType(e.vault_gold_type)) set.add(e.vault_gold_type);
-      });
+      // Hibrit: gelecek ayda bekleyen altın PLANLARI sekme OLUŞTURMAZ (plan İşlemler'de gizli,
+      // yalnız Varlıklarım + bilgi şeridi). Onaylanan altın o günün (cari) ayına yazılır.
     } else {
       (vaultRecords || []).forEach(r => {
         if (r && r.gold_type && isGoldType(r.gold_type) && typeof r.record_date === 'string' && r.record_date.slice(0, 7) === viewDate) set.add(r.gold_type);
@@ -1725,6 +1717,16 @@ export default function DailyExpenses() {
   // Sekmeler ve takas/işlem formu korunur (planlama yapmaya engel değil).
   const planningEmpty = isFuture && sortedDates.length === 0;
 
+  // Hibrit: bekleyen döviz/altın yatırım planları (PLANNED_VAULT) — İşlemler görünümünde gizli;
+  // EXCHANGE'de tek bir bilgi şeridiyle özetlenir ve Varlıklarım'daki Yatırım Planı'na yönlendirir.
+  const pendingInvestmentPlans = useMemo(
+    () => (state.fixedExpenses || []).filter(e => e.type === 'PLANNED_VAULT'),
+    [state.fixedExpenses]
+  );
+  const goToInvestmentPlans = () => {
+    dlNavigate('/varliklarim', { state: { deepLink: { key: 'investmentplan' } } });
+  };
+
   const assetOptions = (
     <>
       <option value="NAKIT">TL</option>
@@ -2221,6 +2223,19 @@ export default function DailyExpenses() {
         </Card>
       )}
       </div>
+
+      {/* Hibrit bilgi şeridi: gelecek ayda bekleyen döviz/altın yatırım planları burada sekme/kart
+          olarak GÖSTERİLMEZ; tek şeritte özetlenip Varlıklarım'a yönlendirilir. */}
+      {activeSubTab === 'EXCHANGE' && isFuture && pendingInvestmentPlans.length > 0 && (
+        <div className="p-4 rounded-xl border border-blue-500/30 bg-blue-500/10 text-sm text-foreground leading-relaxed">
+          Bu ay için <strong>bekleyen yatırım planın</strong> var
+          {' '}({pendingInvestmentPlans.map(p => p.title || `${p.vault_amount ?? ''} ${p.vault_gold_type ?? ''}`.trim()).join(', ')}).
+          {' '}Onaylanana kadar burada sekme/işlem olarak görünmez. Yönetmek için{' '}
+          <button type="button" onClick={goToInvestmentPlans} className="font-semibold text-primary hover:underline underline-offset-2 transition-colors">
+            Varlıklarım'daki Yatırım Planı'na gidin.
+          </button>
+        </div>
+      )}
 
       {activeSubTab !== 'BILLS' && viewDate <= state.currentMonth && !planningEmpty && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

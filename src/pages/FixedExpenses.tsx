@@ -696,8 +696,9 @@ export default function FixedExpenses() {
       </div>
 
       {/* Döviz/Altın Yatırım Planı kartı: Giderler altında. Bileşen içinde gelecek-ay / bekleyen-plan
-          mantığıyla kendini gösterir/gizler (cari ayda yalnız bekleyen plan varsa çıkar). */}
-      {isAdmin && <PlannedVaultSection />}
+          mantığıyla kendini gösterir/gizler (cari ayda yalnız bekleyen plan varsa çıkar).
+          data-search-key: İşlemler'deki bilgi şeridi buraya deep-link ile kaydırır. */}
+      {isAdmin && <div data-search-key="investmentplan"><PlannedVaultSection /></div>}
 
       {isAdmin && showVault && (
         <div className="space-y-6">
