@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card } from './ui/Card';
 import { useBudget } from '../context/BudgetContext';
 import { CheckCircle, Trash2, Calendar, Edit2, X, Pencil } from 'lucide-react';
 import type { FixedExpense } from '../types';
 import { isGoldType } from '../lib/search';
-import { scrollToElement, cn, toLocalMonthStr } from '../lib/utils';
+import { cn, toLocalMonthStr } from '../lib/utils';
 
 
 const getAssetFullTitle = (name: string) => {
@@ -100,7 +99,6 @@ export function PlannedVaultSection() {
         } else {
             setPlannedUnitPrice('');
         }
-        scrollToElement('planned-vault-form');
     };
 
     const cancelEdit = () => {
@@ -225,6 +223,71 @@ export function PlannedVaultSection() {
         deleteFixedExpense(record.id);
     };
 
+    // Düzenleme formu — ilgili planın satırının İÇİNDE akordiyon olarak açılır (harçlık kartı gibi).
+    const editForm = (
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">İşlem Cinsi</label>
+                    <select value={goldType} onChange={(e) => setGoldType(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium">
+                        <optgroup label="Altın Türleri (Kasa)">
+                            {allFormTypes.golds.map(gold => (<option key={gold} value={gold}>{getAssetFullTitle(gold)}</option>))}
+                        </optgroup>
+                        <optgroup label="Döviz Türleri (Kasa)">
+                            {allFormTypes.currencies.map(currency => (<option key={currency} value={currency}>{currency}</option>))}
+                            <option value="NEW_CURRENCY">+ Yeni Ekle</option>
+                        </optgroup>
+                    </select>
+                </div>
+                {goldType === 'NEW_CURRENCY' && (
+                    <div className="space-y-1">
+                        <label className="text-xs text-muted-foreground">Yeni Para Birimi</label>
+                        <input type="text" required placeholder="Örn: Dolar, $" value={customCurrencyCode} onChange={(e) => setCustomCurrencyCode(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium" />
+                    </div>
+                )}
+                <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Miktar (Altın/Döviz)</label>
+                    <input type="number" step="0.01" required placeholder="Örn: 100" value={goldAmount} onChange={(e) => handleGoldAmountChange(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                </div>
+                <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Tahmini TL Maliyeti (Rezerve Edilecek)</label>
+                    <input type="number" step="0.01" required placeholder="Örn: 3300" value={amountTL} onChange={(e) => handleAmountTLChange(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                </div>
+                <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Birim Fiyat (TL)</label>
+                    <input type="number" step="0.0001" placeholder="Birim Fiyat (Miktar veya Tutar girildiğinde hesaplanır)" value={plannedUnitPrice} onChange={(e) => handlePlannedUnitPriceChange(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium" />
+                </div>
+                {calculatedUnitPriceText && (
+                    <div className="md:col-span-2 p-3 bg-primary/10 text-primary rounded-lg text-sm font-semibold text-center border border-primary/20">
+                        {calculatedUnitPriceText}
+                    </div>
+                )}
+                <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Başlık (Opsiyonel)</label>
+                    <input type="text" placeholder="Örn: Ağustos Dolar Alımı" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                </div>
+                {isGoldType(goldType) && (
+                    <div className="space-y-1">
+                        <label className="text-xs text-muted-foreground">Sahibi</label>
+                        <input type="text" required placeholder="Örn: Ben, Eşim vb." value={goldOwner} onChange={(e) => setGoldOwner(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                    </div>
+                )}
+                <div className="space-y-1 md:col-span-2">
+                    <label className="text-xs text-muted-foreground">Not</label>
+                    <input type="text" placeholder="Not eklenebilir..." value={goldNote} onChange={(e) => setGoldNote(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                </div>
+            </div>
+            <div className="flex gap-2">
+                <button type="button" onClick={cancelEdit} className="flex-1 py-3 bg-secondary text-foreground font-medium rounded-lg hover:bg-secondary/80 transition-colors flex items-center justify-center gap-2">
+                    <X size={20} /> İptal
+                </button>
+                <button type="submit" className="flex-[2] py-3 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2">
+                    <Calendar size={20} /> Planı Güncelle
+                </button>
+            </div>
+        </form>
+    );
+
     // Gelecek ay DEĞİL ve bekleyen plan da yoksa kartı hiç gösterme (cari/geçmişi kirletmesin).
     if (!isFuture && plannedRecords.length === 0) return null;
 
@@ -250,187 +313,54 @@ export function PlannedVaultSection() {
             </div>
             {open && (
               <div className="border-t border-border/50 bg-gradient-to-br from-transparent to-emerald-500/12 px-4 pt-4 pb-4 space-y-4">
-            {editingId && (
-                <Card id="planned-vault-form" title="Planlanan Döviz/Altın İşlemini Düzenle">
-                    <form onSubmit={handleSubmit} className="space-y-4 mt-2">
-                        <div className="grid gap-4 md:grid-cols-2">
-                            <div className="space-y-1">
-                                <label className="text-xs text-muted-foreground">İşlem Cinsi</label>
-                                <select
-                                    value={goldType}
-                                    onChange={(e) => setGoldType(e.target.value)}
-                                    className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
-                                >
-                                    <optgroup label="Altın Türleri (Kasa)">
-                                        {allFormTypes.golds.map(gold => (
-                                            <option key={gold} value={gold}>{getAssetFullTitle(gold)}</option>
-                                        ))}
-                                    </optgroup>
-                                    <optgroup label="Döviz Türleri (Kasa)">
-                                        {allFormTypes.currencies.map(currency => (
-                                            <option key={currency} value={currency}>{currency}</option>
-                                        ))}
-                                        <option value="NEW_CURRENCY">+ Yeni Ekle</option>
-                                    </optgroup>
-                                </select>
-                            </div>
-                            {goldType === 'NEW_CURRENCY' && (
-                                <div className="space-y-1">
-                                    <label className="text-xs text-muted-foreground">Yeni Para Birimi</label>
-                                    <input
-                                        type="text"
-                                        required
-                                        placeholder="Örn: Dolar, $"
-                                        value={customCurrencyCode}
-                                        onChange={(e) => setCustomCurrencyCode(e.target.value)}
-                                        className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
-                                    />
-                                </div>
-                            )}
-                            <div className="space-y-1">
-                                <label className="text-xs text-muted-foreground">Miktar (Altın/Döviz)</label>
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    required
-                                    placeholder="Örn: 100"
-                                    value={goldAmount}
-                                    onChange={(e) => handleGoldAmountChange(e.target.value)}
-                                    className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                                />
-                            </div>
-
-                            <div className="space-y-1">
-                                <label className="text-xs text-muted-foreground">Tahmini TL Maliyeti (Rezerve Edilecek)</label>
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    required
-                                    placeholder="Örn: 3300"
-                                    value={amountTL}
-                                    onChange={(e) => handleAmountTLChange(e.target.value)}
-                                    className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                                />
-                            </div>
-
-                            <div className="space-y-1">
-                                <label className="text-xs text-muted-foreground">Birim Fiyat (TL)</label>
-                                <input
-                                    type="number"
-                                    step="0.0001"
-                                    placeholder="Birim Fiyat (Miktar veya Tutar girildiğinde hesaplanır)"
-                                    value={plannedUnitPrice}
-                                    onChange={(e) => handlePlannedUnitPriceChange(e.target.value)}
-                                    className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium"
-                                />
-                            </div>
-
-                            {calculatedUnitPriceText && (
-                                <div className="md:col-span-2 p-3 bg-primary/10 text-primary rounded-lg text-sm font-semibold text-center border border-primary/20">
-                                    {calculatedUnitPriceText}
-                                </div>
-                            )}
-
-                            <div className="space-y-1">
-                                <label className="text-xs text-muted-foreground">Başlık (Opsiyonel)</label>
-                                <input
-                                    type="text"
-                                    placeholder="Örn: Ağustos Dolar Alımı"
-                                    value={title}
-                                    onChange={(e) => setTitle(e.target.value)}
-                                    className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                                />
-                            </div>
-
-                            {/* Sahiplik yalnizca ALTIN'a ozgu (coklu-kullanici emaneti). Doviz'de gizlenir. */}
-                            {isGoldType(goldType) && (
-                            <div className="space-y-1">
-                                <label className="text-xs text-muted-foreground">Sahibi</label>
-                                <input
-                                    type="text"
-                                    required
-                                    placeholder="Örn: Ben, Eşim vb."
-                                    value={goldOwner}
-                                    onChange={(e) => setGoldOwner(e.target.value)}
-                                    className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                                />
-                            </div>
-                            )}
-
-                            <div className="space-y-1 md:col-span-2">
-                                <label className="text-xs text-muted-foreground">Not</label>
-                                <input
-                                    type="text"
-                                    placeholder="Not eklenebilir..."
-                                    value={goldNote}
-                                    onChange={(e) => setGoldNote(e.target.value)}
-                                    className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="flex gap-2">
-                            {editingId && (
-                                <button
-                                    type="button"
-                                    onClick={cancelEdit}
-                                    className="flex-1 py-3 bg-secondary text-foreground font-medium rounded-lg hover:bg-secondary/80 transition-colors flex items-center justify-center gap-2"
-                                >
-                                    <X size={20} /> İptal
-                                </button>
-                            )}
-                            <button
-                                type="submit"
-                                className="flex-[2] py-3 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
-                            >
-                                <Calendar size={20} />
-                                {editingId ? 'Planı Güncelle' : 'Plan Ekle'}
-                            </button>
-                        </div>
-                    </form>
-                </Card>
-            )}
-
             {plannedRecords.length > 0 ? (
                     <div className="space-y-2">
                         {plannedRecords.map(record => (
-                            <div key={record.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-secondary/30 rounded-xl border border-border gap-4">
-                                <div className="flex-1 min-w-0 w-full">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <h3 className="font-semibold text-lg truncate">{record.title || `Planlanan ${record.vault_gold_type} Alımı`}</h3>
-                                        <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20 whitespace-nowrap">Beklemede</span>
+                            <div key={record.id} className="bg-secondary/30 rounded-xl border border-border overflow-hidden">
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 gap-4">
+                                    <div className="flex-1 min-w-0 w-full">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <h3 className="font-semibold text-lg truncate">{record.title || `Planlanan ${record.vault_gold_type} Alımı`}</h3>
+                                            <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20 whitespace-nowrap">Beklemede</span>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                                            <div><span className="font-medium text-foreground">Hedef:</span> {record.vault_amount} {record.vault_gold_type}</div>
+                                            <div><span className="font-medium text-foreground">Maliyet:</span> {record.amount} TL</div>
+                                            {isGoldType(record.vault_gold_type || '') && <div><span className="font-medium text-foreground">Sahibi:</span> {record.vault_owner}</div>}
+                                            {record.vault_note && <div className="col-span-2 truncate"><span className="font-medium text-foreground">Not:</span> {record.vault_note}</div>}
+                                        </div>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                                        <div><span className="font-medium text-foreground">Hedef:</span> {record.vault_amount} {record.vault_gold_type}</div>
-                                        <div><span className="font-medium text-foreground">Maliyet:</span> {record.amount} TL</div>
-                                        {isGoldType(record.vault_gold_type || '') && <div><span className="font-medium text-foreground">Sahibi:</span> {record.vault_owner}</div>}
-                                        {record.vault_note && <div className="col-span-2 truncate"><span className="font-medium text-foreground">Not:</span> {record.vault_note}</div>}
+                                    <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                                        <button
+                                            onClick={() => handleExecute(record)}
+                                            className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500/10 text-green-500 hover:bg-green-500/20 rounded-lg transition-colors text-sm font-medium"
+                                            title="Gerçekleşti"
+                                        >
+                                            <CheckCircle size={16} />
+                                            <span>Onayla</span>
+                                        </button>
+                                        <button
+                                            onClick={() => editingId === record.id ? cancelEdit() : handleEdit(record)}
+                                            className={cn("p-1.5 transition-colors", editingId === record.id ? "text-primary" : "text-muted-foreground hover:text-primary")}
+                                            title={editingId === record.id ? 'Düzenlemeyi kapat' : 'Düzenle'}
+                                        >
+                                            <Edit2 size={16} />
+                                        </button>
+                                        <button
+                                            onClick={() => deleteFixedExpense(record.id)}
+                                            className="p-1.5 text-muted-foreground hover:text-red-500 transition-colors"
+                                            title="Sil"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-                                    <button
-                                        onClick={() => handleExecute(record)}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500/10 text-green-500 hover:bg-green-500/20 rounded-lg transition-colors text-sm font-medium"
-                                        title="Gerçekleşti"
-                                    >
-                                        <CheckCircle size={16} />
-                                        <span>Onayla</span>
-                                    </button>
-                                    <button
-                                        onClick={() => handleEdit(record)}
-                                        className="p-1.5 text-muted-foreground hover:text-primary transition-colors"
-                                        title="Düzenle"
-                                    >
-                                        <Edit2 size={16} />
-                                    </button>
-                                    <button
-                                        onClick={() => deleteFixedExpense(record.id)}
-                                        className="p-1.5 text-muted-foreground hover:text-red-500 transition-colors"
-                                        title="Sil"
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
-                                </div>
+                                {/* Düzenleme: harçlık gibi, bu satırın İÇİNDE akordiyon olarak açılır */}
+                                {editingId === record.id && (
+                                    <div className="border-t border-border bg-gradient-to-br from-transparent to-emerald-500/12 p-4">
+                                        {editForm}
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>
