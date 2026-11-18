@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card } from './ui/Card';
 import { useBudget } from '../context/BudgetContext';
-import { CheckCircle, Trash2, Calendar, Edit2, X } from 'lucide-react';
+import { CheckCircle, Trash2, Calendar, Edit2, X, Pencil, ArrowRight } from 'lucide-react';
 import type { FixedExpense } from '../types';
 import { isGoldType } from '../lib/search';
-import { scrollToElement } from '../lib/utils';
+import { scrollToElement, cn, toLocalMonthStr } from '../lib/utils';
 
 
 const getAssetFullTitle = (name: string) => {
@@ -24,6 +25,7 @@ const getAssetFullTitle = (name: string) => {
 export function PlannedVaultSection() {
     const {
         state,
+        viewDate,
         addFixedExpense,
         updateFixedExpense,
         deleteFixedExpense,
@@ -32,6 +34,15 @@ export function PlannedVaultSection() {
         activeCurrencies,
         askConfirmation
     } = useBudget();
+
+    const navigate = useNavigate();
+    // Akordiyon aç/kapa (harçlık kartı gibi). Yalnız gelecek aylarda "her zaman" görünür;
+    // cari/geçmişte yalnız bekleyen plan varsa (ör. plan vade ayına geldiyse Onayla'yabilmek için).
+    const [open, setOpen] = useState(false);
+    const isFuture = viewDate > toLocalMonthStr();
+    const goToExchange = () => {
+        navigate('/islemler', { state: { deepLink: { subTab: 'EXCHANGE', exchangeMode: 'CURRENCY' } } });
+    };
 
     const [title, setTitle] = useState('');
     const [amountTL, setAmountTL] = useState('');
@@ -214,8 +225,31 @@ export function PlannedVaultSection() {
         deleteFixedExpense(record.id);
     };
 
+    // Gelecek ay DEĞİL ve bekleyen plan da yoksa kartı hiç gösterme (cari/geçmişi kirletmesin).
+    if (!isFuture && plannedRecords.length === 0) return null;
+
     return (
-        <div className="space-y-4">
+        <div>
+          {/* Harçlık kartı gibi akordiyon: başlık satırı + kalemle aç/kapa. */}
+          <div className={cn(open && "rounded-xl glass overflow-hidden")}>
+            <div className={cn("flex items-center justify-between p-4 transition-all", !open && "rounded-xl glass")}>
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="w-6 flex-shrink-0" aria-hidden="true" />
+                <div className="text-left min-w-0 flex-1">
+                  <span className="font-medium truncate block">Döviz/Altın Yatırım Planı</span>
+                  <div className="text-sm text-muted-foreground mt-0.5">
+                    {plannedRecords.length > 0 ? `${plannedRecords.length} bekleyen plan` : 'Plan yok'}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center">
+                <button type="button" onClick={() => setOpen(v => !v)} title={open ? 'Kapat' : 'Aç'} className="p-2 text-primary hover:text-primary/80 transition-colors">
+                  <Pencil size={20} />
+                </button>
+              </div>
+            </div>
+            {open && (
+              <div className="border-t border-border/50 bg-gradient-to-br from-transparent to-emerald-500/12 px-4 pt-4 pb-4 space-y-4">
             {editingId && (
                 <Card id="planned-vault-form" title="Planlanan Döviz/Altın İşlemini Düzenle">
                     <form onSubmit={handleSubmit} className="space-y-4 mt-2">
@@ -357,9 +391,8 @@ export function PlannedVaultSection() {
                 </Card>
             )}
 
-            {plannedRecords.length > 0 && (
-                <Card title="Bekleyen Planlar">
-                    <div className="space-y-2 mt-2">
+            {plannedRecords.length > 0 ? (
+                    <div className="space-y-2">
                         {plannedRecords.map(record => (
                             <div key={record.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-secondary/30 rounded-xl border border-border gap-4">
                                 <div className="flex-1 min-w-0 w-full">
@@ -401,8 +434,19 @@ export function PlannedVaultSection() {
                             </div>
                         ))}
                     </div>
-                </Card>
+            ) : (isFuture && !editingId && (
+                    <div className="text-center py-6 px-2 space-y-3">
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        Döviz/altın yatırımı planlamak için İşlemler sayfasında <strong className="text-foreground">Döviz/Altın İşlemleri</strong> sekmesine gidin.
+                      </p>
+                      <button type="button" onClick={goToExchange} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-colors">
+                        İşlemler'e git <ArrowRight size={16} />
+                      </button>
+                    </div>
+            ))}
+              </div>
             )}
+          </div>
         </div>
     );
 }

@@ -609,11 +609,11 @@ export default function DailyExpenses() {
   const dlNavigate = useNavigate();
   useEffect(() => {
     const dl = (dlLocation.state as { deepLink?: { key?: string; subTab?: 'NORMAL' | 'EXCHANGE' | 'BILLS' | null; exchangeMode?: 'CURRENCY' | 'GOLD' | null; assetTab?: string | null } } | null)?.deepLink;
-    if (!dl || !dl.key) return;
+    if (!dl) return;
     if (dl.subTab) setActiveSubTab(dl.subTab);
     if (dl.exchangeMode) setExchangeTabMode(dl.exchangeMode);
     if (dl.assetTab) setActiveTab(dl.assetTab);
-    scrollToSearchKey(dl.key);
+    if (dl.key) scrollToSearchKey(dl.key); // key yoksa (yalniz sekme gecisi) kaydirma yapma
     dlNavigate(dlLocation.pathname, { replace: true, state: null });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dlLocation.key]);
