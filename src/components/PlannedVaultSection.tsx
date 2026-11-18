@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBudget } from '../context/BudgetContext';
 import { CheckCircle, Trash2, Calendar, Edit2, X, Pencil } from 'lucide-react';
 import type { FixedExpense } from '../types';
-import { isGoldType } from '../lib/search';
+import { isGoldType, searchKeyFor } from '../lib/search';
 import { cn, toLocalMonthStr } from '../lib/utils';
 
 
@@ -25,9 +25,11 @@ export function PlannedVaultSection() {
     const {
         state,
         viewDate,
+        setViewDate,
         addFixedExpense,
         updateFixedExpense,
         deleteFixedExpense,
+        removePlanFromMonth,
         addVaultRecord,
         addDailyExpense,
         activeCurrencies,
@@ -35,6 +37,18 @@ export function PlannedVaultSection() {
     } = useBudget();
 
     const navigate = useNavigate();
+
+    // "Gerçekleşti" işaretli planlar (id -> ait olduğu ay). Onayla'da işaretlenir, silinmez;
+    // Varlıklarım'dan ayrılınca (unmount) bu planlar YAKALANAN ayından silinir.
+    const [realized, setRealized] = useState<Record<string, string>>({});
+    const realizedRef = useRef<Record<string, string>>({});
+    realizedRef.current = realized;
+    const redirectTimerRef = useRef<number | null>(null);
+    useEffect(() => () => {
+        if (redirectTimerRef.current != null) clearTimeout(redirectTimerRef.current);
+        Object.entries(realizedRef.current).forEach(([id, month]) => removePlanFromMonth(id, month));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
     // Akordiyon aç/kapa (harçlık kartı gibi). Yalnız gelecek aylarda "her zaman" görünür;
     // cari/geçmişte yalnız bekleyen plan varsa (ör. plan vade ayına geldiyse Onayla'yabilmek için).
     const [open, setOpen] = useState(false);
@@ -200,27 +214,39 @@ export function PlannedVaultSection() {
 
         const finalVaultNote = record.amount ? `${record.vault_note ? record.vault_note + ' | ' : ''}Alış Fiyatı: ${record.amount} TL` : record.vault_note;
 
-        // Add Vault Record
-        await addVaultRecord({
+        // Kasa kaydı (yeni id döner) + TL alım gideri (bugün -> cari ay).
+        const newId = await addVaultRecord({
             record_date: executeDate,
-            // Doviz'de sahiplik yok -> 'Ortak'; yalniz altinda plandaki sahip kullanilir.
+            // Döviz'de sahiplik yok -> 'Ortak'; yalnız altında plandaki sahip kullanılır.
             owner: isGoldType(vGoldType) ? (record.vault_owner || 'Bilinmiyor') : 'Ortak',
             gold_type: vGoldType,
             amount: vAmount,
             note: finalVaultNote,
             transaction_type: isSale ? 'Bozdurma' : 'Birikim'
         });
+        addDailyExpense({ date: executeDate, description: approvedDesc, amount: -record.amount, type: 'NAKIT' });
 
-        // Add Daily Expense for TL
-        addDailyExpense({
-            date: executeDate,
-            description: approvedDesc,
-            amount: -record.amount,
-            type: 'NAKIT'
-        });
+        // Planı SİLME; "gerçekleşti" işaretle (ait olduğu ay = şu an bakılan ay). Kart yeşerir.
+        const planMonth = viewDate;
+        setRealized(prev => ({ ...prev, [record.id]: planMonth }));
 
-        // Delete Plan
-        deleteFixedExpense(record.id);
+        // Kısa bir an "Gerçekleşti" göründükten sonra İşlemler'e yönlendir: cari ay, Döviz/Altın,
+        // ilgili tür, yeni işlem kartına kaydır. Plan, Varlıklarım'dan ayrılırken (unmount) temizlenir.
+        const gold = isGoldType(vGoldType);
+        const entryId = gold ? `vault-gold-${newId}` : `vault-curr-${newId}`;
+        redirectTimerRef.current = window.setTimeout(() => {
+            setViewDate(toLocalMonthStr());
+            navigate('/islemler', {
+                state: {
+                    deepLink: {
+                        subTab: 'EXCHANGE',
+                        exchangeMode: gold ? 'GOLD' : 'CURRENCY',
+                        assetTab: vGoldType,
+                        key: newId != null ? searchKeyFor('daily', entryId) : undefined,
+                    }
+                }
+            });
+        }, 800);
     };
 
     // Düzenleme formu — ilgili planın satırının İÇİNDE akordiyon olarak açılır (harçlık kartı gibi).
@@ -316,12 +342,16 @@ export function PlannedVaultSection() {
             {plannedRecords.length > 0 ? (
                     <div className="space-y-2">
                         {plannedRecords.map(record => (
-                            <div key={record.id} className="bg-secondary/30 rounded-xl border border-border overflow-hidden">
+                            <div key={record.id} className={cn("rounded-xl border overflow-hidden", realized[record.id] ? "bg-green-500/5 border-green-500/30" : "bg-secondary/30 border-border")}>
                                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 gap-4">
                                     <div className="flex-1 min-w-0 w-full">
                                         <div className="flex items-center gap-2 mb-1">
                                             <h3 className="font-semibold text-lg truncate">{record.title || `Planlanan ${record.vault_gold_type} Alımı`}</h3>
-                                            <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20 whitespace-nowrap">Beklemede</span>
+                                            {realized[record.id] ? (
+                                                <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/10 text-green-500 border border-green-500/20 whitespace-nowrap inline-flex items-center gap-1"><CheckCircle size={12} /> Gerçekleşti</span>
+                                            ) : (
+                                                <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20 whitespace-nowrap">Beklemede</span>
+                                            )}
                                         </div>
                                         <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-muted-foreground">
                                             <div><span className="font-medium text-foreground">Hedef:</span> {record.vault_amount} {record.vault_gold_type}</div>
@@ -330,6 +360,8 @@ export function PlannedVaultSection() {
                                             {record.vault_note && <div className="col-span-2 truncate"><span className="font-medium text-foreground">Not:</span> {record.vault_note}</div>}
                                         </div>
                                     </div>
+                                    {/* "Gerçekleşti" işaretli planda işlem butonları gizlenir (tekrar onay/düzenleme olmasın) */}
+                                    {!realized[record.id] && (
                                     <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
                                         <button
                                             onClick={() => handleExecute(record)}
@@ -354,6 +386,7 @@ export function PlannedVaultSection() {
                                             <Trash2 size={16} />
                                         </button>
                                     </div>
+                                    )}
                                 </div>
                                 {/* Düzenleme: harçlık gibi, bu satırın İÇİNDE akordiyon olarak açılır */}
                                 {editingId === record.id && (

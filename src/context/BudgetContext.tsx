@@ -161,6 +161,8 @@ interface BudgetContextType {
   addFixedExpense: (expense: Omit<FixedExpense, 'id' | 'isPaid'>) => void;
   toggleFixedExpense: (id: string) => void;
   deleteFixedExpense: (id: string) => void;
+  // Belirli bir AYDAN (cari/gelecek) bir plan kalemini id ile siler (viewDate'ten BAĞIMSIZ).
+  removePlanFromMonth: (id: string, month: string) => void;
   addCustomIncome: (income: Omit<CustomIncome, 'id'>) => void;
   deleteCustomIncome: (id: string) => void;
   updateCustomIncome: (id: string, income: Partial<CustomIncome>) => void;
@@ -213,7 +215,7 @@ interface BudgetContextType {
   /** Global arama indeksi (salt-okunur; realState + history + futureData + vaultRecords). */
   searchIndex: SearchRecord[];
   vaultOrder: string[];
-  addVaultRecord: (record: Omit<GoldRecord, 'id'>) => Promise<void>;
+  addVaultRecord: (record: Omit<GoldRecord, 'id'>) => Promise<number | undefined>;
   deleteVaultRecord: (id: number) => Promise<void>;
   updateVaultRecord: (id: number, record: Partial<GoldRecord>) => Promise<void>;
   acceptVaultRecord: (id: number) => Promise<void>;
@@ -1144,15 +1146,18 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   }, [isAuthenticated, isAdmin]);
 
-  const addVaultRecord = async (record: Omit<GoldRecord, 'id'>) => {
+  const addVaultRecord = async (record: Omit<GoldRecord, 'id'>): Promise<number | undefined> => {
     try {
       const res = await fetchWithAuth('/vault', {
         method: 'POST',
         body: JSON.stringify(record)
       });
       if (!res.ok) throw new Error('Kayıt eklenemedi.');
+      let newId: number | undefined;
+      try { newId = (await res.json())?.id; } catch { /* yanıt gövdesi yoksa yoksay */ }
       await loadVaultRecords();
       setRealState(prev => recalculateHistoryAndCurrent(prev));
+      return newId;
     } catch (err) {
       console.error(err);
       throw err;
@@ -2261,6 +2266,29 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     });
   };
 
+  // Belirli bir aydan (cari ya da gelecek) plan kalemini id ile siler. "Gerçekleşti" sonrası
+  // Varlıklarım'dan ayrılırken çağrılır; viewDate o an cari aya dönmüş olabileceği için ayı
+  // AÇIKÇA alır (viewDate'ten bağımsız, güvenli). Geçmiş ay senaryosu yok.
+  const removePlanFromMonth = (id: string, month: string) => {
+    setRealState(prev => {
+      if (month === prev.currentMonth) {
+        return { ...prev, fixedExpenses: (prev.fixedExpenses || []).filter(e => e.id !== id) };
+      }
+      if (month > prev.currentMonth) {
+        const future = prev.futureData[month];
+        if (!future || !future.fixedExpenses) return prev;
+        return {
+          ...prev,
+          futureData: {
+            ...prev.futureData,
+            [month]: { ...future, fixedExpenses: future.fixedExpenses.filter(e => e.id !== id) }
+          }
+        };
+      }
+      return prev;
+    });
+  };
+
   const deleteFixedExpense = (id: string) => {
     setRealState(prev => {
         if (viewDate === prev.currentMonth) {
@@ -3289,6 +3317,7 @@ export const BudgetProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             addFixedExpense,
             toggleFixedExpense,
             deleteFixedExpense,
+            removePlanFromMonth,
             addCustomIncome,
             deleteCustomIncome,
             updateCustomIncome,
