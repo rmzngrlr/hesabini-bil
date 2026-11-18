@@ -398,9 +398,9 @@ export function PlannedVaultSection() {
                         ))}
                     </div>
             ) : (isFuture && !editingId && (
-                    <div className="text-center py-6 px-2">
+                    <div className="px-1">
                       <p className="text-sm text-muted-foreground leading-relaxed">
-                        Döviz/Altın yatırımı planlamak için İşlemler sayfasında{' '}
+                        Plan eklemek için İşlemler'de{' '}
                         <button type="button" onClick={goToExchange} className="font-semibold text-primary hover:underline underline-offset-2 transition-colors">
                           Döviz/Altın İşlemleri sekmesine gidin.
                         </button>
