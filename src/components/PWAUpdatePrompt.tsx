@@ -25,7 +25,7 @@ export function PWAUpdatePrompt() {
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-[9999] flex justify-center px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pointer-events-none">
-      <div className="pointer-events-auto w-full max-w-md rounded-2xl border border-border glass-blur shadow-2xl p-4 flex items-center gap-3">
+      <div className="pointer-events-auto w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl p-4 flex items-center gap-3">
         <div className="flex-1 min-w-0">
           <div className="font-semibold text-foreground">Yeni sürüm hazır</div>
           <div className="text-sm text-muted-foreground">Uygulamayı güncellemek için dokunun.</div>
