@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from './ui/Card';
 import { useBudget } from '../context/BudgetContext';
-import { CheckCircle, Trash2, Calendar, Edit2, X, Pencil, ArrowRight } from 'lucide-react';
+import { CheckCircle, Trash2, Calendar, Edit2, X, Pencil } from 'lucide-react';
 import type { FixedExpense } from '../types';
 import { isGoldType } from '../lib/search';
 import { scrollToElement, cn, toLocalMonthStr } from '../lib/utils';
@@ -435,13 +435,13 @@ export function PlannedVaultSection() {
                         ))}
                     </div>
             ) : (isFuture && !editingId && (
-                    <div className="text-center py-6 px-2 space-y-3">
+                    <div className="text-center py-6 px-2">
                       <p className="text-sm text-muted-foreground leading-relaxed">
-                        Döviz/altın yatırımı planlamak için İşlemler sayfasında <strong className="text-foreground">Döviz/Altın İşlemleri</strong> sekmesine gidin.
+                        Döviz/Altın yatırımı planlamak için İşlemler sayfasında{' '}
+                        <button type="button" onClick={goToExchange} className="font-semibold text-primary hover:underline underline-offset-2 transition-colors">
+                          Döviz/Altın İşlemleri sekmesine gidin.
+                        </button>
                       </p>
-                      <button type="button" onClick={goToExchange} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-colors">
-                        İşlemler'e git <ArrowRight size={16} />
-                      </button>
                     </div>
             ))}
               </div>
