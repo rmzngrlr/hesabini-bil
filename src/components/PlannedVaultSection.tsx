@@ -5,7 +5,11 @@ import { CheckCircle, Trash2, Calendar, Edit2, X, Pencil } from 'lucide-react';
 import type { FixedExpense } from '../types';
 import { isGoldType, searchKeyFor } from '../lib/search';
 import { cn, toLocalMonthStr } from '../lib/utils';
+import { Secret } from './Secret';
 
+const formatTL = (n: number) =>
+    n.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 0, maximumFractionDigits: 0 })
+        .replace(/\s/g, '');
 
 const getAssetFullTitle = (name: string) => {
     const lower = name.toLowerCase();
@@ -70,6 +74,8 @@ export function PlannedVaultSection() {
     const [plannedUnitPrice, setPlannedUnitPrice] = useState('');
 
     const plannedRecords = state.fixedExpenses.filter(e => e.type === 'PLANNED_VAULT');
+    // Akordiyon açılınca görülen tüm planların TL maliyeti toplamı (başlık altında gösterilir).
+    const plannedTotal = plannedRecords.reduce((sum, r) => sum + (r.amount || 0), 0);
 
     const formatRateValue = (val: number): string => {
         if (isNaN(val) || val <= 0) return '';
@@ -318,16 +324,26 @@ export function PlannedVaultSection() {
     if (!isFuture && plannedRecords.length === 0) return null;
 
     return (
-        <div>
+        // data-search-key kök div'de: İşlemler bilgi şeridi buraya kaydırır. Bileşen null dönünce
+        // (gizli) hiç eleman üretmez -> Giderler listesinde fantom boşluk oluşmaz.
+        <div data-search-key="investmentplan">
           {/* Harçlık kartı gibi akordiyon: başlık satırı + kalemle aç/kapa. */}
           <div className={cn(open && "rounded-xl glass overflow-hidden")}>
             <div className={cn("flex items-center justify-between p-4 transition-all", !open && "rounded-xl glass")}>
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <div className="w-6 flex-shrink-0" aria-hidden="true" />
                 <div className="text-left min-w-0 flex-1">
-                  <span className="font-medium truncate block">Döviz/Altın Yatırım Planı</span>
+                  {/* "X bekleyen plan" başlığın yanında (çip); alt satırda planların TL toplamı. */}
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-medium truncate">Döviz/Altın Yatırım Planı</span>
+                    {plannedRecords.length > 0 && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20 whitespace-nowrap shrink-0">
+                        {plannedRecords.length} bekleyen plan
+                      </span>
+                    )}
+                  </div>
                   <div className="text-sm text-muted-foreground mt-0.5">
-                    {plannedRecords.length > 0 ? `${plannedRecords.length} bekleyen plan` : 'Plan yok'}
+                    {plannedRecords.length > 0 ? <Secret>{formatTL(plannedTotal)}</Secret> : 'Plan yok'}
                   </div>
                 </div>
               </div>

@@ -693,12 +693,12 @@ export default function FixedExpenses() {
             Henüz sabit gider eklenmemiş.
           </div>
         )}
+        {/* Döviz/Altın Yatırım Planı kartı: Giderler listesinin İÇİNDE (aynı space-y-3) ki KK Borcu
+            ile arası diğer kartlarla eşit boşlukta olsun. Bileşen gelecek-ay / bekleyen-plan
+            mantığıyla kendini gösterir/gizler; gizlenince (null) hiç eleman üretmez (fantom boşluk yok).
+            data-search-key bileşenin kök div'inde: İşlemler bilgi şeridi oraya kaydırır. */}
+        {isAdmin && <PlannedVaultSection />}
       </div>
-
-      {/* Döviz/Altın Yatırım Planı kartı: Giderler altında. Bileşen içinde gelecek-ay / bekleyen-plan
-          mantığıyla kendini gösterir/gizler (cari ayda yalnız bekleyen plan varsa çıkar).
-          data-search-key: İşlemler'deki bilgi şeridi buraya deep-link ile kaydırır. */}
-      {isAdmin && <div data-search-key="investmentplan"><PlannedVaultSection /></div>}
 
       {isAdmin && showVault && (
         <div className="space-y-6">
