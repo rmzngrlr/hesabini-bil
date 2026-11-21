@@ -9,6 +9,7 @@ import { searchKeyFor } from '../lib/search';
 import { SearchTrigger } from '../components/SearchTrigger';
 import { PrivacyTrigger } from '../components/PrivacyTrigger';
 import { Secret } from '../components/Secret';
+import { SuggestInput } from '../components/SuggestInput';
 import { MonthNavigator } from '../components/MonthNavigator';
 import { SpendingCalendar } from '../components/SpendingCalendar';
 import { useSelectMode } from '../hooks/useSelectMode';
@@ -514,19 +515,13 @@ export default function Debt() {
 
           <div className="space-y-1">
              <label className="text-xs text-muted-foreground">Açıklama</label>
-             <input
-               type="text"
-               list="debt-expense-suggestions"
+             <SuggestInput
+               suggestions={uniqueDescriptions}
                placeholder="Harcama/Ödeme"
                value={description}
-               onChange={(e) => setDescription(e.target.value)}
+               onChange={setDescription}
                className="w-full px-3 py-2 rounded-lg bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
              />
-             <datalist id="debt-expense-suggestions">
-               {uniqueDescriptions.map((desc, idx) => (
-                 <option key={idx} value={desc} />
-               ))}
-             </datalist>
           </div>
 
           {/* Tarih kendi satirinda (Tutar bir alt satira iner). */}

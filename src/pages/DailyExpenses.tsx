@@ -13,6 +13,7 @@ import { searchKeyFor } from '../lib/search';
 import { SearchTrigger } from '../components/SearchTrigger';
 import { PrivacyTrigger } from '../components/PrivacyTrigger';
 import { Secret } from '../components/Secret';
+import { SuggestInput } from '../components/SuggestInput';
 import { SpendingCalendar } from '../components/SpendingCalendar';
 import { useSelectMode } from '../hooks/useSelectMode';
 import { SelectionBar } from '../components/SelectionBar';
@@ -2044,20 +2045,14 @@ export default function DailyExpenses() {
 
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground">Açıklama</label>
-              <input
-                type="text"
+              <SuggestInput
                 required
-                list="daily-expense-suggestions"
+                suggestions={uniqueDescriptions}
                 placeholder="Bu para nereden geldi/nereye gitti?"
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={setDescription}
                 className="w-full h-11 px-3 rounded-xl bg-secondary text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               />
-              <datalist id="daily-expense-suggestions">
-                {uniqueDescriptions.map((desc, idx) => (
-                  <option key={idx} value={desc} />
-                ))}
-              </datalist>
             </div>
 
             <div className="flex gap-2 pt-1">
