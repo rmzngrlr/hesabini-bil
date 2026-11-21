@@ -487,7 +487,7 @@ export default function Debt() {
         )}
       </Card>
 
-      <div id="edit-form-card"><Card title={editingId ? "İşlemi Düzenle" : "İşlem Ekle"} collapsible={!editingId} open={addFormOpen} onToggleOpen={toggleAddForm}>
+      <div id="edit-form-card"><Card pinOnFocus title={editingId ? "İşlemi Düzenle" : "İşlem Ekle"} collapsible={!editingId} open={addFormOpen} onToggleOpen={toggleAddForm}>
         <form onSubmit={handleSubmit} className="space-y-3 mt-2">
           <div className="flex gap-2">
              <button

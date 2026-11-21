@@ -2016,7 +2016,7 @@ export default function DailyExpenses() {
       )}
 
       {activeSubTab === 'NORMAL' && (
-      <Card id="edit-form-card" title={editingId ? "Kayıt Düzenle" : "Yeni İşlem Ekle"} collapsible={!editingId} open={addFormOpen} onToggleOpen={toggleAddForm}>
+      <Card id="edit-form-card" pinOnFocus title={editingId ? "Kayıt Düzenle" : "Yeni İşlem Ekle"} collapsible={!editingId} open={addFormOpen} onToggleOpen={toggleAddForm}>
           <form onSubmit={handleSubmit} className="space-y-3 mt-2">
           <div className="space-y-3">
               <div className="space-y-1">
