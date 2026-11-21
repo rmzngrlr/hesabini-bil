@@ -32,7 +32,8 @@ export function Card({ title, value, children, className, id, collapsible, open 
     if (!el || pinnedRef.current) return;
     pinnedRef.current = true;
     requestAnimationFrame(() => {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Anlık (smooth değil): global focus-kaydırma devreye girmeden kart tepeye otursun.
+      el.scrollIntoView({ block: 'start' });
     });
   };
 

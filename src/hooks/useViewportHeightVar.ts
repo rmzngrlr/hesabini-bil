@@ -27,11 +27,18 @@ export function useViewportHeightVar() {
     // alani kaydirmaz -> input klavyenin ARKASINDA kalir. Burada elle kaydiriyoruz.
     const isEditable = (el: Element | null): el is HTMLElement =>
       !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT');
+    // Odaklı input GERÇEKTEN görünür alanın dışında (üstte kesik ya da klavye arkasında) ise
+    // kaydır; zaten tam görünürse DOKUNMA. Eskiden her odakta koşulsuz 'center'a kaydırıyordu;
+    // bu yüzden kart içinde alandan alana geçince kart her seferinde oynuyor/titriyordu.
     const scrollFocusedIntoView = () => {
       const el = document.activeElement;
-      if (isEditable(el)) {
-        try { el.scrollIntoView({ block: 'center' }); } catch { /* yoksay */ }
-      }
+      if (!isEditable(el)) return;
+      const vTop = vv ? vv.offsetTop : 0;
+      const vHeight = vv ? vv.height : window.innerHeight;
+      const r = el.getBoundingClientRect();
+      const M = 16; // kenar boşluğu: bu kadar görünürse kaydırma yapma
+      if (r.top >= vTop + M && r.bottom <= vTop + vHeight - M) return; // zaten tam görünür -> çık
+      try { el.scrollIntoView({ block: 'center' }); } catch { /* yoksay */ }
     };
     // Yeni bir input'a odaklaninca (klavye yeni acilir ya da zaten acikken input degisir):
     // klavye animasyonu + layout kuculmesinden sonra kaydir.
